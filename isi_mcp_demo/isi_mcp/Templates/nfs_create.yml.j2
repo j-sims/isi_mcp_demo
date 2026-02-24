@@ -1,0 +1,110 @@
+---
+- name: Create NFS export on PowerScale
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  collections:
+    - dellemc.powerscale
+
+  tasks:
+    - name: Create NFS export for "{{ path }}"
+      dellemc.powerscale.nfs:
+        onefs_host: "{{ onefs_host }}"
+        port_no: "{{ port_no }}"
+        verify_ssl: {{ verify_ssl }}
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        path: "{{ path }}"
+        access_zone: "{{ access_zone }}"
+{% if description is defined and description %}
+        description: "{{ description }}"
+{% endif %}
+{% if clients is defined and clients %}
+        clients:
+{% for client in clients %}
+          - "{{ client }}"
+{% endfor %}
+{% endif %}
+{% if read_only is defined and read_only is not none %}
+        read_only: {{ read_only }}
+{% endif %}
+{% if client_state is defined and client_state %}
+        client_state: "{{ client_state }}"
+{% endif %}
+{% if read_only_clients is defined and read_only_clients %}
+        read_only_clients:
+{% for client in read_only_clients %}
+          - "{{ client }}"
+{% endfor %}
+{% endif %}
+{% if read_write_clients is defined and read_write_clients %}
+        read_write_clients:
+{% for client in read_write_clients %}
+          - "{{ client }}"
+{% endfor %}
+{% endif %}
+{% if root_clients is defined and root_clients %}
+        root_clients:
+{% for client in root_clients %}
+          - "{{ client }}"
+{% endfor %}
+{% endif %}
+{% if security_flavors is defined and security_flavors %}
+        security_flavors:
+{% for flavor in security_flavors %}
+          - "{{ flavor }}"
+{% endfor %}
+{% endif %}
+{% if sub_directories_mountable is defined and sub_directories_mountable is not none %}
+        sub_directories_mountable: {{ sub_directories_mountable }}
+{% endif %}
+{% if map_root is defined and map_root %}
+        map_root:
+{% if map_root.enabled is defined %}
+          enabled: {{ map_root.enabled|lower }}
+{% endif %}
+{% if map_root.user is defined and map_root.user %}
+          user:
+            name: "{{ map_root.user }}"
+{% endif %}
+{% if map_root.primary_group is defined and map_root.primary_group %}
+          primary_group:
+            name: "{{ map_root.primary_group }}"
+{% endif %}
+{% if map_root.secondary_groups is defined and map_root.secondary_groups %}
+          secondary_groups:
+{% for group in map_root.secondary_groups %}
+            - name: "{{ group.name }}"
+{% if group.state is defined %}
+              state: "{{ group.state }}"
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}
+{% if map_non_root is defined and map_non_root %}
+        map_non_root:
+{% if map_non_root.enabled is defined %}
+          enabled: {{ map_non_root.enabled|lower }}
+{% endif %}
+{% if map_non_root.user is defined and map_non_root.user %}
+          user:
+            name: "{{ map_non_root.user }}"
+{% endif %}
+{% if map_non_root.primary_group is defined and map_non_root.primary_group %}
+          primary_group:
+            name: "{{ map_non_root.primary_group }}"
+{% endif %}
+{% if map_non_root.secondary_groups is defined and map_non_root.secondary_groups %}
+          secondary_groups:
+{% for group in map_non_root.secondary_groups %}
+            - name: "{{ group.name }}"
+{% if group.state is defined %}
+              state: "{{ group.state }}"
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}
+{% if ignore_unresolvable_hosts is defined and ignore_unresolvable_hosts is not none %}
+        ignore_unresolvable_hosts: {{ ignore_unresolvable_hosts }}
+{% endif %}
+        state: present

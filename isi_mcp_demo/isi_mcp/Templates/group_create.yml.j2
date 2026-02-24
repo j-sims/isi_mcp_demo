@@ -1,0 +1,38 @@
+---
+- name: Create group on PowerScale
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  collections:
+    - dellemc.powerscale
+
+  tasks:
+    - name: Create group "{{ group_name }}"
+      dellemc.powerscale.group:
+        onefs_host: "{{ onefs_host }}"
+        port_no: "{{ port_no }}"
+        verify_ssl: {{ verify_ssl }}
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        group_name: "{{ group_name }}"
+{%- if group_id is defined and group_id is not none %}
+        group_id: {{ group_id }}
+{%- endif %}
+{%- if access_zone is defined and access_zone %}
+        access_zone: "{{ access_zone }}"
+{%- endif %}
+{%- if provider_type is defined and provider_type %}
+        provider_type: "{{ provider_type }}"
+{%- endif %}
+{%- if users is defined and users %}
+        users:
+{%- for user in users %}
+{%- if user.user_name is defined %}
+          - user_name: "{{ user.user_name }}"
+{%- elif user.user_id is defined %}
+          - user_id: {{ user.user_id }}
+{%- endif %}
+{%- endfor %}
+        user_state: "{{ user_state | default('present-in-group') }}"
+{%- endif %}
+        state: present

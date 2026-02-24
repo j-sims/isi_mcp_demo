@@ -1,0 +1,18 @@
+---
+- name: Remove SMB share from PowerScale
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  collections:
+    - dellemc.powerscale
+
+  tasks:
+    - name: Remove SMB share "{{ share_name }}"
+      dellemc.powerscale.smb:
+        onefs_host: "{{ onefs_host }}"
+        port_no: "{{ port_no }}"
+        verify_ssl: {{ verify_ssl }}
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        share_name: "{{ share_name }}"
+        state: absent

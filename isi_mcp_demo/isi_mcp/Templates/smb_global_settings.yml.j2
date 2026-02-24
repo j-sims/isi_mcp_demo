@@ -1,0 +1,73 @@
+---
+- name: Configure SMB global settings on PowerScale
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  collections:
+    - dellemc.powerscale
+
+  tasks:
+    - name: Update SMB global settings
+      dellemc.powerscale.smb_global_settings:
+        onefs_host: "{{ onefs_host }}"
+        port_no: "{{ port_no }}"
+        verify_ssl: {{ verify_ssl }}
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+{%- if service is defined and service is not none %}
+        service: {{ service }}
+{%- endif %}
+{%- if support_smb2 is defined and support_smb2 is not none %}
+        support_smb2: {{ support_smb2 }}
+{%- endif %}
+{%- if support_smb3_encryption is defined and support_smb3_encryption is not none %}
+        support_smb3_encryption: {{ support_smb3_encryption }}
+{%- endif %}
+{%- if access_based_share_enum is defined and access_based_share_enum is not none %}
+        access_based_share_enum: {{ access_based_share_enum }}
+{%- endif %}
+{%- if dot_snap_accessible_child is defined and dot_snap_accessible_child is not none %}
+        dot_snap_accessible_child: {{ dot_snap_accessible_child }}
+{%- endif %}
+{%- if dot_snap_accessible_root is defined and dot_snap_accessible_root is not none %}
+        dot_snap_accessible_root: {{ dot_snap_accessible_root }}
+{%- endif %}
+{%- if dot_snap_visible_child is defined and dot_snap_visible_child is not none %}
+        dot_snap_visible_child: {{ dot_snap_visible_child }}
+{%- endif %}
+{%- if dot_snap_visible_root is defined and dot_snap_visible_root is not none %}
+        dot_snap_visible_root: {{ dot_snap_visible_root }}
+{%- endif %}
+{%- if enable_security_signatures is defined and enable_security_signatures is not none %}
+        enable_security_signatures: {{ enable_security_signatures }}
+{%- endif %}
+{%- if require_security_signatures is defined and require_security_signatures is not none %}
+        require_security_signatures: {{ require_security_signatures }}
+{%- endif %}
+{%- if reject_unencrypted_access is defined and reject_unencrypted_access is not none %}
+        reject_unencrypted_access: {{ reject_unencrypted_access }}
+{%- endif %}
+{%- if server_side_copy is defined and server_side_copy is not none %}
+        server_side_copy: {{ server_side_copy }}
+{%- endif %}
+{%- if support_multichannel is defined and support_multichannel is not none %}
+        support_multichannel: {{ support_multichannel }}
+{%- endif %}
+{%- if support_netbios is defined and support_netbios is not none %}
+        support_netbios: {{ support_netbios }}
+{%- endif %}
+{%- if guest_user is defined and guest_user %}
+        guest_user: "{{ guest_user }}"
+{%- endif %}
+{%- if server_string is defined and server_string %}
+        server_string: "{{ server_string }}"
+{%- endif %}
+{%- if onefs_cpu_multiplier is defined and onefs_cpu_multiplier is not none %}
+        onefs_cpu_multiplier: {{ onefs_cpu_multiplier }}
+{%- endif %}
+{%- if onefs_num_workers is defined and onefs_num_workers is not none %}
+        onefs_num_workers: {{ onefs_num_workers }}
+{%- endif %}
+{%- if ignore_eas is defined and ignore_eas is not none %}
+        ignore_eas: {{ ignore_eas }}
+{%- endif %}

@@ -1,0 +1,155 @@
+---
+- name: Create SMB share on PowerScale
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  collections:
+    - dellemc.powerscale
+
+  tasks:
+    - name: Create SMB share "{{ share_name }}"
+      dellemc.powerscale.smb:
+        onefs_host: "{{ onefs_host }}"
+        port_no: "{{ port_no }}"
+        verify_ssl: {{ verify_ssl }}
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        share_name: "{{ share_name }}"
+        path: "{{ path }}"
+{%- if description is defined and description %}
+        description: "{{ description }}"
+{%- endif %}
+{%- if access_zone is defined and access_zone %}
+        access_zone: "{{ access_zone }}"
+{%- endif %}
+{%- if create_path is defined and create_path is not none %}
+        create_path: {{ create_path }}
+{%- endif %}
+{%- if browsable is defined and browsable is not none %}
+        browsable: {{ browsable }}
+{%- endif %}
+{%- if access_based_enumeration is defined and access_based_enumeration is not none %}
+        access_based_enumeration: {{ access_based_enumeration }}
+{%- endif %}
+{%- if access_based_enumeration_root_only is defined and access_based_enumeration_root_only is not none %}
+        access_based_enumeration_root_only: {{ access_based_enumeration_root_only }}
+{%- endif %}
+{%- if ntfs_acl_support is defined and ntfs_acl_support is not none %}
+        ntfs_acl_support: {{ ntfs_acl_support }}
+{%- endif %}
+{%- if oplocks is defined and oplocks is not none %}
+        oplocks: {{ oplocks }}
+{%- endif %}
+{%- if continuously_available is defined and continuously_available is not none %}
+        continuously_available: {{ continuously_available }}
+{%- endif %}
+{%- if smb3_encryption_enabled is defined and smb3_encryption_enabled is not none %}
+        smb3_encryption_enabled: {{ smb3_encryption_enabled }}
+{%- endif %}
+{%- if directory_create_mask is defined and directory_create_mask %}
+        directory_create_mask: "{{ directory_create_mask }}"
+{%- endif %}
+{%- if directory_create_mode is defined and directory_create_mode %}
+        directory_create_mode: "{{ directory_create_mode }}"
+{%- endif %}
+{%- if file_create_mask is defined and file_create_mask %}
+        file_create_mask: "{{ file_create_mask }}"
+{%- endif %}
+{%- if file_create_mode is defined and file_create_mode %}
+        file_create_mode: "{{ file_create_mode }}"
+{%- endif %}
+{%- if allow_variable_expansion is defined and allow_variable_expansion is not none %}
+        allow_variable_expansion: {{ allow_variable_expansion }}
+{%- endif %}
+{%- if auto_create_directory is defined and auto_create_directory is not none %}
+        auto_create_directory: {{ auto_create_directory }}
+{%- endif %}
+{%- if inheritable_path_acl is defined and inheritable_path_acl is not none %}
+        inheritable_path_acl: {{ inheritable_path_acl }}
+{%- endif %}
+{%- if allow_delete_readonly is defined and allow_delete_readonly is not none %}
+        allow_delete_readonly: {{ allow_delete_readonly }}
+{%- endif %}
+{%- if allow_execute_always is defined and allow_execute_always is not none %}
+        allow_execute_always: {{ allow_execute_always }}
+{%- endif %}
+{%- if ca_timeout is defined and ca_timeout %}
+        ca_timeout:
+          value: {{ ca_timeout.value }}
+{%-   if ca_timeout.unit is defined and ca_timeout.unit %}
+          unit: "{{ ca_timeout.unit }}"
+{%-   endif %}
+{%- endif %}
+{%- if strict_ca_lockout is defined and strict_ca_lockout is not none %}
+        strict_ca_lockout: {{ strict_ca_lockout }}
+{%- endif %}
+{%- if ca_write_integrity is defined and ca_write_integrity %}
+        ca_write_integrity: "{{ ca_write_integrity }}"
+{%- endif %}
+{%- if change_notify is defined and change_notify %}
+        change_notify: "{{ change_notify }}"
+{%- endif %}
+{%- if impersonate_guest is defined and impersonate_guest %}
+        impersonate_guest: "{{ impersonate_guest }}"
+{%- endif %}
+{%- if impersonate_user is defined and impersonate_user %}
+        impersonate_user: "{{ impersonate_user }}"
+{%- endif %}
+{%- if file_filtering_enabled is defined and file_filtering_enabled is not none %}
+        file_filtering_enabled: {{ file_filtering_enabled }}
+{%- endif %}
+{%- if file_filter_extension is defined and file_filter_extension %}
+        file_filter_extension:
+{%-   if file_filter_extension.extensions is defined and file_filter_extension.extensions %}
+          extensions:
+{%-     for ext in file_filter_extension.extensions %}
+            - "{{ ext }}"
+{%-     endfor %}
+{%-   endif %}
+{%-   if file_filter_extension.type is defined and file_filter_extension.type %}
+          type: "{{ file_filter_extension.type }}"
+{%-   endif %}
+{%-   if file_filter_extension.state is defined and file_filter_extension.state %}
+          state: "{{ file_filter_extension.state }}"
+{%-   endif %}
+{%- endif %}
+{%- if permissions is defined and permissions %}
+        permissions:
+{%-   for perm in permissions %}
+          - permission: "{{ perm.permission }}"
+            permission_type: "{{ perm.permission_type }}"
+{%-     if perm.user_name is defined and perm.user_name %}
+            user_name: "{{ perm.user_name }}"
+{%-     endif %}
+{%-     if perm.group_name is defined and perm.group_name %}
+            group_name: "{{ perm.group_name }}"
+{%-     endif %}
+{%-     if perm.wellknown is defined and perm.wellknown %}
+            wellknown: "{{ perm.wellknown }}"
+{%-     endif %}
+{%-     if perm.provider_type is defined and perm.provider_type %}
+            provider_type: "{{ perm.provider_type }}"
+{%-     endif %}
+{%-   endfor %}
+{%- endif %}
+{%- if host_acls is defined and host_acls %}
+        host_acls:
+{%-   for acl in host_acls %}
+          - name: "{{ acl.name }}"
+            access_type: "{{ acl.access_type }}"
+{%-   endfor %}
+{%- endif %}
+{%- if run_as_root is defined and run_as_root %}
+        run_as_root:
+{%-   for persona in run_as_root %}
+          - name: "{{ persona.name }}"
+            type: "{{ persona.type }}"
+{%-     if persona.provider_type is defined and persona.provider_type %}
+            provider_type: "{{ persona.provider_type }}"
+{%-     endif %}
+{%-     if persona.state is defined and persona.state %}
+            state: "{{ persona.state }}"
+{%-     endif %}
+{%-   endfor %}
+{%- endif %}
+        state: present

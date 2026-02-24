@@ -1,0 +1,29 @@
+---
+- name: Remove group from PowerScale
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  collections:
+    - dellemc.powerscale
+
+  tasks:
+    - name: Remove group
+      dellemc.powerscale.group:
+        onefs_host: "{{ onefs_host }}"
+        port_no: "{{ port_no }}"
+        verify_ssl: {{ verify_ssl }}
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+{%- if group_name is defined and group_name %}
+        group_name: "{{ group_name }}"
+{%- endif %}
+{%- if group_id is defined and group_id is not none %}
+        group_id: {{ group_id }}
+{%- endif %}
+{%- if access_zone is defined and access_zone %}
+        access_zone: "{{ access_zone }}"
+{%- endif %}
+{%- if provider_type is defined and provider_type %}
+        provider_type: "{{ provider_type }}"
+{%- endif %}
+        state: absent

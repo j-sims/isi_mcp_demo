@@ -1,0 +1,19 @@
+version: "3.8"
+services:
+  isi_mcp:
+    build: isi_mcp_demo/isi_mcp/
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=${DEBUG:-}
+      - ENABLE_ALL_TOOLS=${ENABLE_ALL_TOOLS:-}
+      - VAULT_FILE=/app/vault.yml
+      - VAULT_PASSWORD=${VAULT_PASSWORD:-}
+    volumes:
+      - ./vault.yml:/app/vault.yml:ro
+    networks:
+      - demonet
+
+networks:
+  demonet:
+    driver: bridge

@@ -1,0 +1,87 @@
+---
+- name: Create FilePool policy on PowerScale
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  collections:
+    - dellemc.powerscale
+
+  tasks:
+    - name: Create FilePool policy "{{ policy_name }}"
+      dellemc.powerscale.filepoolpolicy:
+        onefs_host: "{{ onefs_host }}"
+        port_no: "{{ port_no }}"
+        verify_ssl: {{ verify_ssl }}
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        policy_name: "{{ policy_name }}"
+        file_matching_pattern:
+          or_criteria:
+{%- for or_item in file_matching_pattern.or_criteria %}
+            - and_criteria:
+{%-   for criterion in or_item.and_criteria %}
+              - type: "{{ criterion.type }}"
+{%-     if criterion.condition is defined and criterion.condition %}
+                condition: "{{ criterion.condition }}"
+{%-     endif %}
+{%-     if criterion.value is defined and criterion.value %}
+                value: "{{ criterion.value }}"
+{%-     endif %}
+{%-     if criterion.field is defined and criterion.field %}
+                field: "{{ criterion.field }}"
+{%-     endif %}
+{%-     if criterion.case_sensitive is defined and criterion.case_sensitive is not none %}
+                case_sensitive: {{ criterion.case_sensitive }}
+{%-     endif %}
+{%-     if criterion.file_type_option is defined and criterion.file_type_option %}
+                file_type_option: "{{ criterion.file_type_option }}"
+{%-     endif %}
+{%-     if criterion.size_info is defined and criterion.size_info %}
+                size_info:
+                  size_value: {{ criterion.size_info.size_value }}
+                  size_unit: "{{ criterion.size_info.size_unit }}"
+{%-     endif %}
+{%-     if criterion.datetime_value is defined and criterion.datetime_value %}
+                datetime_value: "{{ criterion.datetime_value }}"
+{%-     endif %}
+{%-     if criterion.relative_datetime_count is defined and criterion.relative_datetime_count %}
+                relative_datetime_count:
+                  time_value: {{ criterion.relative_datetime_count.time_value }}
+                  time_unit: "{{ criterion.relative_datetime_count.time_unit }}"
+{%-     endif %}
+{%-   endfor %}
+{%- endfor %}
+{%- if description is defined and description %}
+        description: "{{ description }}"
+{%- endif %}
+{%- if apply_order is defined and apply_order is not none %}
+        apply_order: {{ apply_order }}
+{%- endif %}
+{%- if apply_data_storage_policy is defined and apply_data_storage_policy %}
+        apply_data_storage_policy:
+{%-   if apply_data_storage_policy.ssd_strategy is defined and apply_data_storage_policy.ssd_strategy %}
+          ssd_strategy: "{{ apply_data_storage_policy.ssd_strategy }}"
+{%-   endif %}
+{%-   if apply_data_storage_policy.storagepool is defined and apply_data_storage_policy.storagepool %}
+          storagepool: "{{ apply_data_storage_policy.storagepool }}"
+{%-   endif %}
+{%- endif %}
+{%- if apply_snapshot_storage_policy is defined and apply_snapshot_storage_policy %}
+        apply_snapshot_storage_policy:
+{%-   if apply_snapshot_storage_policy.ssd_strategy is defined and apply_snapshot_storage_policy.ssd_strategy %}
+          ssd_strategy: "{{ apply_snapshot_storage_policy.ssd_strategy }}"
+{%-   endif %}
+{%-   if apply_snapshot_storage_policy.storagepool is defined and apply_snapshot_storage_policy.storagepool %}
+          storagepool: "{{ apply_snapshot_storage_policy.storagepool }}"
+{%-   endif %}
+{%- endif %}
+{%- if set_requested_protection is defined and set_requested_protection %}
+        set_requested_protection: "{{ set_requested_protection }}"
+{%- endif %}
+{%- if set_data_access_pattern is defined and set_data_access_pattern %}
+        set_data_access_pattern: "{{ set_data_access_pattern }}"
+{%- endif %}
+{%- if set_write_performance_optimization is defined and set_write_performance_optimization %}
+        set_write_performance_optimization: "{{ set_write_performance_optimization }}"
+{%- endif %}
+        state: present

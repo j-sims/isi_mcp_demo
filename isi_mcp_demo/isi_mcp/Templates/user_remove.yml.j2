@@ -1,0 +1,24 @@
+---
+- name: Remove user from PowerScale
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  collections:
+    - dellemc.powerscale
+
+  tasks:
+    - name: Remove user "{{ user_name }}"
+      dellemc.powerscale.user:
+        onefs_host: "{{ onefs_host }}"
+        port_no: "{{ port_no }}"
+        verify_ssl: {{ verify_ssl }}
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        user_name: "{{ user_name }}"
+{%- if access_zone is defined and access_zone %}
+        access_zone: "{{ access_zone }}"
+{%- endif %}
+{%- if provider_type is defined and provider_type %}
+        provider_type: "{{ provider_type }}"
+{%- endif %}
+        state: absent

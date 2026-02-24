@@ -1,0 +1,33 @@
+---
+- name: Create quota on PowerScale
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  collections:
+    - dellemc.powerscale
+
+  tasks:
+    - name: Create {{ threshold_type }} quota on "{{ path }}"
+      dellemc.powerscale.smartquota:
+        onefs_host: "{{ onefs_host }}"
+        port_no: "{{ port_no }}"
+        verify_ssl: {{ verify_ssl }}
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        path: "{{ path }}"
+        quota_type: "{{ quota_type }}"
+        quota:
+          include_overheads: {{ include_overheads }}
+          cap_unit: "{{ cap_unit }}"
+{% if threshold_type == 'hard' %}
+          hard_limit_size: {{ hard_limit_size }}
+{% elif threshold_type == 'soft' %}
+          soft_limit_size: {{ soft_limit_size }}
+          soft_grace_period: {{ soft_grace_period }}
+{% elif threshold_type == 'advisory' %}
+          advisory_limit_size: {{ advisory_limit_size }}
+{% endif %}
+{% if user_name is defined and user_name %}
+        user_name: "{{ user_name }}"
+{% endif %}
+        state: present

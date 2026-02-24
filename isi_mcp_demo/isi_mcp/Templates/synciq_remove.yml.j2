@@ -1,0 +1,18 @@
+---
+- name: Remove SyncIQ policy from PowerScale
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  collections:
+    - dellemc.powerscale
+
+  tasks:
+    - name: Remove SyncIQ policy "{{ policy_name }}"
+      dellemc.powerscale.synciqpolicy:
+        onefs_host: "{{ onefs_host }}"
+        port_no: "{{ port_no }}"
+        verify_ssl: {{ verify_ssl }}
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        policy_name: "{{ policy_name }}"
+        state: absent

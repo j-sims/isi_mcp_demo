@@ -1,0 +1,26 @@
+---
+- name: Create S3 bucket on PowerScale
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  collections:
+    - dellemc.powerscale
+
+  tasks:
+    - name: Create S3 bucket "{{ s3_bucket_name }}"
+      dellemc.powerscale.s3_bucket:
+        onefs_host: "{{ onefs_host }}"
+        port_no: "{{ port_no }}"
+        verify_ssl: {{ verify_ssl }}
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        s3_bucket_name: "{{ s3_bucket_name }}"
+        path: "{{ path }}"
+        owner: "{{ owner }}"
+{% if description is defined and description %}
+        description: "{{ description }}"
+{% endif %}
+{% if create_path is defined and create_path is not none %}
+        create_path: {{ create_path }}
+{% endif %}
+        state: present

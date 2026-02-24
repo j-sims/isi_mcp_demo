@@ -1,0 +1,15 @@
+[project]
+name = "isi-mcp"
+version = "0.1.0"
+dependencies = [
+  "mcp"
+]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+  "ignore::urllib3.exceptions.InsecureRequestWarning",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"

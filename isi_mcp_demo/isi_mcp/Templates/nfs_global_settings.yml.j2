@@ -1,0 +1,55 @@
+---
+- name: Configure NFS global settings on PowerScale
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  collections:
+    - dellemc.powerscale
+
+  tasks:
+    - name: Update NFS global settings
+      dellemc.powerscale.nfs_global_settings:
+        onefs_host: "{{ onefs_host }}"
+        port_no: "{{ port_no }}"
+        verify_ssl: {{ verify_ssl }}
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+{%- if service is defined and service is not none %}
+        service: {{ service }}
+{%- endif %}
+{%- if nfsv3 is defined and nfsv3 %}
+        nfsv3:
+{%-   if nfsv3.nfsv3_enabled is defined and nfsv3.nfsv3_enabled is not none %}
+          nfsv3_enabled: {{ nfsv3.nfsv3_enabled }}
+{%-   endif %}
+{%-   if nfsv3.nfsv3_rdma_enabled is defined and nfsv3.nfsv3_rdma_enabled is not none %}
+          nfsv3_rdma_enabled: {{ nfsv3.nfsv3_rdma_enabled }}
+{%-   endif %}
+{%- endif %}
+{%- if nfsv4 is defined and nfsv4 %}
+        nfsv4:
+{%-   if nfsv4.nfsv4_enabled is defined and nfsv4.nfsv4_enabled is not none %}
+          nfsv4_enabled: {{ nfsv4.nfsv4_enabled }}
+{%-   endif %}
+{%-   if nfsv4.nfsv40_enabled is defined and nfsv4.nfsv40_enabled is not none %}
+          nfsv40_enabled: {{ nfsv4.nfsv40_enabled }}
+{%-   endif %}
+{%-   if nfsv4.nfsv41_enabled is defined and nfsv4.nfsv41_enabled is not none %}
+          nfsv41_enabled: {{ nfsv4.nfsv41_enabled }}
+{%-   endif %}
+{%-   if nfsv4.nfsv42_enabled is defined and nfsv4.nfsv42_enabled is not none %}
+          nfsv42_enabled: {{ nfsv4.nfsv42_enabled }}
+{%-   endif %}
+{%- endif %}
+{%- if rpc_maxthreads is defined and rpc_maxthreads is not none %}
+        rpc_maxthreads: {{ rpc_maxthreads }}
+{%- endif %}
+{%- if rpc_minthreads is defined and rpc_minthreads is not none %}
+        rpc_minthreads: {{ rpc_minthreads }}
+{%- endif %}
+{%- if rquota_enabled is defined and rquota_enabled is not none %}
+        rquota_enabled: {{ rquota_enabled }}
+{%- endif %}
+{%- if nfs_rdma_enabled is defined and nfs_rdma_enabled is not none %}
+        nfs_rdma_enabled: {{ nfs_rdma_enabled }}
+{%- endif %}

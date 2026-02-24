@@ -1,0 +1,18 @@
+---
+- name: Remove snapshot from PowerScale
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  collections:
+    - dellemc.powerscale
+
+  tasks:
+    - name: Remove snapshot "{{ snapshot_name }}"
+      dellemc.powerscale.snapshot:
+        onefs_host: "{{ onefs_host }}"
+        port_no: "{{ port_no }}"
+        verify_ssl: {{ verify_ssl }}
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        snapshot_name: "{{ snapshot_name }}"
+        state: absent

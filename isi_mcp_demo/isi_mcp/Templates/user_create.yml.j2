@@ -1,0 +1,55 @@
+---
+- name: Create user on PowerScale
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  collections:
+    - dellemc.powerscale
+
+  tasks:
+    - name: Create user "{{ user_name }}"
+      dellemc.powerscale.user:
+        onefs_host: "{{ onefs_host }}"
+        port_no: "{{ port_no }}"
+        verify_ssl: {{ verify_ssl }}
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        user_name: "{{ user_name }}"
+        password: "{{ password }}"
+{%- if update_password is defined and update_password %}
+        update_password: "{{ update_password }}"
+{%- endif %}
+{%- if access_zone is defined and access_zone %}
+        access_zone: "{{ access_zone }}"
+{%- endif %}
+{%- if provider_type is defined and provider_type %}
+        provider_type: "{{ provider_type }}"
+{%- endif %}
+{%- if primary_group is defined and primary_group %}
+        primary_group: "{{ primary_group }}"
+{%- endif %}
+{%- if enabled is defined and enabled is not none %}
+        enabled: {{ enabled }}
+{%- endif %}
+{%- if email is defined and email %}
+        email: "{{ email }}"
+{%- endif %}
+{%- if full_name is defined and full_name %}
+        full_name: "{{ full_name }}"
+{%- endif %}
+{%- if home_directory is defined and home_directory %}
+        home_directory: "{{ home_directory }}"
+{%- endif %}
+{%- if shell is defined and shell %}
+        shell: "{{ shell }}"
+{%- endif %}
+{%- if user_id is defined and user_id is not none %}
+        user_id: {{ user_id }}
+{%- endif %}
+{%- if role_name is defined and role_name %}
+        role_name: "{{ role_name }}"
+{%- endif %}
+{%- if role_state is defined and role_state %}
+        role_state: "{{ role_state }}"
+{%- endif %}
+        state: present

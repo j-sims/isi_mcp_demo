@@ -1,0 +1,10 @@
+fastmcp<3.0.0
+uvicorn
+isilon-sdk
+ansible-core
+ansible-runner
+jinja2
+packaging
+pyyaml
+pytest
+httpx

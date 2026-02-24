@@ -1,0 +1,29 @@
+---
+- name: Create snapshot on PowerScale
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  collections:
+    - dellemc.powerscale
+
+  tasks:
+    - name: Create snapshot "{{ snapshot_name }}"
+      dellemc.powerscale.snapshot:
+        onefs_host: "{{ onefs_host }}"
+        port_no: "{{ port_no }}"
+        verify_ssl: {{ verify_ssl }}
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        path: "{{ path }}"
+        snapshot_name: "{{ snapshot_name }}"
+{% if alias is defined and alias %}
+        alias: "{{ alias }}"
+{% endif %}
+{% if desired_retention is defined and desired_retention %}
+        desired_retention: {{ desired_retention }}
+        retention_unit: "{{ retention_unit | default('hours') }}"
+{% endif %}
+{% if expiration_timestamp is defined and expiration_timestamp %}
+        expiration_timestamp: "{{ expiration_timestamp }}"
+{% endif %}
+        state: present

@@ -1,0 +1,25 @@
+# Sample vault file for PowerScale MCP credentials.
+#
+# AUTOMATED SETUP (Recommended):
+#   Run: ./setup.sh
+#   This will prompt you for cluster credentials and vault password,
+#   then create and encrypt vault.yml automatically.
+#
+# MANUAL SETUP (if needed):
+#   1. Copy this file:         cp vault-sample.yml vault.yml
+#   2. Edit with your values:  vi vault.yml
+#   3. Encrypt the vault:      echo -n "your-vault-password" | ansible-vault encrypt vault.yml
+#   4. Start with password:    VAULT_PASSWORD='your-vault-password' docker-compose up
+#
+# IMPORTANT: The vault password is never stored on disk.
+# You must provide it via VAULT_PASSWORD environment variable at runtime.
+#
+# The first cluster listed becomes the default target at server startup.
+# Use the powerscale_cluster_select MCP tool to switch clusters at runtime.
+clusters:
+  my_cluster:
+    host: "https://192.168.0.33"
+    port: 8080
+    username: root
+    password: changeme
+    verify_ssl: false

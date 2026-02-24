@@ -1,0 +1,33 @@
+---
+- name: Create SyncIQ policy on PowerScale
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  collections:
+    - dellemc.powerscale
+
+  tasks:
+    - name: Create SyncIQ policy "{{ policy_name }}"
+      dellemc.powerscale.synciqpolicy:
+        onefs_host: "{{ onefs_host }}"
+        port_no: "{{ port_no }}"
+        verify_ssl: {{ verify_ssl }}
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        policy_name: "{{ policy_name }}"
+        action: "{{ action }}"
+        source_cluster:
+          source_root_path: "{{ source_path }}"
+        target_cluster:
+          target_host: "{{ target_host }}"
+          target_path: "{{ target_path }}"
+{% if schedule is defined and schedule %}
+        schedule: "{{ schedule }}"
+{% endif %}
+{% if description is defined and description %}
+        description: "{{ description }}"
+{% endif %}
+{% if enabled is defined and enabled is not none %}
+        enabled: {{ enabled }}
+{% endif %}
+        state: present

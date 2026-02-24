@@ -1,0 +1,19 @@
+---
+- name: Remove quota from PowerScale
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  collections:
+    - dellemc.powerscale
+
+  tasks:
+    - name: Remove {{ threshold_type }} quota on "{{ path }}"
+      dellemc.powerscale.smartquota:
+        onefs_host: "{{ onefs_host }}"
+        port_no: "{{ port_no }}"
+        verify_ssl: {{ verify_ssl }}
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        path: "{{ path }}"
+        quota_type: "{{ quota_type }}"
+        state: absent
