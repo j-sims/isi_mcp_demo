@@ -242,6 +242,7 @@ Add to your Claude Desktop configuration file:
 
 ```bash
 claude mcp add powerscale http://localhost:8000/mcp
+claude --agents '{"pscale-assistant": {"description": "Interacts with the MCP server using detailed context", "prompt": "You are a knowledgeable assistant for managing a Powerscale Cluster.", "context": "AGENT-CONTEXT.md"}}'
 ```
 
 ### Cursor
