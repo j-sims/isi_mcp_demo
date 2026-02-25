@@ -41,6 +41,45 @@ The MCP server will be available at `http://localhost:8000`.
 
 **Optionally set debug mode** by exporting `DEBUG=1` before running setup.
 
+### Running the Server
+
+After initial setup, you can start, stop, and restart the server as needed.
+
+**Starting the server in the background:**
+
+```bash
+export VAULT_PASSWORD=$(read -s -p 'Enter your password: ' pwd && echo $pwd)
+docker-compose up -d
+```
+
+**Starting the server in the foreground (for debugging):**
+
+```bash
+export VAULT_PASSWORD=$(read -s -p 'Enter your password: ' pwd && echo $pwd)
+docker-compose up
+```
+
+Press `Ctrl+C` to stop.
+
+**Viewing logs:**
+
+```bash
+docker-compose logs -f isi_mcp
+```
+
+**Restarting the server:**
+
+```bash
+export VAULT_PASSWORD=$(read -s -p 'Enter your password: ' pwd && echo $pwd)
+docker-compose restart
+```
+
+**Stopping the server:**
+
+```bash
+docker-compose down
+```
+
 ### Managing Credentials
 
 Credentials are stored in an Ansible Vault encrypted file (`vault.yml`). The vault is excluded from git via `.gitignore`.
@@ -50,19 +89,19 @@ Credentials are stored in an Ansible Vault encrypted file (`vault.yml`). The vau
 First, view the encrypted vault to see the current structure:
 
 ```bash
-echo -n 'your-vault-password' | docker compose run --rm isi_mcp ansible-vault view /app/vault.yml
+echo -n 'your-vault-password' | docker-compose run --rm isi_mcp ansible-vault view /app/vault/vault.yml
 ```
 
 Then edit it:
 
 ```bash
-echo -n 'your-vault-password' | docker compose run --rm isi_mcp ansible-vault edit /app/vault.yml
+echo -n 'your-vault-password' | docker-compose run --rm isi_mcp ansible-vault edit /app/vault/vault.yml
 ```
 
 After making changes, either restart the server:
 
 ```bash
-VAULT_PASSWORD='your-vault-password' docker compose restart
+VAULT_PASSWORD='your-vault-password' docker-compose restart
 ```
 
 Or use the `powerscale_cluster_select` MCP tool with `reload_vault=true` to reload without restarting.
@@ -76,20 +115,20 @@ Cluster credentials are managed outside the LLM using the `ansible-vault` CLI. R
 Edit the vault and add a new entry under `clusters:`:
 
 ```bash
-echo -n 'your-vault-password' | docker compose run --rm isi_mcp ansible-vault edit /app/vault.yml
+echo -n 'your-vault-password' | docker-compose run --rm isi_mcp ansible-vault edit /app/vault/vault.yml
 ```
 
 Add a new cluster entry:
 
 ```yaml
 clusters:
-  existing_cluster:
+  prod:
     host: "https://192.168.0.33"
     port: 8080
     username: root
     password: secret
     verify_ssl: false
-  new_cluster:
+  dr:
     host: "https://10.0.1.50"
     port: 8080
     username: admin
@@ -104,7 +143,7 @@ Save and close. If the server is running, use the `powerscale_cluster_select` to
 Edit the vault and delete the cluster entry:
 
 ```bash
-echo -n 'your-vault-password' | docker compose run --rm isi_mcp ansible-vault edit /app/vault.yml
+echo -n 'your-vault-password' | docker-compose run --rm isi_mcp ansible-vault edit /app/vault/vault.yml
 ```
 
 Delete the cluster entry and save.
@@ -125,17 +164,19 @@ All other PowerScale tools automatically operate against the currently selected 
 To rekey the vault (change its encryption password), use Docker to run the ansible-vault rekey command:
 
 ```bash
-# Decrypt with old password, then re-encrypt with new password
-echo -n 'old-vault-password' > /tmp/old_pwd
-echo -n 'new-vault-password' > /tmp/new_pwd
-docker compose run --rm isi_mcp ansible-vault rekey /app/vault.yml --vault-password-file /dev/stdin --new-vault-password-file /dev/stdin < /tmp/old_pwd < /tmp/new_pwd
-rm /tmp/old_pwd /tmp/new_pwd
+# Prompt for old password and new password (never stored on disk)
+export OLD_VAULT_PASSWORD=$(read -s -p 'Enter current vault password: ' pwd && echo $pwd)
+export NEW_VAULT_PASSWORD=$(read -s -p 'Enter new vault password: ' pwd && echo $pwd)
+docker-compose run --rm -e VAULT_PASSWORD="$OLD_VAULT_PASSWORD" isi_mcp \
+  ansible-vault rekey /app/vault/vault.yml --vault-password-file /dev/stdin <<< "$NEW_VAULT_PASSWORD"
+unset OLD_VAULT_PASSWORD NEW_VAULT_PASSWORD
 ```
 
 Then restart the server with the new vault password:
 
 ```bash
-VAULT_PASSWORD='new-vault-password' docker compose restart
+export VAULT_PASSWORD=$(read -s -p 'Enter your password: ' pwd && echo $pwd)
+docker-compose restart
 ```
 
 ## Capabilities
@@ -241,8 +282,8 @@ Add to your Claude Desktop configuration file:
 ### Claude Code (CLI)
 
 ```bash
-claude mcp add powerscale http://localhost:8000/mcp
-claude --agents '{"pscale-assistant": {"description": "Interacts with the MCP server using detailed context", "prompt": "You are a knowledgeable assistant for managing a Powerscale Cluster.", "context": "AGENT-CONTEXT.md"}}'
+claude mcp add --transport http powerscale http://localhost:8000/mcp
+claude --agent PowerscaleAgent --agents '{"PowerscaleAgent": {"description": "Interacts with the MCP server using detailed context", "prompt": "You are a knowledgeable assistant for managing a Powerscale Cluster.", "context": "CONTEXT.md"}}'
 ```
 
 ### Cursor
