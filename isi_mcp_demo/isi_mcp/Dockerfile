@@ -10,6 +10,8 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends \
         iputils-ping \
         sshpass \
+        less \
+        vim \
         openssh-client; \
     rm -rf /var/lib/apt/lists/*
 
