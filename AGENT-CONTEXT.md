@@ -48,23 +48,6 @@ PowerScale uses a **distributed, scale-out architecture** where each node in the
 - **Data Striping**: OneFS automatically distributes (stripes) data across all nodes in the cluster over the private back-end network. This is transparent to clients — they see a single file system.
 - **Single Namespace**: The entire cluster is presented as one file system rooted at `/ifs`. No volume management, no LUN mapping, no manual data placement.
 
-### Data Protection
-
-PowerScale uses **software-based Forward Error Correction (FEC)** called **FlexProtect**, implementing Reed-Solomon error correction codes. Protection levels include:
-
-| Protection Level | Description | Minimum Nodes |
-|---|---|---|
-| +1n (N+1) | Tolerates 1 node failure | 3 |
-| +2d:1n (N+2) | Tolerates 2 drive failures or 1 node failure | 4 |
-| +2n (N+2) | Tolerates 2 simultaneous node failures | 5 |
-| +3d:1n (N+3) | Tolerates 3 drive failures or 1 node failure | 6 |
-| +3d:1n1d | Tolerates 3 drive failures or 1 node + 1 drive failure | 6 |
-| +3n | Tolerates 3 simultaneous node failures | 7 |
-| +4d:1n (N+4) | Tolerates 4 drive failures or 1 node failure | 8 |
-| +4n | Tolerates 4 simultaneous node failures | 9 |
-| Mirroring (2x-8x) | Full data copies across nodes | Varies |
-
-OneFS includes a **suggested protection** function that calculates recommended protection levels based on cluster size and configuration. The data protection level should be re-evaluated any time nodes are added or removed.
 
 ### Quorum
 

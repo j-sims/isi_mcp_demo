@@ -50,7 +50,7 @@ The LLM can accomplish tasks like:
 ## System Requirements
 
 - Docker and Docker Compose
-- PowerScale cluster (OneFS v9.12.0 or compatible)
+- PowerScale cluster with OneFS v9.12.0 (only this version has been tested)
 - LLM client supporting MCP protocol (Claude, Cursor, Windsurf, etc.)
 
 ## Support
