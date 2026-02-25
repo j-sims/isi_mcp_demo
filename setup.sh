@@ -261,7 +261,13 @@ info "To stop the server:"
 echo "  $COMPOSE_CMD -f ${SCRIPT_DIR}/docker-compose.yml down"
 echo ""
 info "To start claude with the Powerscale Agent:"
-echo "claude --agent PowerscaleAgent --agents '{"PowerscaleAgent": {"description": "Interacts with the MCP server using detailed context", "prompt": "You are a knowledgeable assistant for managing a Powerscale Cluster.", "context": "CONTEXT.md"}}'"
+echo "claude --agent PowerscaleAgent --agents '{
+  "PowerscaleAgent": {
+    "description": "Interacts with the MCP server using detailed context",
+    "prompt": "You are a knowledgeable assistant for managing a Powerscale Cluster.",
+    "context": "AGENT-CONTEXT.md"
+  }
+}'"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
