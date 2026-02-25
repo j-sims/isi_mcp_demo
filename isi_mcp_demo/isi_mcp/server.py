@@ -1539,6 +1539,13 @@ def powerscale_nfs_create(
     - root_clients: Comma-separated list of clients with root access (no root squashing)
       (e.g. "10.0.2.10,trusted-server.example.com")
 
+    CLIENT PARAMETER VALIDATION:
+    Valid client formats: IP addresses (192.168.1.100), CIDR notation (192.168.0.0/24),
+    or DNS hostnames (nfs-server.example.com). Clients will be validated before export creation.
+    Common mistakes: mixing IP/CIDR incorrectly (e.g., 192.168.1.0/32 is single host not subnet),
+    unresolvable hostnames, empty client lists. Use ignore_unresolvable_hosts=true to suppress
+    hostname resolution errors if using dynamic DNS or wildcard patterns.
+
     SECURITY & CONFIGURATION (Phase 2):
     - security_flavors: Comma-separated list of authentication types. Options:
       "unix" (standard UNIX auth), "krb5" (Kerberos 5), "krb5i" (Kerberos with integrity),
@@ -5214,6 +5221,12 @@ def powerscale_stats_node() -> Dict[str, Any]:
     Tip: Use bytes_to_human tool to convert memory values to human-readable
     formats. Load averages above the number of CPU cores on a node indicate
     CPU saturation.
+
+    DEPLOYMENT NOTES:
+    Per-node statistics may be unavailable on virtual cluster deployments.
+    If unavailable, the result will include a "_warning" key with guidance.
+    Use cluster-level statistics (powerscale_stats_cpu, powerscale_stats_network,
+    etc.) as an alternative for virtual clusters.
 
     Use this tool when the user asks:
     - Which nodes are the busiest?

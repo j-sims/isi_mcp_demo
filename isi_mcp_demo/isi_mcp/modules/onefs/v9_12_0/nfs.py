@@ -1,3 +1,4 @@
+import re
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
 from modules.ansible.runner import AnsibleRunner
@@ -8,6 +9,86 @@ class Nfs:
     def __init__(self, cluster):
         self.cluster = cluster
         self.debug = cluster.debug
+
+    def _validate_client(self, client: str) -> bool:
+        """
+        Validate a single NFS client entry.
+
+        Valid formats:
+        - IP address: 192.168.1.100
+        - CIDR notation: 192.168.0.0/24
+        - Hostname: server.example.com
+        - Wildcard hostname: *.example.com
+
+        Args:
+            client: Client string to validate
+
+        Returns:
+            True if valid, False otherwise
+        """
+        if not client or not isinstance(client, str):
+            return False
+
+        # Check if it's IP/CIDR notation
+        if '/' in client or (client.count('.') == 3 and all(c.isdigit() or c == '.' for c in client)):
+            # Try to parse as IP or CIDR
+            parts = client.split('/')
+            ip_part = parts[0]
+
+            # Validate IP octets
+            try:
+                octets = ip_part.split('.')
+                if len(octets) != 4:
+                    return False
+                for octet in octets:
+                    num = int(octet)
+                    if num < 0 or num > 255:
+                        return False
+            except ValueError:
+                return False
+
+            # If CIDR notation, validate prefix length
+            if len(parts) == 2:
+                try:
+                    prefix = int(parts[1])
+                    if prefix < 0 or prefix > 32:
+                        return False
+                except ValueError:
+                    return False
+            elif len(parts) > 2:
+                return False
+
+            return True
+
+        # Pattern for hostname (including wildcard)
+        hostname_pattern = r'^(\*\.)?([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$'
+        if re.match(hostname_pattern, client):
+            return True
+
+        return False
+
+    def _validate_clients(self, clients: list, param_name: str = "clients") -> tuple:
+        """
+        Validate a list of NFS client entries.
+
+        Args:
+            clients: List of client entries
+            param_name: Parameter name for error messages
+
+        Returns:
+            Tuple of (is_valid: bool, error_message: str or None)
+        """
+        if not clients:
+            return True, None
+
+        if not isinstance(clients, list):
+            return False, f"{param_name} must be a list"
+
+        invalid_clients = [c for c in clients if not self._validate_client(c)]
+        if invalid_clients:
+            return False, f"Invalid client format(s) in {param_name}: {', '.join(invalid_clients)}. Valid formats: IP address (192.168.1.100), CIDR (192.168.0.0/24), hostname (server.example.com)"
+
+        return True, None
 
     def get(self, limit=1000, resume=None):
         protocols_api = isi_sdk.ProtocolsApi(self.cluster.api_client)
@@ -39,6 +120,17 @@ class Nfs:
             # Phase 4 - Advanced Features
             map_non_root: dict = None, ignore_unresolvable_hosts: bool = None) -> dict:
         """Create an NFS export via Ansible."""
+        # Validate client parameters
+        for param_name, param_value in [
+            ("clients", clients),
+            ("read_only_clients", read_only_clients),
+            ("read_write_clients", read_write_clients),
+            ("root_clients", root_clients)
+        ]:
+            is_valid, error = self._validate_clients(param_value, param_name)
+            if not is_valid:
+                return {"success": False, "status": "failed", "error": error}
+
         runner = AnsibleRunner(self.cluster)
         variables = {
             "path": path,

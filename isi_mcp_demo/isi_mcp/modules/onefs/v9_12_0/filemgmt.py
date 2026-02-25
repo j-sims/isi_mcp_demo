@@ -28,6 +28,27 @@ class FileMgmt:
         """Create and return a NamespaceApi instance."""
         return isi_sdk.NamespaceApi(self.cluster.api_client)
 
+    def _normalize_path(self, path: str) -> str:
+        """
+        Normalize a path by removing leading/trailing slashes.
+
+        Converts both absolute paths (/ifs/data/projects) and relative paths
+        (ifs/data/projects, data/projects) to relative format without leading slash.
+
+        Args:
+            path: Path string (absolute or relative)
+
+        Returns:
+            Normalized path without leading or trailing slashes
+        """
+        if not path:
+            return path
+        # Strip leading slashes (handle both /ifs and / prefixes)
+        path = path.lstrip('/')
+        # Strip trailing slashes
+        path = path.rstrip('/')
+        return path
+
     def _parse_headers(self, headers):
         """Convert HTTPHeaderDict to a plain dict."""
         return dict(headers) if headers else {}

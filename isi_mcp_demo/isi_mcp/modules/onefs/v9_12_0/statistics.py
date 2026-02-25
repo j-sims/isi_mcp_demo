@@ -10,6 +10,35 @@ class Statistics:
         self.cluster = cluster
         self.debug = cluster.debug
 
+    def _check_node_stats_available(self):
+        """
+        Check if per-node statistics are available on this cluster.
+
+        Virtual cluster deployments may have limited per-node stats.
+        This performs a quick test by attempting to fetch a single node stat.
+
+        Returns:
+            Boolean: True if per-node stats are available, False otherwise
+        """
+        stats_api = isi_sdk.StatisticsApi(self.cluster.api_client)
+        try:
+            # Try to fetch a single node stat
+            result = stats_api.get_statistics_current(
+                keys=["node.load.1min"],
+                degraded=False,
+                show_nodes=True,
+                timeout=5,
+            )
+            # Check if we got back any node-specific data (not just cluster aggregate)
+            if result.stats:
+                for stat in result.stats:
+                    if stat.devid is not None:
+                        return True
+            return False
+        except ApiException:
+            # If API call fails, assume unavailable
+            return False
+
     def _fetch_current(self, keys, show_nodes=False):
         """Single instantaneous poll for the given stat keys.
 
@@ -177,9 +206,13 @@ class Statistics:
     def get_node_performance(self):
         """Retrieve 30-second averaged per-node performance metrics.
 
+        Note: Per-node statistics may be unavailable on virtual cluster deployments.
+        If unavailable, a warning note is included in the result.
+
         Returns:
             Dict keyed by "node_<devid>", each containing load averages,
             memory usage, CPU throttling, and open file count per node.
+            If unavailable, includes "_warning" key with explanation.
         """
         keys = [
             "node.cpu.throttling",
@@ -190,7 +223,16 @@ class Statistics:
             "node.memory.free",
             "node.open.files",
         ]
-        return self._fetch_averaged(keys, show_nodes=True)
+        result = self._fetch_averaged(keys, show_nodes=True)
+
+        # Check availability and add warning if needed
+        if isinstance(result, dict) and "error" not in result:
+            # If result only contains cluster aggregate or is empty/sparse, warn user
+            node_entries = {k: v for k, v in result.items() if k.startswith("node_")}
+            if not node_entries:
+                result["_warning"] = "Per-node statistics are not available on this cluster. This is typical for virtual cluster deployments. Use cluster-level statistics (powerscale_stats_cpu, powerscale_stats_network, etc.) instead."
+
+        return result
 
     def get_protocol(self):
         """Retrieve 30-second averaged per-protocol operation rates.

@@ -459,6 +459,94 @@ Snapshot schedules follow the PowerScale `isidate` format with two parts:
 
 ---
 
+## Important Operational Guidelines
+
+### Path Format Requirements for File/Directory Operations
+
+When working with file and directory management tools, always use **relative paths** from the cluster root (`/ifs`):
+
+**Correct Format**:
+- `ifs/data/projects` — starts with `ifs`, no leading slash
+- `ifs/home/user1/documents`
+- `ifs/archive/2024-data`
+
+**Incorrect Format**:
+- `/ifs/data/projects` — has leading slash ❌
+- `data/projects` — missing `ifs` prefix ❌
+- `//ifs/data` — double slash ❌
+
+The server automatically normalizes paths (removes leading/trailing slashes), but being explicit in user-facing guidance prevents confusion. When displaying paths to users, use absolute format with leading slash for clarity (`/ifs/data/projects`), but when passing to tools, use relative format.
+
+**Tools Affected**: All directory and file operations (`powerscale_directory_*`, `powerscale_file_*`, `powerscale_acl_*`, `powerscale_metadata_*`, `powerscale_worm_*`, `powerscale_directory_query`)
+
+---
+
+### NFS Client Parameter Restrictions
+
+When creating or configuring NFS exports, client parameters accept specific formats:
+
+**Valid Client Formats**:
+- **IP addresses**: `192.168.1.100`, `10.0.0.50`
+- **CIDR notation**: `192.168.0.0/24`, `10.0.0.0/16`
+- **DNS hostnames**: `nfs-client.example.com`, `storage.internal`
+- **Wildcards in DNS**: `*.datacenter1.example.com` (where supported by OneFS)
+
+**Parameter Mapping**:
+- `clients` — general access (applies to all unspecified clients based on `read_only` flag)
+- `read_only_clients` — read-only access for specific clients
+- `read_write_clients` — read-write access for specific clients
+- `root_clients` — root access (no squashing) for specific clients
+
+**Common Mistakes to Avoid**:
+- Mixing IP and CIDR notation incorrectly (e.g., `192.168.1.0/32` is a single host, not a subnet)
+- Hostname without valid DNS resolution
+- Empty client lists (causes errors)
+- Using "all" or "*" — use explicit CIDR notation instead (`0.0.0.0/0` for all, not recommended for security)
+
+**Security Recommendations**:
+- Always restrict exports to specific IP ranges or named hosts
+- Avoid exporting `/ifs` root; use subdirectories
+- Use read-only exports for non-critical clients when possible
+- Never grant root access unless absolutely required
+
+**Tools Affected**: `powerscale_nfs_create`, `powerscale_nfs_get` (inspection)
+
+---
+
+### Cluster Deployment Type Limitations
+
+The PowerScale MCP tool suite works with both **physical** and **virtual** cluster deployments, but with some operational differences:
+
+**Physical Cluster Deployments** (F-series, H-series, A-series hardware):
+- ✅ All 102 domain tools fully functional
+- ✅ Per-node statistics available (CPU, memory, load, throttling per node)
+- ✅ Hardware-specific metrics present (thermal data, drive firmware status)
+- ✅ Full performance profiling possible
+
+**Virtual Cluster Deployments** (PowerScale VE on ESXi/Hyper-V):
+- ✅ All file/directory operations work
+- ✅ All user/group management works
+- ✅ All quota operations work
+- ✅ All snapshot/replication operations work
+- ✅ All export/share operations work (NFS requires valid network ranges)
+- ✅ S3, SyncIQ, DataMover, FilePool all work
+- ✅ Cluster-level statistics available (CPU, network, disk throughput)
+- ⚠️ **Per-node statistics unavailable** — `powerscale_stats_node()` returns incomplete data
+- ⚠️ Hardware-specific metrics unavailable (no thermal data, drive metrics)
+
+**When Using Virtual Clusters**:
+1. Use cluster-level statistics (`powerscale_stats_cpu`, `powerscale_stats_network`, `powerscale_stats_disk`) instead of per-node metrics
+2. Monitor aggregate cluster health rather than individual node health
+3. Be aware that per-node load balancing visibility is limited
+4. All other operations proceed normally without restriction
+
+**Tool Workarounds for Virtual Clusters**:
+- Instead of `powerscale_stats_node()` for individual node stats, use `powerscale_stats_cpu()` and `powerscale_stats_network()` for cluster-wide view
+- Event monitoring via `powerscale_event_get()` works fully on both deployment types
+- Health checks via `powerscale_check_health()` work on both (though per-node hardware issues may not be visible in virtual)
+
+---
+
 ## Quick Reference: Dell Published Best Practices Summary
 
 1. **Maintain at least 10% free space** in each storage pool (15-20% for clusters with 3-7 nodes)
