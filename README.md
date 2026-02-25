@@ -55,4 +55,4 @@ The LLM can accomplish tasks like:
 
 ## Support
 
-For issues and questions, refer to the documentation above. The server is actively maintained and tested against PowerScale clusters.
+This project is community supported and provided on a best-effort basis. For issues, questions, or feature requests, please open an issue on [GitHub](https://github.com/dell/isi_mcp_demo/issues). Refer to the documentation above for additional guidance.
