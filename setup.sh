@@ -251,7 +251,7 @@ echo '    { "mcpServers": { "powerscale": { "url": "http://localhost:8000/mcp" }
 echo "  Cursor/Windsurf SSE endpoint: http://localhost:8000/sse"
 echo ""
 info "To restart the server later (requires vault password):"
-echo "  export VAULT_PASSWORD=$(read -s -p 'Enter your password: ' pwd && echo $pwd)"
+echo "  export VAULT_PASSWORD=\$(read -s -p 'Enter your password: ' pwd && echo \$pwd)"
 echo "  $COMPOSE_CMD -f ${SCRIPT_DIR}/docker-compose.yml up -d"
 echo ""
 info "To add or edit clusters later:"
