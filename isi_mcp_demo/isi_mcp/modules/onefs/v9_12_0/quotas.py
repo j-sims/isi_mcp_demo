@@ -141,12 +141,14 @@ class Quotas:
         return(f"Quota on {PATH} set to {SIZE}")
 
     def add_quota(self, path: str, quota_type: str, limit_size: str,
-                  soft_grace_period: str = None, include_overheads: bool = False,
-                  persona: str = None) -> dict:
+                  soft_grace_period: str = None, soft_grace_period_unit: str = "days",
+                  include_overheads: bool = False, persona: str = None) -> dict:
         """Create a quota (hard, soft, or advisory) via Ansible.
 
         Args:
             quota_type: Threshold type — 'hard', 'soft', or 'advisory'
+            soft_grace_period: Grace period value for soft quotas
+            soft_grace_period_unit: Unit for grace period ('hours', 'days', 'weeks', 'months')
             persona: If set, creates a user quota; otherwise a directory quota
         """
         runner = AnsibleRunner(self.cluster)
@@ -171,6 +173,7 @@ class Quotas:
         elif quota_type == "soft":
             variables["soft_limit_size"] = size_value
             variables["soft_grace_period"] = soft_grace_period or "7"
+            variables["soft_grace_period_unit"] = soft_grace_period_unit
         elif quota_type == "advisory":
             variables["advisory_limit_size"] = size_value
         else:

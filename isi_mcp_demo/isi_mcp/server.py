@@ -3017,6 +3017,7 @@ def powerscale_filepool_policy_remove(policy_name: str) -> dict:
 @mcp.tool()
 def powerscale_quota_create(path: str, quota_type: str, limit_size: str,
                              soft_grace_period: str = None,
+                             soft_grace_period_unit: str = "days",
                              include_overheads: bool = False,
                              persona: str = None) -> dict:
     """
@@ -3037,7 +3038,10 @@ def powerscale_quota_create(path: str, quota_type: str, limit_size: str,
       (generates alerts but does not enforce)
     - limit_size: The quota limit as a human-readable string (e.g. "500GiB",
       "1TiB"). Use IEC units (KiB, MiB, GiB, TiB).
-    - soft_grace_period: Grace period in days for soft quotas (default: "7").
+    - soft_grace_period: Grace period value for soft quotas (default: "7").
+      Only applicable when quota_type is "soft".
+    - soft_grace_period_unit: Unit for the grace period (default: "days").
+      Options: "hours", "days", "weeks", "months".
       Only applicable when quota_type is "soft".
     - include_overheads: Whether to include protection overhead in usage
       calculation (default: False)
@@ -3060,6 +3064,7 @@ def powerscale_quota_create(path: str, quota_type: str, limit_size: str,
         return quotas.add_quota(path=path, quota_type=quota_type,
                                 limit_size=limit_size,
                                 soft_grace_period=soft_grace_period,
+                                soft_grace_period_unit=soft_grace_period_unit,
                                 include_overheads=include_overheads,
                                 persona=persona)
     except Exception as e:

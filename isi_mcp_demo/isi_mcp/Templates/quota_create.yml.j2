@@ -24,6 +24,7 @@
 {% elif threshold_type == 'soft' %}
           soft_limit_size: {{ soft_limit_size }}
           soft_grace_period: {{ soft_grace_period }}
+          period_unit: "{{ soft_grace_period_unit }}"
 {% elif threshold_type == 'advisory' %}
           advisory_limit_size: {{ advisory_limit_size }}
 {% endif %}
