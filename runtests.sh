@@ -338,6 +338,9 @@ EOF
         "${TESTS_DIR}/test_phase4_filemgmt_advanced.py" \
         "${TESTS_DIR}/test_phase4_datamover.py" \
         "${TESTS_DIR}/test_phase4_filepool.py" \
+        "${TESTS_DIR}/test_phase5a_events_utilities.py" \
+        "${TESTS_DIR}/test_phase5b_statistics_worm_sessions.py" \
+        "${TESTS_DIR}/test_phase5c_identity_management.py" \
         -v; then
         ok "Part 2 passed"
     else
