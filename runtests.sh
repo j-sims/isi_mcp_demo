@@ -207,8 +207,9 @@ else
     VAULT_HOST="https://${CLUSTER_HOST}"
 fi
 
-# Create unencrypted vault with provided cluster credentials
-cat > "${SCRIPT_DIR}/vault.yml" << VAULT_EOF
+# Create vault directory and unencrypted vault with provided cluster credentials
+mkdir -p "${SCRIPT_DIR}/vault"
+cat > "${SCRIPT_DIR}/vault/vault.yml" << VAULT_EOF
 # Test vault file - created by runtests.sh
 # This file uses the cluster credentials provided at runtime
 clusters:
@@ -222,10 +223,10 @@ VAULT_EOF
 
 # Encrypt vault with ansible-vault
 if command -v ansible-vault &> /dev/null; then
-    ansible-vault encrypt "${SCRIPT_DIR}/vault.yml" --vault-password-file "${SCRIPT_DIR}/.vault_password" 2>/dev/null
-    ok "Created encrypted vault.yml with cluster credentials"
+    ansible-vault encrypt "${SCRIPT_DIR}/vault/vault.yml" --vault-password-file "${SCRIPT_DIR}/.vault_password" 2>/dev/null
+    ok "Created encrypted vault/vault.yml with cluster credentials"
 else
-    warn "ansible-vault not found in PATH, vault.yml created unencrypted"
+    warn "ansible-vault not found in PATH, vault/vault.yml created unencrypted"
 fi
 
 # ---------------------------------------------------------------------------

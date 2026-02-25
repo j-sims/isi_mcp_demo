@@ -7,10 +7,10 @@ services:
     environment:
       - DEBUG=${DEBUG:-}
       - ENABLE_ALL_TOOLS=${ENABLE_ALL_TOOLS:-}
-      - VAULT_FILE=/app/vault.yml
+      - VAULT_FILE=/app/vault/vault.yml
       - VAULT_PASSWORD=${VAULT_PASSWORD:-}
     volumes:
-      - ./vault.yml:/app/vault.yml:ro
+      - ./vault:/app/vault
     networks:
       - demonet
 

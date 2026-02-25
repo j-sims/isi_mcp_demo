@@ -9,7 +9,7 @@ class VaultManager:
     Singleton that decrypts and caches Ansible Vault cluster credentials.
 
     Env vars:
-      VAULT_FILE     - path to encrypted vault YAML (default: /app/vault.yml)
+      VAULT_FILE     - path to encrypted vault YAML (default: /app/vault/vault.yml)
       VAULT_PASSWORD - vault encryption password (required for encrypted vaults)
     """
 
@@ -26,7 +26,7 @@ class VaultManager:
             return
         self._initialized = True
 
-        self.vault_file = Path(os.environ.get("VAULT_FILE", "/app/vault.yml"))
+        self.vault_file = Path(os.environ.get("VAULT_FILE", "/app/vault/vault.yml"))
 
         self._clusters: dict = {}
         self._selected: str | None = None

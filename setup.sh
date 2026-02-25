@@ -63,10 +63,7 @@ After setup, restart the server with vault password:
   docker compose up -e VAULT_PASSWORD=vaultkey123
 
 To edit vault credentials later (requires vault password):
-  # First, decrypt locally
-  echo -n "vaultkey123" | ansible-vault view vault.yml
-  # Or use docker-compose with VAULT_PASSWORD set
-  docker compose exec -e VAULT_PASSWORD=vaultkey123 isi_mcp bash
+  docker compose exec isi_mcp ansible-vault edit /app/vault/vault.yml
 HELP
 }
 
@@ -96,6 +93,29 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ---------------------------------------------------------------------------
+# Check for existing encrypted vault — ask before prompting for new credentials
+# ---------------------------------------------------------------------------
+VAULT_DIR="${SCRIPT_DIR}/vault"
+VAULT_FILE="${VAULT_DIR}/vault.yml"
+SKIP_SETUP=false
+
+mkdir -p "$VAULT_DIR"
+
+if [[ -f "$VAULT_FILE" ]]; then
+    FIRST_LINE="$(head -c 14 "$VAULT_FILE")"
+    if [[ "$FIRST_LINE" == '$ANSIBLE_VAULT' ]]; then
+        warn "vault.yml already exists and is encrypted."
+        read -rp "Keep existing vault.yml and skip credential setup? [Y/n]: " KEEP_VAULT
+        if [[ "$KEEP_VAULT" != "n" && "$KEEP_VAULT" != "N" ]]; then
+            ok "Keeping existing vault.yml — skipping credential setup."
+            SKIP_SETUP=true
+        fi
+    else
+        warn "vault.yml exists but is not encrypted — it will be overwritten and encrypted."
+    fi
+fi
+
+# ---------------------------------------------------------------------------
 # Check prerequisites
 # ---------------------------------------------------------------------------
 if ! command -v docker &>/dev/null; then
@@ -115,25 +135,30 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Prompt for missing required arguments
+# Prompt for cluster credentials (only if not keeping existing vault)
 # ---------------------------------------------------------------------------
-if [[ -z "$CLUSTER_HOST" ]]; then
-    read -rp "Cluster host (e.g. 192.168.0.33): " CLUSTER_HOST
-fi
-if [[ -z "$CLUSTER_HOST" ]]; then
-    fail "Cluster host is required."
-    exit 1
+if [[ "$SKIP_SETUP" == false ]]; then
+    if [[ -z "$CLUSTER_HOST" ]]; then
+        read -rp "Cluster host (e.g. 192.168.0.33): " CLUSTER_HOST
+    fi
+    if [[ -z "$CLUSTER_HOST" ]]; then
+        fail "Cluster host is required."
+        exit 1
+    fi
+
+    if [[ -z "$CLUSTER_PASS" ]]; then
+        read -rsp "Cluster password for ${CLUSTER_USER}@${CLUSTER_HOST}: " CLUSTER_PASS
+        echo
+    fi
+    if [[ -z "$CLUSTER_PASS" ]]; then
+        fail "Cluster password is required."
+        exit 1
+    fi
 fi
 
-if [[ -z "$CLUSTER_PASS" ]]; then
-    read -rsp "Cluster password for ${CLUSTER_USER}@${CLUSTER_HOST}: " CLUSTER_PASS
-    echo
-fi
-if [[ -z "$CLUSTER_PASS" ]]; then
-    fail "Cluster password is required."
-    exit 1
-fi
-
+# ---------------------------------------------------------------------------
+# Prompt for vault password (always needed to encrypt/decrypt vault)
+# ---------------------------------------------------------------------------
 if [[ -z "$VAULT_PASS" ]]; then
     read -rsp "Vault encryption password (for vault.yml): " VAULT_PASS
     echo
@@ -150,26 +175,6 @@ if [[ "$CLUSTER_HOST" =~ ^https?:// ]]; then
     VAULT_HOST="$CLUSTER_HOST"
 else
     VAULT_HOST="https://${CLUSTER_HOST}"
-fi
-
-# ---------------------------------------------------------------------------
-# Check for existing encrypted vault — ask before overwriting
-# ---------------------------------------------------------------------------
-VAULT_FILE="${SCRIPT_DIR}/vault.yml"
-SKIP_SETUP=false
-
-if [[ -f "$VAULT_FILE" ]]; then
-    FIRST_LINE="$(head -c 14 "$VAULT_FILE")"
-    if [[ "$FIRST_LINE" == '$ANSIBLE_VAULT' ]]; then
-        warn "vault.yml already exists and is encrypted."
-        read -rp "Reconfigure with new cluster credentials? [y/N]: " RECONFIGURE
-        if [[ "$RECONFIGURE" != "y" && "$RECONFIGURE" != "Y" ]]; then
-            ok "Keeping existing vault.yml — skipping credential setup."
-            SKIP_SETUP=true
-        fi
-    else
-        warn "vault.yml exists but is not encrypted — it will be overwritten and encrypted."
-    fi
 fi
 
 # ---------------------------------------------------------------------------
@@ -199,11 +204,9 @@ ok "Image built"
 # ---------------------------------------------------------------------------
 # Encrypt vault.yml using VaultLib Python API inside the built image.
 #
-# We read the plaintext /app/vault.yml (via the existing :ro service mount),
+# We read the plaintext /app/vault/vault.yml (via the directory bind mount),
 # encrypt it in-memory with VaultLib, and write to stdout. On the host we
-# redirect stdout to a temp file and then rename it atomically. This avoids
-# the EBUSY error that ansible-vault encrypt triggers when it tries to shred
-# the original file via os.remove() on a Docker bind-mounted path.
+# redirect stdout to a temp file and then rename it atomically.
 #
 # The vault password is passed directly (never stored on disk).
 # ---------------------------------------------------------------------------
@@ -220,7 +223,7 @@ if not password:
     print('ERROR: Vault password required', file=sys.stderr)
     sys.exit(1)
 vault = VaultLib([('default', VaultSecret(password))])
-plaintext = open('/app/vault.yml', 'rb').read()
+plaintext = open('/app/vault/vault.yml', 'rb').read()
 encrypted = vault.encrypt(plaintext)
 sys.stdout.buffer.write(encrypted if isinstance(encrypted, bytes) else encrypted.encode())
 " "$VAULT_PASS" > "${VAULT_TMP}"
@@ -251,8 +254,7 @@ info "To restart the server later (requires vault password):"
 echo "  VAULT_PASSWORD='your-vault-password' $COMPOSE_CMD -f ${SCRIPT_DIR}/docker-compose.yml up -d"
 echo ""
 info "To add or edit clusters later:"
-echo "  # View encrypted vault (requires vault password):"
-echo "  echo -n 'your-vault-password' | $COMPOSE_CMD -f ${SCRIPT_DIR}/docker-compose.yml run --rm isi_mcp ansible-vault view /app/vault.yml"
+echo "  $COMPOSE_CMD -f ${SCRIPT_DIR}/docker-compose.yml exec isi_mcp ansible-vault edit /app/vault/vault.yml"
 echo ""
 info "To stop the server:"
 echo "  $COMPOSE_CMD -f ${SCRIPT_DIR}/docker-compose.yml down"
