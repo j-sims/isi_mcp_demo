@@ -195,7 +195,8 @@ ok "Installed requirements-test.txt"
 info "Setting up vault credentials for cluster ${CLUSTER_HOST}"
 
 # Always create fresh vault.yml with provided credentials
-# Create test vault password
+# Create test vault password (remove any existing directory first)
+rm -rf "${SCRIPT_DIR}/.vault_password"
 echo "test-password" > "${SCRIPT_DIR}/.vault_password"
 chmod 600 "${SCRIPT_DIR}/.vault_password"
 ok "Created .vault_password"
@@ -290,6 +291,7 @@ EOF
 
     info "Building and starting MCP server (all tools enabled for testing)"
     export ENABLE_ALL_TOOLS=true
+    export VAULT_PASSWORD="test-password"
     docker compose -f "${SCRIPT_DIR}/docker-compose.yml" -f "${OVERRIDE_FILE}" up --build -d 2>/dev/null \
         || docker-compose -f "${SCRIPT_DIR}/docker-compose.yml" -f "${OVERRIDE_FILE}" up --build -d
     ok "MCP server container started"
