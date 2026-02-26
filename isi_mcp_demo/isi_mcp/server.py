@@ -24,6 +24,10 @@ from modules.onefs.v9_12_0.group import Group
 from modules.onefs.v9_12_0.events import Events
 from modules.onefs.v9_12_0.statistics import Statistics
 from modules.onefs.v9_12_0.network import Network
+from modules.onefs.v9_12_0.cluster_nodes import ClusterNodes
+from modules.onefs.v9_12_0.storagepool_nodetypes import StoragepoolNodetypes
+from modules.onefs.v9_12_0.license import License
+from modules.onefs.v9_12_0.zones_summary import ZonesSummary
 from modules.network.utils import pingable
 from modules.ansible.vault_manager import VaultManager
 
@@ -187,6 +191,22 @@ TOOL_GROUPS: Dict[str, List[str]] = {
         "powerscale_network_dns_get",
         "powerscale_zones_get",
         "powerscale_network_map",
+    ],
+    "cluster_nodes": [
+        "powerscale_cluster_nodes_get",
+        "powerscale_cluster_node_get_by_id",
+    ],
+    "storagepool_nodetypes": [
+        "powerscale_storagepool_nodetypes_get",
+        "powerscale_storagepool_nodetype_get_by_id",
+    ],
+    "licensing": [
+        "powerscale_license_get",
+        "powerscale_license_get_by_name",
+    ],
+    "zones_summary": [
+        "powerscale_zones_summary_get",
+        "powerscale_zones_summary_zone_get",
     ],
 }
 
@@ -5763,6 +5783,219 @@ def powerscale_network_map() -> Dict[str, Any]:
         cluster = _get_reachable_cluster()
         network = Network(cluster)
         return network.get_network_map()
+    except Exception as e:
+        return f"Error: {e}"
+
+
+# ---------------------------------------------------------------------------
+# Cluster Nodes tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_cluster_nodes_get() -> dict:
+    """
+    List all nodes in the PowerScale cluster with status, state, and version info.
+
+    Returns a list of node objects. Each node includes:
+    - lnn: Logical Node Number (the node's cluster position)
+    - id: Node ID
+    - node_state: Current operational state (e.g. read-only, smartfail flags)
+    - onefs_version: The OneFS version running on the node
+    - down_peer: Whether peer connectivity is lost
+    - error: Any node-level errors
+
+    Use powerscale_cluster_node_get_by_id for full hardware, drive, sensor,
+    and partition details on a specific node.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        nodes = ClusterNodes(cluster)
+        return nodes.get()
+    except Exception as e:
+        return f"Error: {e}"
+
+
+@mcp.tool()
+def powerscale_cluster_node_get_by_id(node_id: int) -> dict:
+    """
+    Get detailed information for a specific cluster node by its Logical Node Number.
+
+    Returns comprehensive node details including:
+    - hardware: Product name, serial number, chassis info
+    - drives: Drive status and health per slot
+    - partitions: Filesystem partition usage (/, /var, /var/crash, etc.)
+    - sensors: Environmental sensors (temperature, voltage, fan RPM)
+    - sleds: Drive sled information
+    - state: Read-only, smartfail, service light states
+    - status: CPU usage, battery, NVRAM, power supplies
+    - internal_ip_address: Internal cluster network address
+
+    Arguments:
+    - node_id: Logical Node Number (LNN) of the node (use powerscale_cluster_nodes_get
+               to list nodes and find their LNNs)
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        nodes = ClusterNodes(cluster)
+        return nodes.get_by_id(node_id)
+    except Exception as e:
+        return f"Error: {e}"
+
+
+# ---------------------------------------------------------------------------
+# Storage Pool Node Types tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_storagepool_nodetypes_get() -> dict:
+    """
+    List all storage pool node types configured on the cluster.
+
+    Node types categorize compatible hardware nodes for storage pool management.
+    Each entry includes:
+    - id: Node type ID (use with powerscale_storagepool_nodetype_get_by_id)
+    - product_name: The hardware product model name
+    - nodes: List of node LNNs belonging to this node type
+    - manual: Whether the node type assignment was manually configured
+    - sjm_capable: Whether the node type supports SmartJob Manager
+
+    Node types determine which nodes can be placed in the same storage pool
+    and govern the available protection policies.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        nodetypes = StoragepoolNodetypes(cluster)
+        return nodetypes.get()
+    except Exception as e:
+        return f"Error: {e}"
+
+
+@mcp.tool()
+def powerscale_storagepool_nodetype_get_by_id(nodetype_id: int) -> dict:
+    """
+    Get details for a specific storage pool node type by ID.
+
+    Arguments:
+    - nodetype_id: The integer node type ID (use powerscale_storagepool_nodetypes_get
+                   to list node types and find their IDs)
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        nodetypes = StoragepoolNodetypes(cluster)
+        return nodetypes.get_by_id(nodetype_id)
+    except Exception as e:
+        return f"Error: {e}"
+
+
+# ---------------------------------------------------------------------------
+# License tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_license_get(resume: Optional[str] = None) -> dict:
+    """
+    List all installed PowerScale feature licenses with their status and expiry info.
+
+    Returns a paginated list of license objects. Each license includes:
+    - id / name: License feature name (e.g. "SmartQuotas", "SnapshotIQ", "SyncIQ",
+                 "SmartConnect_Advanced", "DataMover", "HDFS", "CloudPools")
+    - status: One of: Evaluation, Activated, Expired, Unlicensed
+    - expiration: Expiration date string (or null for perpetual licenses)
+    - days_to_expiry: Days remaining (negative = already expired)
+    - days_since_expiry: Days since expiry (if expired)
+    - expiring_alert: True if license is about to expire
+    - expired_alert: True if license has expired
+    - tiers: License tier entitlement details (if applicable)
+
+    Use resume token for pagination if the result includes a non-null resume value.
+
+    Arguments:
+    - resume: Pagination token from a previous call (optional)
+    """
+    resume = None if resume in (None, "null", "None") else resume
+    try:
+        cluster = _get_reachable_cluster()
+        lic = License(cluster)
+        return lic.get(resume=resume)
+    except Exception as e:
+        return f"Error: {e}"
+
+
+@mcp.tool()
+def powerscale_license_get_by_name(name: str) -> dict:
+    """
+    Get license details for a specific PowerScale feature by name.
+
+    Common license names:
+    - "HDFS"                  - Hadoop Distributed File System protocol
+    - "SmartQuotas"           - Storage quota management
+    - "SnapshotIQ"            - Snapshot and snapshot scheduling
+    - "SyncIQ"                - Replication and failover
+    - "SmartDedupe"           - Data deduplication
+    - "SmartConnect"          - Basic SmartConnect DNS load balancing
+    - "SmartConnect_Advanced" - Advanced SmartConnect with connection policies
+    - "InsightIQ"             - Analytics and reporting
+    - "DataMover"             - CloudPools data movement
+    - "CloudPools"            - Cloud tiering
+
+    Arguments:
+    - name: The license feature name (case-sensitive)
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        lic = License(cluster)
+        return lic.get_by_name(name)
+    except Exception as e:
+        return f"Error: {e}"
+
+
+# ---------------------------------------------------------------------------
+# Zones Summary tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_zones_summary_get(groupnet: Optional[str] = None) -> dict:
+    """
+    Retrieve a lightweight summary of all access zones on the cluster.
+
+    Returns the total zone count and a list of zone base paths. This is a
+    quick way to enumerate zones without retrieving full configuration details
+    (auth providers, SMB settings, etc.) that powerscale_zones_get provides.
+
+    Response structure:
+    {
+      "count": <int>,      - Total number of access zones
+      "zones": [<path>, ...]  - List of zone base paths (e.g. "/ifs", "/ifs/data/zone1")
+    }
+
+    Arguments:
+    - groupnet: Optional — filter summary to zones in this groupnet (e.g. "groupnet0")
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        zs = ZonesSummary(cluster)
+        return zs.get(groupnet=groupnet)
+    except Exception as e:
+        return f"Error: {e}"
+
+
+@mcp.tool()
+def powerscale_zones_summary_zone_get(zone_id: int) -> dict:
+    """
+    Retrieve non-privileged summary information for a specific access zone by ID.
+
+    Returns the base path for the zone. This endpoint is accessible without
+    elevated privileges, making it useful for verifying zone existence and
+    path from unprivileged contexts.
+
+    Arguments:
+    - zone_id: The integer zone ID (use powerscale_zones_summary_get to list
+               zones; for full zone details with auth providers use powerscale_zones_get)
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        zs = ZonesSummary(cluster)
+        return zs.get_zone(zone_id)
     except Exception as e:
         return f"Error: {e}"
 
