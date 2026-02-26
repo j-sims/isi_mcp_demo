@@ -16,10 +16,13 @@ FastMCP Server (server.py)
     |
     |--- Domain Modules (modules/onefs/v9_12_0/)
     |       |--- Cluster (auth & API client, created from vault)
-    |       |--- Health, Capacity, Quotas, Snapshots, ...
+    |       |--- Health, Capacity, Quotas, Snapshots, Config
     |       |--- SMB, NFS, S3 (shares + global settings)
     |       |--- FileMgmt (namespace API)
-    |       |--- DataMover, FilePool, SyncIQ, Config
+    |       |--- DataMover, FilePool, SyncIQ
+    |       |--- Users, Groups, Events, Statistics
+    |       |--- Network (groupnets, subnets, pools, interfaces, DNS, zones)
+    |       |--- ClusterNodes, StoragepoolNodetypes, License, ZonesSummary
     |
     |--- Ansible Automation (modules/ansible/)
     |       |--- AnsibleRunner (template rendering + execution)
@@ -54,6 +57,11 @@ Located in `modules/onefs/v9_12_0/`, these modules provide business logic for cl
 - **Groups**: Local group management
 - **Events**: Event and alert browsing
 - **Statistics**: Performance metrics collection
+- **Network**: Network topology — groupnets, subnets, pools, interfaces, external settings, DNS cache, access zones, and composite network map
+- **ClusterNodes**: Node inventory with hardware, drives, partitions, sensors, and state (read-only via ClusterApi)
+- **StoragepoolNodetypes**: Storage pool node type listings (read-only via StoragepoolApi)
+- **License**: Feature license status and expiry for all installed OneFS licenses (read-only via LicenseApi)
+- **ZonesSummary**: Lightweight access zone count and path summary (read-only via ZonesSummaryApi)
 
 ### Vault Management
 The VaultManager singleton decrypts and caches cluster credentials from an Ansible Vault encrypted file. It supports multiple named clusters, with the first cluster becoming the default. Two MCP management tools allow runtime cluster switching.

@@ -1,6 +1,6 @@
 # Capabilities and Functionality
 
-The server provides comprehensive cluster management through 106 MCP tools organized into 16 groups. All tool groups are enabled by default but can be dynamically disabled to optimize LLM context usage.
+The server provides comprehensive cluster management through 124 MCP tools organized into 21 groups. All tool groups are enabled by default but can be dynamically disabled to optimize LLM context usage.
 
 See **[Features & Tools](features.md)** for the complete list of tool groups and detailed tool descriptions.
 
@@ -28,3 +28,7 @@ The following examples demonstrate the types of tasks you can accomplish with th
 - "List all files in /ifs/data/reports"
 - "What SyncIQ replication policies are configured?"
 - "Switch to the production cluster"
+- "List all nodes in the cluster and show their hardware details"
+- "Which licenses are installed and are any expiring soon?"
+- "What is the network topology — groupnets, subnets, and pools?"
+- "How many access zones are configured on this cluster?"

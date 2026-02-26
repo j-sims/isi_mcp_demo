@@ -5,9 +5,12 @@
 The PowerScale MCP server provides comprehensive automation and management capabilities for PowerScale clusters:
 
 - **Multi-cluster support** with runtime cluster switching
-- **108 MCP tools** organized into 16 manageable tool groups
+- **124 MCP tools** organized into 21 manageable tool groups
 - **Dynamic tool management** to keep LLM context efficient
 - **Health checks** including quorum, service lights, critical events, network, and capacity
+- **Node inventory** with per-node hardware, drive, sensor, and state details
+- **License status** for all installed PowerScale feature licenses
+- **Network topology** including groupnets, subnets, pools, interfaces, DNS, and access zones
 - **Quota management** with support for directory, user, and group quotas
 - **Snapshot & replication** including SyncIQ policies and DataMover operations
 - **File operations** including directory/file CRUD, ACLs, metadata, and WORM/SmartLock
@@ -38,9 +41,14 @@ The PowerScale MCP server provides comprehensive automation and management capab
 | Groups | 4 | Local group management |
 | Events | 2 | Event and alert browsing |
 | Statistics | 9 | Performance metrics |
+| Networking | 8 | Network topology (groupnets, subnets, pools, interfaces, DNS, zones, map) |
+| ClusterNodes | 2 | Node inventory with hardware, drives, sensors, and state |
+| StoragepoolNodetypes | 2 | Storage pool node type listings |
+| Licensing | 2 | Feature license status and expiry |
+| ZonesSummary | 2 | Lightweight access zone count and path summary |
 | Utils | 3 | Utilities (time, unit conversion) |
 
-**Total: 106 tools across 16 groups**
+**Total: 124 tools across 21 groups**
 
 All tool groups are enabled by default but can be dynamically disabled to keep the LLM's context window efficient. Use `powerscale_tools_list` and `powerscale_tools_toggle` to manage which groups are active.
 
@@ -168,6 +176,37 @@ Real-time performance metrics collection:
 - **Key discovery**: browse available statistics with metadata
 
 All metrics are averaged over 30 seconds to smooth out spikes and provide reliable baselines.
+
+### Networking (8 tools)
+Network topology inspection across the full groupnet hierarchy:
+- **Groupnets**: list all groupnets with DNS server and search domain configuration
+- **Subnets**: list subnets with gateway, prefix length, VLAN, and SmartConnect service details
+- **Pools**: list IP address pools with ranges, SmartConnect DNS zones, and connection policies
+- **Interfaces**: list physical and virtual network interfaces per node with link and MTU details
+- **External settings**: global external network configuration including IPv6 and SmartConnect defaults
+- **DNS cache**: DNS resolver cache configuration
+- **Access zones**: list zones with groupnet association and authentication providers
+- **Network map**: composite topology view assembling the full groupnets → subnets → pools → zones → SMB shares hierarchy in a single response
+
+### ClusterNodes (2 tools)
+Node inventory and status reporting:
+- **List nodes**: all cluster nodes with Logical Node Number (LNN), node state, OneFS version, and peer connectivity status
+- **Node detail**: full per-node inventory including hardware (product name, serial number, chassis), drive configuration and health per slot, disk partitions with usage, environmental sensors (temperature, voltage, fan RPM), NVRAM and battery status, and read-only/smartfail/service-light state flags
+
+### StoragepoolNodetypes (2 tools)
+Storage pool node type information:
+- **List node types**: all node types with product name, associated node LNNs, SmartJob Manager capability, and manual assignment flag
+- **Node type by ID**: retrieve details for a specific node type; use the list tool first to discover IDs
+
+### Licensing (2 tools)
+Feature license status and expiry tracking:
+- **List licenses**: all installed PowerScale feature licenses including name, activation status (Evaluation / Activated / Expired / Unlicensed), expiration date, days to expiry, and alert flags for expiring or expired licenses
+- **License by name**: retrieve status for a specific feature by name (e.g. SmartQuotas, SnapshotIQ, SyncIQ, SmartConnect_Advanced, DataMover, HDFS, CloudPools)
+
+### ZonesSummary (2 tools)
+Lightweight access zone summary:
+- **Zones summary**: total zone count and list of zone base paths — a fast alternative to the full zones listing when only counts or paths are needed; supports optional groupnet filter
+- **Zone by ID**: retrieve the base path for a specific zone ID without requiring elevated privileges
 
 ### Utils (3 tools)
 Utility functions for working with the MCP server:
