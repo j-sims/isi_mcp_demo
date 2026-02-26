@@ -9,7 +9,7 @@ Cluster credentials are managed outside the LLM using the `ansible-vault` CLI. R
 Edit the vault and add a new entry under `clusters:`:
 
 ```bash
-echo -n 'your-vault-password' | docker-compose run --rm isi_mcp ansible-vault edit /app/vault/vault.yml
+docker-compose run --rm isi_mcp ansible-vault edit /app/vault/vault.yml
 ```
 
 Add a new cluster entry:
@@ -37,7 +37,7 @@ Save and close. If the server is running, use the `powerscale_cluster_select` to
 Edit the vault and delete the cluster entry:
 
 ```bash
-echo -n 'your-vault-password' | docker-compose run --rm isi_mcp ansible-vault edit /app/vault/vault.yml
+docker-compose run --rm isi_mcp ansible-vault edit /app/vault/vault.yml
 ```
 
 Delete the cluster entry and save.
