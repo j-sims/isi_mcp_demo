@@ -27,7 +27,6 @@ FastMCP Server (server.py)
     |--- Ansible Automation (modules/ansible/)
     |       |--- AnsibleRunner (template rendering + execution)
     |       |--- Jinja2 Templates (Templates/*.yml.j2)
-    |       |--- dellemc.powerscale Ansible collection
     |
     |--- Network Utilities (modules/network/)
             |--- ICMP ping checks
