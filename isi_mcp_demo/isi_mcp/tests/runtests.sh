@@ -14,10 +14,11 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV_DIR="${SCRIPT_DIR}/.venv"
-ISI_MCP_DIR="${SCRIPT_DIR}/isi_mcp_demo/isi_mcp"
-TESTS_DIR="${ISI_MCP_DIR}/tests"
-OVERRIDE_FILE="${SCRIPT_DIR}/docker-compose.test-override.yml"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
+VENV_DIR="${ROOT_DIR}/.venv"
+ISI_MCP_DIR="${SCRIPT_DIR}/.."
+TESTS_DIR="${SCRIPT_DIR}"
+OVERRIDE_FILE="${ROOT_DIR}/docker-compose.test-override.yml"
 
 # Colors for output
 RED='\033[0;31m'
@@ -196,9 +197,9 @@ info "Setting up vault credentials for cluster ${CLUSTER_HOST}"
 
 # Always create fresh vault.yml with provided credentials
 # Create test vault password (remove any existing directory first)
-rm -rf "${SCRIPT_DIR}/.vault_password"
-echo "test-password" > "${SCRIPT_DIR}/.vault_password"
-chmod 600 "${SCRIPT_DIR}/.vault_password"
+rm -rf "${ROOT_DIR}/.vault_password"
+echo "test-password" > "${ROOT_DIR}/.vault_password"
+chmod 600 "${ROOT_DIR}/.vault_password"
 ok "Created .vault_password"
 
 # Determine if host includes protocol prefix
@@ -209,8 +210,8 @@ else
 fi
 
 # Create vault directory and unencrypted vault with provided cluster credentials
-mkdir -p "${SCRIPT_DIR}/vault"
-cat > "${SCRIPT_DIR}/vault/vault.yml" << VAULT_EOF
+mkdir -p "${ROOT_DIR}/vault"
+cat > "${ROOT_DIR}/vault/vault.yml" << VAULT_EOF
 # Test vault file - created by runtests.sh
 # This file uses the cluster credentials provided at runtime
 clusters:
@@ -224,7 +225,7 @@ VAULT_EOF
 
 # Encrypt vault with ansible-vault
 if command -v ansible-vault &> /dev/null; then
-    ansible-vault encrypt "${SCRIPT_DIR}/vault/vault.yml" --vault-password-file "${SCRIPT_DIR}/.vault_password" 2>/dev/null
+    ansible-vault encrypt "${ROOT_DIR}/vault/vault.yml" --vault-password-file "${ROOT_DIR}/.vault_password" 2>/dev/null
     ok "Created encrypted vault/vault.yml with cluster credentials"
 else
     warn "ansible-vault not found in PATH, vault/vault.yml created unencrypted"
@@ -282,21 +283,21 @@ EOF
     info "Playbook artifacts will be written to: ${TEST_OUTPUT_DIR}"
 
     # Check if docker-compose services are already running
-    if docker compose -f "${SCRIPT_DIR}/docker-compose.yml" -f "${OVERRIDE_FILE}" ps --status running 2>/dev/null | grep -q isi_mcp; then
+    if docker compose -f "${ROOT_DIR}/docker-compose.yml" -f "${OVERRIDE_FILE}" ps --status running 2>/dev/null | grep -q isi_mcp; then
         warn "MCP server container is already running — stopping and removing"
-        docker compose -f "${SCRIPT_DIR}/docker-compose.yml" -f "${OVERRIDE_FILE}" down
+        docker compose -f "${ROOT_DIR}/docker-compose.yml" -f "${OVERRIDE_FILE}" down
         ok "Stopped and removed existing containers"
-    elif docker-compose -f "${SCRIPT_DIR}/docker-compose.yml" -f "${OVERRIDE_FILE}" ps --filter "status=running" 2>/dev/null | grep -q isi_mcp; then
+    elif docker-compose -f "${ROOT_DIR}/docker-compose.yml" -f "${OVERRIDE_FILE}" ps --filter "status=running" 2>/dev/null | grep -q isi_mcp; then
         warn "MCP server container is already running — stopping and removing"
-        docker-compose -f "${SCRIPT_DIR}/docker-compose.yml" -f "${OVERRIDE_FILE}" down
+        docker-compose -f "${ROOT_DIR}/docker-compose.yml" -f "${OVERRIDE_FILE}" down
         ok "Stopped and removed existing containers"
     fi
 
     info "Building and starting MCP server (all tools enabled for testing)"
     export ENABLE_ALL_TOOLS=true
     export VAULT_PASSWORD="test-password"
-    docker compose -f "${SCRIPT_DIR}/docker-compose.yml" -f "${OVERRIDE_FILE}" up --build -d 2>/dev/null \
-        || docker-compose -f "${SCRIPT_DIR}/docker-compose.yml" -f "${OVERRIDE_FILE}" up --build -d
+    docker compose -f "${ROOT_DIR}/docker-compose.yml" -f "${OVERRIDE_FILE}" up --build -d 2>/dev/null \
+        || docker-compose -f "${ROOT_DIR}/docker-compose.yml" -f "${OVERRIDE_FILE}" up --build -d
     ok "MCP server container started"
 
     # Wait for the server to be ready (POST to /mcp since GET returns 406)
@@ -314,7 +315,7 @@ EOF
 
     if [[ ${WAITED} -ge ${MAX_WAIT} ]]; then
         fail "MCP server did not become ready within ${MAX_WAIT}s"
-        info "Check logs with: docker compose -f ${SCRIPT_DIR}/docker-compose.yml logs"
+        info "Check logs with: docker compose -f ${ROOT_DIR}/docker-compose.yml logs"
         exit 1
     fi
     ok "MCP server is ready (took ${WAITED}s)"
@@ -363,8 +364,8 @@ info "=========================================="
 echo ""
 info "Test artifacts written to:  ${TEST_OUTPUT_DIR}"
 info "Script output logged to:    ${RUNTESTS_LOG}"
-info "To stop the MCP server:     docker compose -f ${SCRIPT_DIR}/docker-compose.yml down"
-info "To rerun tests:             ./runtests.sh"
+info "To stop the MCP server:     docker compose -f ${ROOT_DIR}/docker-compose.yml down"
+info "To rerun tests:             ${TESTS_DIR}/runtests.sh"
 echo ""
 
 # Blank the override file so the repo stays clean

@@ -104,7 +104,7 @@ kubectl get pods -n isi-mcp
 kubectl logs -n isi-mcp deployment/isi-mcp
 
 # Run the K8s test suite
-./runtests-k8s.sh
+isi_mcp_demo/isi_mcp/tests/runtests-k8s.sh
 ```
 
 ---
@@ -403,8 +403,8 @@ kubectl logs -n isi-mcp deployment/isi-mcp -f
 kubectl port-forward -n isi-mcp svc/isi-mcp-nginx 443:443
 
 # Run the K8s test suite
-./runtests-k8s.sh
+isi_mcp_demo/isi_mcp/tests/runtests-k8s.sh
 
 # Run against a specific cluster (if available)
-./runtests-k8s.sh --cluster-host 172.16.10.10 --cluster-user root --cluster-pass password
+isi_mcp_demo/isi_mcp/tests/runtests-k8s.sh --cluster-host 172.16.10.10 --cluster-user root --cluster-pass password
 ```

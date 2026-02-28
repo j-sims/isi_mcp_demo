@@ -23,8 +23,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV_DIR="${SCRIPT_DIR}/.venv"
-TESTS_DIR="${SCRIPT_DIR}/isi_mcp_demo/isi_mcp/tests"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
+VENV_DIR="${ROOT_DIR}/.venv"
+TESTS_DIR="${SCRIPT_DIR}"
 
 # Colors
 RED='\033[0;31m'
@@ -97,15 +98,15 @@ command -v python3   &>/dev/null || fail "python3 not found in PATH"
 
 # Check minikube is running
 minikube status 2>/dev/null | grep -q "Running" || \
-  fail "minikube is not running. Deploy first: ./k8s/deploy-minikube.sh"
+  fail "minikube is not running. Deploy first: ${ROOT_DIR}/k8s/deploy-minikube.sh"
 
 # Check namespace exists
 kubectl get namespace "$NAMESPACE" &>/dev/null || \
-  fail "Namespace '$NAMESPACE' not found. Deploy first: ./k8s/deploy-minikube.sh"
+  fail "Namespace '$NAMESPACE' not found. Deploy first: ${ROOT_DIR}/k8s/deploy-minikube.sh"
 
 # Check deployment exists
 kubectl get deployment isi-mcp -n "$NAMESPACE" &>/dev/null || \
-  fail "Deployment 'isi-mcp' not found. Deploy first: ./k8s/deploy-minikube.sh"
+  fail "Deployment 'isi-mcp' not found. Deploy first: ${ROOT_DIR}/k8s/deploy-minikube.sh"
 
 ok "Prerequisites satisfied."
 
@@ -177,7 +178,7 @@ info "Running K8s test suite..."
 echo ""
 
 # Change to the isi_mcp dir so conftest.py imports work
-cd "${SCRIPT_DIR}/isi_mcp_demo/isi_mcp"
+cd "${SCRIPT_DIR}/.."
 
 RESULT=0
 MCP_BASE_URL="$MCP_BASE_URL" \
