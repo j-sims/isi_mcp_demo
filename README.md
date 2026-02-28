@@ -19,6 +19,10 @@ The server ships in **read-only mode by default** — all write tools are disabl
 
 ## Quick Start
 
+**For Kubernetes deployment**, see **[Kubernetes Deployment](docs/kubernetes.md)** instead.
+
+**For Docker/Docker Compose deployment:**
+
 ```bash
 # Clone and setup
 git clone <repo-url>
@@ -32,7 +36,7 @@ docker-compose up -d
 # Server is now available at https://localhost/mcp (via nginx reverse proxy)
 ```
 
-See **[Installation & Setup](docs/install.md)** for detailed instructions.
+See **[Installation & Setup](docs/install.md)** for detailed Docker deployment instructions.
 
 See **[Features & Tools](docs/features.md)** for the complete feature list, tool groups, and detailed tool descriptions.
 
@@ -52,7 +56,7 @@ The LLM can accomplish tasks like:
 
 ## System Requirements
 
-- Docker and Docker Compose
+- **Docker and Docker Compose** (standalone `docker-compose` tool, not the `docker compose` plugin)
 - PowerScale cluster with OneFS v9.12.0 (only this version has been tested)
 - LLM client supporting MCP protocol (Claude, Cursor, Windsurf, etc.)
 

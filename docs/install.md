@@ -1,15 +1,25 @@
-# Installation and Setup
+# Installation and Setup (Docker)
+
+> **For Kubernetes deployment**, see **[Kubernetes Deployment Guide](kubernetes.md)** instead.
+>
+> This guide covers Docker and Docker Compose deployment only.
 
 ## Quick Start
 
-### 1. Clone the Repository
+### 1. Prerequisites
+
+- **Docker Compose**: This deployment requires the standalone `docker-compose` tool (v1.x), **not** the `docker compose` plugin (v2).
+  - Check your version: `docker-compose --version` (should show `docker-compose` not `Docker Compose`)
+  - Install standalone version from https://docs.docker.com/compose/install/standalone/ if needed
+
+### 2. Clone the Repository
 
 ```bash
 git clone <repo-url>
 cd isi_mcp_demo
 ```
 
-### 2. Run Setup
+### 3. Run Setup
 
 ```bash
 ./setup.sh
