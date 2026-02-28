@@ -5,9 +5,15 @@
 ```
 LLM Client (Claude, GPT, etc.)
     |
-    | MCP Protocol (HTTP/SSE)
+    | HTTPS (TLS 1.2+)
     v
-FastMCP Server (server.py)
+Nginx Reverse Proxy (nginx/nginx.conf)
+    |--- TLS termination, rate limiting, security headers
+    |--- Load balancing (round-robin across N instances)
+    |
+    | HTTP (internal network)
+    v
+FastMCP Server (server.py) — stateless HTTP mode
     |
     |--- VaultManager (modules/vault_manager.py)
     |       |--- Ansible Vault decryption & caching
@@ -79,13 +85,25 @@ Write/mutating operations use Ansible playbooks via the `dellemc.powerscale` col
 
 ## Data Flow
 
-1. LLM client connects to MCP server via HTTP/SSE
-2. LLM invokes an MCP tool with parameters
-3. Tool function in `server.py` is executed
-4. Tool creates a `Cluster` instance from vault credentials
-5. Tool calls domain module methods passing the cluster instance
-6. Domain module uses either:
+1. LLM client connects to nginx at `https://host/mcp` (TLS)
+2. Nginx terminates TLS, applies rate limiting, and proxies to backend
+3. LLM invokes an MCP tool with parameters
+4. Tool function in `server.py` is executed
+5. Tool creates a `Cluster` instance from vault credentials
+6. Tool calls domain module methods passing the cluster instance
+7. Domain module uses either:
    - isilon-sdk API client for read operations, or
    - AnsibleRunner for mutating operations
-7. Result is returned as JSON-serializable data
-8. MCP server sends result back to LLM client
+8. Result is returned as JSON-serializable data
+9. MCP server sends result back through nginx to LLM client
+
+## Horizontal Scaling
+
+The server runs in **stateless HTTP mode** (`stateless_http=True`), allowing multiple instances behind nginx without session affinity:
+
+- **Tool state**: Each instance periodically re-reads `tools.json` from disk (5-second TTL cache). A toggle on one instance writes to the shared file; others pick it up within the TTL.
+- **Cluster selection**: The selected cluster is persisted to `config/cluster_state.json` with the same TTL-based refresh pattern.
+- **File locking**: Both `tools.json` and `cluster_state.json` use `fcntl.flock` to prevent concurrent write corruption.
+- **Playbook audit trail**: Filenames include the container hostname to prevent collisions across instances.
+- **Docker Compose**: Use `docker-compose up --scale isi_mcp=N` — all instances share the bind-mounted `config/` directory.
+- **Kubernetes**: Use HPA or set `replicas: N` — instances share a PVC for config persistence.

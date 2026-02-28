@@ -1,7 +1,10 @@
 import json
+import logging
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
 from modules.ansible.runner import AnsibleRunner
+
+logger = logging.getLogger(__name__)
 
 
 class FilePool:
@@ -28,7 +31,7 @@ class FilePool:
         try:
             result = filepool_api.list_filepool_policies()
         except ApiException as e:
-            print(f"API error: {e}")
+            logger.error("API error: %s", e)
             return {"items": [], "total": 0}
 
         items = [p.to_dict() for p in result.policies] if result.policies else []

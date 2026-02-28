@@ -5,14 +5,14 @@ WORKDIR /app
 # Install system dependencies:
 #   iputils-ping  - for ICMP health checks
 #   sshpass, openssh-client - Ansible connectivity
+#   curl - for Docker HEALTHCHECK
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
         iputils-ping \
         sshpass \
-        less \
-        vim \
-        openssh-client; \
+        openssh-client \
+        curl; \
     rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -34,14 +34,26 @@ RUN SITE="$(python3 -c 'import sysconfig; print(sysconfig.get_path("purelib"))')
         cp pkg_resources_shim.py "$SITE/pkg_resources.py"; \
     fi
 
+# Create non-root user with fixed UID/GID (must match K8s securityContext)
+RUN groupadd -g 1000 mcp && useradd -u 1000 -g mcp -d /app -s /bin/bash mcp
+
 COPY server.py .
 COPY modules modules
 COPY Templates Templates
 COPY tests tests
 COPY config config
 
-# Create playbooks directory for rendered playbooks
-RUN mkdir -p playbooks
+# Create writable directories: playbooks (audit trail) + .ansible (Ansible temp files)
+RUN mkdir -p playbooks .ansible/tmp && chown -R mcp:mcp /app
+
+# Set HOME so Ansible finds ~/.ansible/tmp as writable
+ENV HOME=/app
+
+USER mcp
 
 EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -sf http://localhost:8000/health || exit 1
+
 CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]

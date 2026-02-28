@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: isi-mcp-nginx
+  namespace: isi-mcp
+  labels:
+    app.kubernetes.io/name: isi-mcp
+    app.kubernetes.io/component: nginx
+spec:
+  selector:
+    app: isi-mcp-nginx
+  type: ClusterIP
+  ports:
+    - name: https
+      port: 443
+      targetPort: 443
+      protocol: TCP
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP

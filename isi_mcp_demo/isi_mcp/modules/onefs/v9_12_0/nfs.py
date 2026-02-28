@@ -92,14 +92,10 @@ class Nfs:
 
     def get(self, limit=1000, resume=None):
         protocols_api = isi_sdk.ProtocolsApi(self.cluster.api_client)
-        try:
-            kwargs = {"limit": limit}
-            if resume:
-                kwargs["resume"] = resume
-            result = protocols_api.list_nfs_exports(**kwargs)
-        except ApiException as e:
-            print(f"API error: {e}")
-            return
+        kwargs = {"limit": limit}
+        if resume:
+            kwargs["resume"] = resume
+        result = protocols_api.list_nfs_exports(**kwargs)
 
         items = [e.to_dict() for e in result.exports] if result.exports else []
 

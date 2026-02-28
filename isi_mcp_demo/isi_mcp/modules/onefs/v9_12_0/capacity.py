@@ -1,13 +1,12 @@
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
-from modules.network.utils import pingable
 
 class Capacity:
 
     def __init__(self, cluster):
         self.cluster = cluster
         self.debug = cluster.debug
-        
+
     def get(self):
         stats_api = isi_sdk.StatisticsApi(self.cluster.api_client)
 
@@ -20,16 +19,12 @@ class Capacity:
 
         ]
 
-        try:
-            result = stats_api.get_statistics_current(
-                keys=keys,
-                degraded=False,
-                show_nodes=True,
-                timeout=15
-            )
-        except ApiException as e:
-            print(f"API error: {e}")
-            return
+        result = stats_api.get_statistics_current(
+            keys=keys,
+            degraded=False,
+            show_nodes=True,
+            timeout=15
+        )
 
         stats = {}
         for s in result.stats:

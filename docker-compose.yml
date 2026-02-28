@@ -1,9 +1,22 @@
 version: "3.8"
 services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - isi_mcp
+    networks:
+      - isi_mcp_net
+
   isi_mcp:
     build: isi_mcp_demo/isi_mcp/
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     environment:
       - DEBUG=${DEBUG:-}
       - ENABLE_ALL_TOOLS=${ENABLE_ALL_TOOLS:-}

@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: isi-mcp
     app.kubernetes.io/component: mcp-server
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: isi-mcp
@@ -17,6 +17,12 @@ spec:
         app: isi-mcp
         app.kubernetes.io/name: isi-mcp
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+
       # Copy tools.json from the (read-only) ConfigMap into the writable emptyDir
       # so the server can persist runtime tool enable/disable state.
       initContainers:
@@ -27,6 +33,10 @@ spec:
             - cp
             - /config-source/tools.json
             - /app/config/tools.json
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
           volumeMounts:
             - name: config-source
               mountPath: /config-source
@@ -42,6 +52,12 @@ spec:
             - name: http
               containerPort: 8000
               protocol: TCP
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+              add: [NET_RAW]  # required for ICMP ping health checks
 
           env:
             - name: DEBUG
@@ -78,17 +94,19 @@ spec:
             - name: playbooks
               mountPath: /app/playbooks
 
-          # TCP liveness: restart pod if port 8000 stops responding
+          # HTTP liveness: restart pod if health endpoint stops responding
           livenessProbe:
-            tcpSocket:
+            httpGet:
+              path: /health
               port: 8000
             initialDelaySeconds: 60
             periodSeconds: 30
             failureThreshold: 3
 
-          # TCP readiness: wait until uvicorn is bound before routing traffic
+          # HTTP readiness: wait until server is ready before routing traffic
           readinessProbe:
-            tcpSocket:
+            httpGet:
+              path: /health
               port: 8000
             initialDelaySeconds: 30
             periodSeconds: 10

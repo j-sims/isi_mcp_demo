@@ -42,18 +42,14 @@ class Quotas:
 
     def get(self, qpath=None, limit=1000, resume=None):
         quota_api = isi_sdk.QuotaApi(self.cluster.api_client)
-        try:
-            # When resume is provided, only pass resume (API doesn't allow other params)
-            if resume:
-                kwargs = {"resume": resume}
-            else:
-                kwargs = {"limit": limit}
-                if qpath:
-                    kwargs["path"] = qpath
-            quotas = quota_api.list_quota_quotas(**kwargs)
-        except ApiException as e:
-            print(f"API error: {e}")
-            return
+        # When resume is provided, only pass resume (API doesn't allow other params)
+        if resume:
+            kwargs = {"resume": resume}
+        else:
+            kwargs = {"limit": limit}
+            if qpath:
+                kwargs["path"] = qpath
+        quotas = quota_api.list_quota_quotas(**kwargs)
 
         items = [q.to_dict() for q in quotas.quotas] if quotas.quotas else []
 

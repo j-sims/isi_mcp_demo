@@ -11,11 +11,7 @@ class SyncIQ:
 
     def get(self):
         sync_api = isi_sdk.SyncApi(self.cluster.api_client)
-        try:
-            result = sync_api.list_sync_policies()
-        except ApiException as e:
-            print(f"API error: {e}")
-            return
+        result = sync_api.list_sync_policies()
 
         items = [p.to_dict() for p in result.policies] if result.policies else []
 

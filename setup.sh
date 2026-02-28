@@ -195,6 +195,18 @@ VAULT_EOF
 fi
 
 # ---------------------------------------------------------------------------
+# Generate TLS certificates for nginx (if not already present)
+# ---------------------------------------------------------------------------
+CERT_SCRIPT="${SCRIPT_DIR}/nginx/generate-certs.sh"
+if [[ -x "$CERT_SCRIPT" ]]; then
+    info "Checking TLS certificates..."
+    "$CERT_SCRIPT"
+else
+    warn "nginx/generate-certs.sh not found — skipping TLS cert generation."
+    warn "Run nginx/generate-certs.sh manually before starting with HTTPS."
+fi
+
+# ---------------------------------------------------------------------------
 # Build the Docker image (required so Ansible is available for encryption)
 # ---------------------------------------------------------------------------
 info "Building Docker image..."
@@ -239,16 +251,19 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 ok "Setup complete! Connecting to: ${VAULT_HOST}:${CLUSTER_PORT} as ${CLUSTER_USER}"
 echo ""
-info "MCP server will be available at: http://localhost:8000"
+info "MCP server will be available at: https://localhost/mcp (via nginx)"
+info "  Direct backend (no TLS):      http://localhost:8000 (not exposed by default)"
 echo ""
 warn "IMPORTANT: Save your vault password in a secure location!"
 warn "You will need it to restart the server later."
 echo ""
 info "Connect your LLM client:"
-echo "  Claude Code: claude mcp add --transport http powerscale http://localhost:8000/mcp"
+echo "  Claude Code: claude mcp add --transport http powerscale https://localhost/mcp"
 echo "  Claude Desktop: Add to claude_desktop_config.json:"
-echo '    { "mcpServers": { "powerscale": { "url": "http://localhost:8000/mcp" } } }'
-echo "  Cursor/Windsurf SSE endpoint: http://localhost:8000/sse"
+echo '    { "mcpServers": { "powerscale": { "url": "https://localhost/mcp" } } }'
+echo "  Cursor/Windsurf SSE endpoint: https://localhost/sse"
+echo ""
+warn "Note: Self-signed certs require clients to accept untrusted certificates."
 echo ""
 info "To restart the server later (requires vault password):"
 echo "  export VAULT_PASSWORD=\$(read -s -p 'Enter your password: ' pwd && echo \$pwd)"

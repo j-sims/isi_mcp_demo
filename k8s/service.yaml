@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: isi-mcp
+  name: isi-mcp-backend
   namespace: isi-mcp
   labels:
     app.kubernetes.io/name: isi-mcp

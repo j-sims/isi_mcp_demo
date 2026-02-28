@@ -7,16 +7,21 @@ with detailed instructions for local development using **minikube**.
 
 ## Overview
 
-The MCP server runs as a single-container Deployment. Key resources:
+The MCP server runs as a multi-replica Deployment behind an nginx reverse proxy. Key resources:
 
 | Resource | Type | Purpose |
 |---|---|---|
 | `isi-mcp` | Namespace | Isolates all server resources |
 | `isi-mcp-tools` | ConfigMap | Baseline `tools.json` tool configuration |
+| `isi-mcp-nginx` | ConfigMap | Nginx reverse proxy configuration |
 | `isi-mcp-credentials` | Secret | Ansible Vault password (`VAULT_PASSWORD`) |
 | `isi-mcp-vault` | Secret | Encrypted `vault.yml` cluster credentials |
-| `isi-mcp` | Deployment | The MCP server pod |
-| `isi-mcp` | Service | ClusterIP on port 8000 |
+| `isi-mcp-tls` | Secret (TLS) | TLS certificate and key for nginx |
+| `isi-mcp` | Deployment | MCP server pods (2 replicas default) |
+| `isi-mcp-nginx` | Deployment | Nginx reverse proxy pod |
+| `isi-mcp-backend` | Service | ClusterIP on port 8000 (internal) |
+| `isi-mcp-nginx` | Service | ClusterIP on port 443 (external-facing) |
+| `isi-mcp-hpa` | HPA | Auto-scales MCP pods (1-5 based on CPU) |
 
 ### Volume Design
 
@@ -83,10 +88,10 @@ The script:
 ### 3. Connect
 
 ```bash
-kubectl port-forward -n isi-mcp svc/isi-mcp 8000:8000
+kubectl port-forward -n isi-mcp svc/isi-mcp-nginx 443:443
 ```
 
-The MCP server is now available at `http://localhost:8000`. Connect your MCP client
+The MCP server is now available at `https://localhost/mcp` (via nginx). Connect your MCP client
 (Claude Desktop, Cursor, etc.) to this endpoint.
 
 ### 4. Verify
@@ -149,7 +154,7 @@ It does not stop minikube itself. To stop minikube: `minikube stop`.
 
 ## Production Deployment
 
-For production (non-minikube) deployments, two changes are required:
+For production (non-minikube) deployments, the following changes are required:
 
 ### 1. Push the image to a registry
 
@@ -188,7 +193,28 @@ kubectl create secret generic isi-mcp-vault \
 
 Or use Helm, ArgoCD, Vault Agent Injector, External Secrets Operator, etc.
 
-### 3. Persistent tool state (optional)
+### 3. TLS certificates
+
+Create a TLS secret for nginx using CA-signed certificates:
+
+```bash
+kubectl create secret tls isi-mcp-tls \
+  --namespace=isi-mcp \
+  --cert=path/to/tls.crt \
+  --key=path/to/tls.key
+```
+
+For development with self-signed certs:
+
+```bash
+./nginx/generate-certs.sh
+kubectl create secret tls isi-mcp-tls \
+  --namespace=isi-mcp \
+  --cert=nginx/certs/server.crt \
+  --key=nginx/certs/server.key
+```
+
+### 5. Persistent tool state (optional)
 
 If you want tool enable/disable state to persist across pod deletions, replace the
 `emptyDir` config volume with a `PersistentVolumeClaim`:
@@ -233,7 +259,23 @@ initContainers:
         fi
 ```
 
-### 4. Playbook audit trail persistence (optional)
+### 6. Scaling
+
+The deployment defaults to 2 replicas with an HPA that scales from 1 to 5 based on CPU utilization. The MCP server runs in stateless HTTP mode, so no session affinity is required.
+
+To manually set replicas:
+
+```bash
+kubectl scale deployment isi-mcp -n isi-mcp --replicas=4
+```
+
+When running multiple replicas:
+- Tool toggles propagate across instances within 5 seconds (file-based state with TTL cache)
+- Cluster selection changes propagate similarly via `cluster_state.json`
+- Playbook filenames include the pod hostname to prevent audit trail collisions
+- For durable shared state across pods, use a `ReadWriteMany` PVC for the config volume
+
+### 7. Playbook audit trail persistence (optional)
 
 Ansible playbooks rendered during write operations are stored in `/app/playbooks`.
 By default this is an `emptyDir` (lost on pod deletion). For a durable audit trail,
@@ -262,34 +304,45 @@ use a PVC:
 ## Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Namespace: isi-mcp                                     │
-│                                                         │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │  Deployment: isi-mcp                             │  │
-│  │                                                  │  │
-│  │  initContainer: init-config                      │  │
-│  │    copies ConfigMap → emptyDir(/app/config)      │  │
-│  │                                                  │  │
-│  │  Container: isi-mcp                              │  │
-│  │    image: isi-mcp-server:latest                  │  │
-│  │    port: 8000                                    │  │
-│  │    /app/config     ← emptyDir (writable)         │  │
-│  │    /app/vault      ← Secret (read-only)          │  │
-│  │    /app/playbooks  ← emptyDir (writable)         │  │
-│  └──────────────────────────────────────────────────┘  │
-│                          │                              │
-│  ┌───────────────────────┤                              │
-│  │  Service: isi-mcp     │                              │
-│  │  ClusterIP:8000       │                              │
-│  └───────────────────────┘                              │
-│                                                         │
-│  ConfigMap: isi-mcp-tools   (baseline tools.json)       │
-│  Secret: isi-mcp-credentials (VAULT_PASSWORD)           │
-│  Secret: isi-mcp-vault       (vault.yml)                │
-└─────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│  Namespace: isi-mcp                                            │
+│                                                                │
+│  ┌──────────────────────────────────┐                          │
+│  │  Deployment: isi-mcp-nginx      │                          │
+│  │  Container: nginx:alpine        │                          │
+│  │    ports: 443, 80               │                          │
+│  │    TLS termination              │                          │
+│  │    Rate limiting                │                          │
+│  │    Security headers             │                          │
+│  └───────────────┬──────────────────┘                          │
+│                  │                                              │
+│  ┌───────────────┤ Service: isi-mcp-backend (ClusterIP:8000)   │
+│  │               │                                              │
+│  │  ┌────────────▼───────────────────────────────────────────┐ │
+│  │  │  Deployment: isi-mcp (replicas: 2, HPA: 1-5)          │ │
+│  │  │                                                        │ │
+│  │  │  initContainer: init-config                            │ │
+│  │  │    copies ConfigMap → emptyDir(/app/config)            │ │
+│  │  │                                                        │ │
+│  │  │  Container: isi-mcp (stateless HTTP mode)              │ │
+│  │  │    port: 8000                                          │ │
+│  │  │    /app/config     ← emptyDir (writable)               │ │
+│  │  │    /app/vault      ← Secret (read-only)                │ │
+│  │  │    /app/playbooks  ← emptyDir (writable)               │ │
+│  │  └────────────────────────────────────────────────────────┘ │
+│  │                                                              │
+│  │  Service: isi-mcp-nginx (ClusterIP:443)                     │
+│  └──────────────────────────────────────────────────────────    │
+│                                                                │
+│  ConfigMap: isi-mcp-tools   (baseline tools.json)              │
+│  ConfigMap: isi-mcp-nginx   (nginx.conf)                       │
+│  Secret: isi-mcp-credentials (VAULT_PASSWORD)                  │
+│  Secret: isi-mcp-vault       (vault.yml)                       │
+│  Secret: isi-mcp-tls         (TLS cert+key)                    │
+│  HPA: isi-mcp-hpa            (CPU-based autoscaling)           │
+└────────────────────────────────────────────────────────────────┘
              │
-             │ kubectl port-forward :8000
+             │ kubectl port-forward svc/isi-mcp-nginx 443:443
              │
           MCP Client (Claude Desktop, Cursor, etc.)
              │
@@ -347,7 +400,7 @@ kubectl logs -n isi-mcp deployment/isi-mcp -f
 
 ```bash
 # In a separate terminal, start port-forward
-kubectl port-forward -n isi-mcp svc/isi-mcp 8000:8000
+kubectl port-forward -n isi-mcp svc/isi-mcp-nginx 443:443
 
 # Run the K8s test suite
 ./runtests-k8s.sh

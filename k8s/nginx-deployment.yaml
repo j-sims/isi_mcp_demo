@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: isi-mcp-nginx
+  namespace: isi-mcp
+  labels:
+    app.kubernetes.io/name: isi-mcp
+    app.kubernetes.io/component: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: isi-mcp-nginx
+  template:
+    metadata:
+      labels:
+        app: isi-mcp-nginx
+        app.kubernetes.io/name: isi-mcp
+        app.kubernetes.io/component: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - name: https
+              containerPort: 443
+              protocol: TCP
+            - name: http
+              containerPort: 80
+              protocol: TCP
+
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: nginx.conf
+              readOnly: true
+            - name: tls-certs
+              mountPath: /etc/nginx/certs
+              readOnly: true
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 443
+              scheme: HTTPS
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 443
+              scheme: HTTPS
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
+
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: isi-mcp-nginx
+        - name: tls-certs
+          secret:
+            secretName: isi-mcp-tls
+            # Create this secret with:
+            # kubectl -n isi-mcp create secret tls isi-mcp-tls \
+            #   --cert=nginx/certs/server.crt --key=nginx/certs/server.key

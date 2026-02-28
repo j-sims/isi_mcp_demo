@@ -1,5 +1,7 @@
+import logging
 import subprocess
-import shlex
+
+logger = logging.getLogger(__name__)
 
 def pingable(host: str, debug=False, timeout=1) -> bool:
     """
@@ -13,16 +15,13 @@ def pingable(host: str, debug=False, timeout=1) -> bool:
     # Use ping with timeout (-W timeout in milliseconds)
     timeout_ms = int(timeout * 1000)
     cmd = ["ping", "-c", "1", "-W", str(timeout_ms), host]
-    print(f"Debug Mode: {debug}")
     try:
         completed = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        print(f"Return Code: {completed.returncode}")
+        logger.debug("ping %s → rc=%d", host, completed.returncode)
         return completed.returncode == 0
     except FileNotFoundError:
-        if debug:
-            print("File Not Found Error")
+        logger.debug("ping command not found")
         return False
     except Exception as err:
-        if debug:
-            print(f"Error: {err}")
+        logger.debug("ping %s failed: %s", host, err)
         return False

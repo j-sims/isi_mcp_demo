@@ -1,5 +1,8 @@
+import logging
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
+
+logger = logging.getLogger(__name__)
 
 
 class DataMover:
@@ -26,7 +29,7 @@ class DataMover:
                 kwargs["resume"] = resume
             result = datamover_api.list_datamover_policies(**kwargs)
         except ApiException as e:
-            print(f"API error: {e}")
+            logger.error("API error: %s", e)
             return {"items": [], "resume": None}
 
         items = [p.to_dict() for p in result.policies] if result.policies else []
@@ -178,7 +181,7 @@ class DataMover:
                 kwargs["resume"] = resume
             result = datamover_api.list_datamover_accounts(**kwargs)
         except ApiException as e:
-            print(f"API error: {e}")
+            logger.error("API error: %s", e)
             return {"items": [], "resume": None}
 
         items = [a.to_dict() for a in result.accounts] if result.accounts else []
@@ -320,7 +323,7 @@ class DataMover:
                 kwargs["resume"] = resume
             result = datamover_api.list_datamover_base_policies(**kwargs)
         except ApiException as e:
-            print(f"API error: {e}")
+            logger.error("API error: %s", e)
             return {"items": [], "resume": None}
 
         items = [bp.to_dict() for bp in result.policies] if result.policies else []

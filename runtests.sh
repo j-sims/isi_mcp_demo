@@ -270,9 +270,12 @@ if [[ "${RUN_PART2}" == true ]]; then
     echo ""
 
     # Write the test override file to redirect playbook artifacts to the output dir
+    # and expose port 8000 directly (nginx is not used for testing)
     cat > "${OVERRIDE_FILE}" << EOF
 services:
   isi_mcp:
+    ports:
+      - "8000:8000"
     volumes:
       - ${TEST_OUTPUT_DIR}:/app/playbooks
 EOF
@@ -368,4 +371,4 @@ echo ""
 > "${OVERRIDE_FILE}"
 
 echo "Removing the venv environment"
-rm -rf ./venv
+rm -rf "${VENV_DIR}"

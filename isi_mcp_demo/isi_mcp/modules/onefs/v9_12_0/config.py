@@ -10,11 +10,7 @@ class Config:
     def get(self):
         cluster_api = isi_sdk.ClusterApi(self.cluster.api_client)
 
-        try:
-            result = cluster_api.get_cluster_config()
-        except ApiException as e:
-            print(f"API error: {e}")
-            return {"error": str(e)}
+        result = cluster_api.get_cluster_config()
 
         config = result.to_dict()
 

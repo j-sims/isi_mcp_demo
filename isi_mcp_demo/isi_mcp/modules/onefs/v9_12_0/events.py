@@ -1,5 +1,8 @@
+import logging
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
+
+logger = logging.getLogger(__name__)
 
 
 class Events:
@@ -62,7 +65,7 @@ class Events:
                     kwargs["event_count"] = event_count
             result = event_api.get_event_eventgroup_occurrences(**kwargs)
         except ApiException as e:
-            print(f"API error: {e}")
+            logger.error("API error: %s", e)
             return {"items": [], "resume": None, "error": str(e)}
 
         items = [eg.to_dict() for eg in result.eventgroups] if result.eventgroups else []

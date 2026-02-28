@@ -1,7 +1,10 @@
+import logging
 import os
 import urllib3
 
 import isilon_sdk.v9_12_0 as isi_sdk
+
+logger = logging.getLogger(__name__)
 
 class Cluster:
 
@@ -17,9 +20,8 @@ class Cluster:
 
         self.debug = False
         if os.environ.get(debug_env_var):
-            print("DEBUG Flag Detected, setting DEBUG Mode")
+            logger.debug("DEBUG flag detected, enabling debug mode")
             self.debug = True
-            print(os.environ)
 
         self.port = int(port or os.environ.get("PORT", 0)) or None
         self.host = host or os.environ.get("HOST")
@@ -31,18 +33,17 @@ class Cluster:
         self.verify_ssl = verify_ssl
 
         if not self.host or not self.port or not self.username or not self.password:
-            if self.debug:
-                print("One or more required environment variables are missing:")
-                print(f"HOST={self.host}, PORT={self.port}, USERNAME={self.username}")
+            logger.debug(
+                "One or more required config values are missing: "
+                "HOST=%s, PORT=%s, USERNAME=%s",
+                self.host, self.port, self.username,
+            )
 
         self.url = f"{self.host}:{self.port}" if self.host and self.port else None
 
         if self.debug:
-            print(f"PORT: {self.port}")
-            print(f"HOST: {self.host}")
-            print(f"USERNAME: {self.username}")
-            print(f"VERIFY_SSL: {self.verify_ssl}")
-            print(f"URL: {self.url}")
+            logger.debug("HOST=%s PORT=%s USERNAME=%s VERIFY_SSL=%s URL=%s",
+                         self.host, self.port, self.username, self.verify_ssl, self.url)
 
         # disable urllib3 warnings if SSL verification is turned off
         if not self.verify_ssl:
@@ -69,7 +70,8 @@ class Cluster:
         try:
             vm = VaultManager()
             creds = vm.get_selected_credentials()
-        except Exception:
+        except Exception as exc:
+            logger.warning("Failed to load vault credentials: %s — falling back to env vars", exc)
             creds = None
 
         if creds:
@@ -83,4 +85,3 @@ class Cluster:
             )
         # Fallback: use env vars (original behavior)
         return cls(debug_env_var=debug_env_var)
-

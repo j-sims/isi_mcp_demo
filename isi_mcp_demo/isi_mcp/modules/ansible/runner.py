@@ -1,9 +1,13 @@
+import logging
 import os
+import socket
 import uuid
 import ansible_runner
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class AnsibleRunner:
@@ -84,18 +88,18 @@ class AnsibleRunner:
         template = self.jinja_env.get_template(template_name)
         rendered = template.render(**all_vars)
 
-        # Generate a unique filename for audit trail
+        # Generate a unique filename for audit trail (includes hostname for multi-instance)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         run_id = uuid.uuid4().hex[:8]
+        hostname = socket.gethostname()[:8]
         base_name = template_name.replace(".yml.j2", "")
-        playbook_filename = f"{base_name}_{timestamp}_{run_id}.yml"
+        playbook_filename = f"{base_name}_{timestamp}_{hostname}_{run_id}.yml"
         playbook_path = self.playbooks_dir / playbook_filename
 
         playbook_path.write_text(rendered)
 
         if self.debug:
-            print(f"Rendered playbook: {playbook_path}")
-            print(rendered)
+            logger.debug("Rendered playbook: %s\n%s", playbook_path, rendered)
 
         return playbook_path
 
@@ -152,7 +156,7 @@ class AnsibleRunner:
         result["task_results"] = task_results
 
         if self.debug:
-            print(f"Ansible runner status: {runner.status}, rc: {runner.rc}")
+            logger.debug("Ansible runner status: %s, rc: %s", runner.status, runner.rc)
 
         return result
 

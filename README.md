@@ -15,6 +15,7 @@ The server ships in **read-only mode by default** — all write tools are disabl
 - **[Architecture](docs/architecture.md)** — System design, data flow, and component overview
 - **[Client Integration](docs/clients.md)** — Connecting Claude Desktop, Claude Code, Cursor, and other LLM clients
 - **[Security](docs/security.md)** — Credential management, SSL/TLS, and production best practices
+- **[Kubernetes Deployment](docs/kubernetes.md)** — Deploying on Kubernetes with minikube or production clusters
 
 ## Quick Start
 
@@ -24,11 +25,11 @@ git clone <repo-url>
 cd isi_mcp_demo
 ./setup.sh
 
-# Start the server
+# Start the server (generates TLS certs, builds image, starts nginx + MCP server)
 export VAULT_PASSWORD=$(read -s -p 'Enter vault password: ' pwd && echo $pwd)
 docker-compose up -d
 
-# Server is now available at http://localhost:8000
+# Server is now available at https://localhost/mcp (via nginx reverse proxy)
 ```
 
 See **[Installation & Setup](docs/install.md)** for detailed instructions.

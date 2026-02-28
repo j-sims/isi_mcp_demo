@@ -11,14 +11,10 @@ class S3:
 
     def get(self, limit=1000, resume=None):
         protocols_api = isi_sdk.ProtocolsApi(self.cluster.api_client)
-        try:
-            kwargs = {"limit": limit}
-            if resume:
-                kwargs["resume"] = resume
-            result = protocols_api.list_s3_buckets(**kwargs)
-        except ApiException as e:
-            print(f"API error: {e}")
-            return
+        kwargs = {"limit": limit}
+        if resume:
+            kwargs["resume"] = resume
+        result = protocols_api.list_s3_buckets(**kwargs)
 
         items = [b.to_dict() for b in result.buckets] if result.buckets else []
 

@@ -8,11 +8,16 @@ resources:
   - configmap.yaml
   - deployment.yaml
   - service.yaml
+  - nginx-configmap.yaml
+  - nginx-deployment.yaml
+  - nginx-service.yaml
+  - hpa.yaml
 
 # The following secrets are created imperatively by deploy-minikube.sh
 # and are NOT managed by kustomize:
 #   isi-mcp-credentials  (vault-password key)
 #   isi-mcp-vault        (vault.yml key)
+#   isi-mcp-tls          (TLS cert+key for nginx)
 #
 # Run `kubectl apply -k k8s/` only AFTER running deploy-minikube.sh,
 # which creates the required secrets first.

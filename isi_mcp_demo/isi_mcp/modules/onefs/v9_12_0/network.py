@@ -1,5 +1,8 @@
+import logging
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
+
+logger = logging.getLogger(__name__)
 
 
 class Network:
@@ -15,7 +18,7 @@ class Network:
         try:
             result = network_api.list_network_groupnets()
         except ApiException as e:
-            print(f"API error: {e}")
+            logger.error("API error: %s", e)
             return {"error": str(e)}
 
         items = []
@@ -41,7 +44,7 @@ class Network:
                 kwargs["groupnet"] = groupnet
             result = network_api.get_network_subnets(**kwargs)
         except ApiException as e:
-            print(f"API error: {e}")
+            logger.error("API error: %s", e)
             return {"error": str(e)}
 
         items = []
@@ -85,7 +88,7 @@ class Network:
                 kwargs["access_zone"] = access_zone
             result = network_api.get_network_pools(**kwargs)
         except ApiException as e:
-            print(f"API error: {e}")
+            logger.error("API error: %s", e)
             return {"error": str(e)}
 
         items = []
@@ -135,7 +138,7 @@ class Network:
                 kwargs["lnn"] = [lnn]
             result = network_api.get_network_interfaces(**kwargs)
         except ApiException as e:
-            print(f"API error: {e}")
+            logger.error("API error: %s", e)
             return {"error": str(e)}
 
         items = []
@@ -167,7 +170,7 @@ class Network:
         try:
             result = network_api.get_network_external()
         except ApiException as e:
-            print(f"API error: {e}")
+            logger.error("API error: %s", e)
             return {"error": str(e)}
 
         d = result.to_dict() if hasattr(result, "to_dict") else {}
@@ -194,7 +197,7 @@ class Network:
         try:
             result = network_api.get_network_dnscache()
         except ApiException as e:
-            print(f"API error: {e}")
+            logger.error("API error: %s", e)
             return {"error": str(e)}
 
         d = result.to_dict() if hasattr(result, "to_dict") else {}
@@ -221,7 +224,7 @@ class Network:
         try:
             result = zones_api.list_zones()
         except ApiException as e:
-            print(f"API error: {e}")
+            logger.error("API error: %s", e)
             return {"error": str(e)}
 
         items = []
@@ -272,7 +275,7 @@ class Network:
                     "smb_shares_visible": d.get("smb_shares_visible"),
                 })
         except ApiException as e:
-            print(f"API error fetching zones: {e}")
+            logger.error("API error fetching zones: %s", e)
             zones_by_groupnet = {}
 
         # 2. Fetch SMB shares per zone name
@@ -290,7 +293,7 @@ class Network:
                     })
                 return shares
             except ApiException as e:
-                print(f"API error fetching SMB shares for zone '{zone_name}': {e}")
+                logger.error("API error fetching SMB shares for zone '%s': %s", zone_name, e)
                 return []
 
         # Attach SMB shares to each zone
@@ -355,7 +358,7 @@ class Network:
                                     "sc_ttl": pd.get("sc_ttl"),
                                 })
                         except ApiException as e:
-                            print(f"API error fetching pools for {gn_name}/{sn_name}: {e}")
+                            logger.error("API error fetching pools for %s/%s: %s", gn_name, sn_name, e)
                             pools_out = [{"error": str(e)}]
 
                         subnets_out.append({
@@ -372,7 +375,7 @@ class Network:
                             "pools": pools_out,
                         })
                 except ApiException as e:
-                    print(f"API error fetching subnets for groupnet '{gn_name}': {e}")
+                    logger.error("API error fetching subnets for groupnet '%s': %s", gn_name, e)
                     subnets_out = [{"error": str(e)}]
 
                 groupnets_out.append({
@@ -385,7 +388,7 @@ class Network:
                     "zones": zones_by_groupnet.get(gn_name, []),
                 })
         except ApiException as e:
-            print(f"API error fetching groupnets: {e}")
+            logger.error("API error fetching groupnets: %s", e)
             return {"error": str(e), "groupnets": []}
 
         return {"groupnets": groupnets_out}

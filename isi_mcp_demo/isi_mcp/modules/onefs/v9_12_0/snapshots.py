@@ -1,6 +1,9 @@
+import logging
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
 from modules.ansible.runner import AnsibleRunner
+
+logger = logging.getLogger(__name__)
 
 
 class Snapshots:
@@ -27,7 +30,7 @@ class Snapshots:
                 kwargs["resume"] = resume
             result = snapshot_api.list_snapshot_snapshots(**kwargs)
         except ApiException as e:
-            print(f"API error: {e}")
+            logger.error("API error: %s", e)
             return {"items": [], "resume": None}
 
         items = [s.to_dict() for s in result.snapshots] if result.snapshots else []
@@ -109,7 +112,7 @@ class Snapshots:
                 kwargs["schedule"] = schedule
             result = snapshot_api.get_snapshot_pending(**kwargs)
         except ApiException as e:
-            print(f"API error: {e}")
+            logger.error("API error: %s", e)
             return {"items": [], "resume": None, "has_more": False}
 
         items = [p.to_dict() for p in result.pending] if result.pending else []

@@ -26,11 +26,15 @@ from modules.network.utils import pingable
 # ---------------------------------------------------------------------------
 # Test Cluster Configuration
 # ---------------------------------------------------------------------------
-TEST_CLUSTER_HOST = os.getenv("TEST_CLUSTER_HOST", "172.16.10.10")
-TEST_CLUSTER_PORT = os.getenv("TEST_CLUSTER_PORT", 8080)
-TEST_CLUSTER_USERNAME = os.getenv("TEST_CLUSTER_USERNAME", "root")
-TEST_CLUSTER_PASSWORD = os.getenv("TEST_CLUSTER_PASSWORD", "a")
+TEST_CLUSTER_HOST = os.getenv("TEST_CLUSTER_HOST", "")
+TEST_CLUSTER_PORT = os.getenv("TEST_CLUSTER_PORT", "8080")
+TEST_CLUSTER_USERNAME = os.getenv("TEST_CLUSTER_USERNAME", "")
+TEST_CLUSTER_PASSWORD = os.getenv("TEST_CLUSTER_PASSWORD", "")
 TEST_CLUSTER_VERIFY_SSL = os.getenv("TEST_CLUSTER_VERIFY_SSL", "false").lower() == "true"
+
+_CLUSTER_CONFIGURED = bool(
+    TEST_CLUSTER_HOST and TEST_CLUSTER_USERNAME and TEST_CLUSTER_PASSWORD
+)
 
 
 # ---------------------------------------------------------------------------
@@ -40,15 +44,24 @@ TEST_CLUSTER_VERIFY_SSL = os.getenv("TEST_CLUSTER_VERIFY_SSL", "false").lower() 
 @pytest.fixture(scope="session")
 def cluster():
     """Create a single Cluster instance for all module tests (uses vault/env)."""
+    if not _CLUSTER_CONFIGURED:
+        pytest.skip("Test cluster credentials not configured.")
     return Cluster()
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def validate_test_environment():
     """
     Verify test cluster is accessible and enable all tools for testing.
-    Skips all tests if cluster is unreachable.
+    Skips tests if cluster credentials are missing or cluster is unreachable.
+    NOT autouse — only tests that need a real cluster should request this fixture.
     """
+    if not _CLUSTER_CONFIGURED:
+        pytest.skip(
+            "Test cluster credentials not configured. Set TEST_CLUSTER_HOST, "
+            "TEST_CLUSTER_USERNAME, and TEST_CLUSTER_PASSWORD environment variables."
+        )
+
     host_for_ping = TEST_CLUSTER_HOST
     try:
         # Try to ping the cluster
@@ -81,6 +94,8 @@ def test_cluster_direct():
     Create a direct Cluster instance for Phase 1+ tests.
     Uses explicit test cluster configuration (not vault).
     """
+    if not _CLUSTER_CONFIGURED:
+        pytest.skip("Test cluster credentials not configured.")
     return Cluster(
         host=f"https://{TEST_CLUSTER_HOST}",
         port=TEST_CLUSTER_PORT,

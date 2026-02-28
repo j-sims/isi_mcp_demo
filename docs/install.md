@@ -35,13 +35,13 @@ The script prompts for your cluster host, credentials, and a vault encryption pa
 
 By default, `setup.sh` starts the MCP server in the background. Use `--nodetach` to run in foreground instead.
 
-The MCP server will be available at `http://localhost:8000`.
+The setup script also generates self-signed TLS certificates (in `nginx/certs/`) for the nginx reverse proxy. The MCP server will be available at `https://localhost/mcp` via nginx.
 
 **Optionally set debug mode** by exporting `DEBUG=1` before running setup.
 
 ## Running the Server
 
-After initial setup, you can start, stop, and restart the server as needed.
+After initial setup, you can start, stop, and restart the server as needed. The stack includes an nginx reverse proxy that provides TLS termination, rate limiting, and security headers.
 
 **Starting the server in the background:**
 
@@ -59,10 +59,20 @@ docker-compose up
 
 Press `Ctrl+C` to stop.
 
+**Scaling to multiple instances:**
+
+```bash
+export VAULT_PASSWORD=$(read -s -p 'Enter your password: ' pwd && echo $pwd)
+docker-compose up -d --scale isi_mcp=3
+```
+
+Nginx load-balances across all instances using Docker DNS round-robin. The MCP server runs in stateless HTTP mode, so no sticky sessions are required.
+
 **Viewing logs:**
 
 ```bash
 docker-compose logs -f isi_mcp
+docker-compose logs -f nginx
 ```
 
 **Restarting the server:**
@@ -77,6 +87,26 @@ docker-compose restart
 ```bash
 docker-compose down
 ```
+
+## TLS Certificates
+
+The setup script generates self-signed certificates automatically. To regenerate:
+
+```bash
+rm -rf nginx/certs/
+./nginx/generate-certs.sh
+docker-compose restart nginx
+```
+
+For production, replace `nginx/certs/server.crt` and `nginx/certs/server.key` with certificates from your CA. The certificate files are gitignored.
+
+## Endpoints
+
+| Endpoint | Protocol | Description |
+|---|---|---|
+| `https://localhost/mcp` | Streamable HTTP | Primary MCP endpoint (via nginx) |
+| `https://localhost/sse` | SSE | Legacy SSE endpoint (via nginx) |
+| `https://localhost/health` | HTTP GET | Health check (returns JSON) |
 
 ## Managing Vault Credentials
 

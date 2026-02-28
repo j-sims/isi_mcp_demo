@@ -1,10 +1,13 @@
+import fcntl
 import json
+import logging
 import os
 import re
 import time
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 from fastmcp import FastMCP
+from modules.logging_config import configure_logging
 from modules.onefs.v9_12_0.cluster import Cluster
 from modules.onefs.v9_12_0.health import Health
 from modules.onefs.v9_12_0.capacity import Capacity
@@ -31,10 +34,8 @@ from modules.onefs.v9_12_0.zones_summary import ZonesSummary
 from modules.network.utils import pingable
 from modules.ansible.vault_manager import VaultManager
 
-import urllib3
-from pprint import pprint
-
-cluster = Cluster.from_vault()
+configure_logging()
+logger = logging.getLogger(__name__)
 
 
 mcp = FastMCP(
@@ -58,9 +59,13 @@ def _load_tools_config() -> dict:
 
 
 def _save_tools_config(tools: dict) -> None:
-    """Persist tools.json back to disk."""
+    """Persist tools.json back to disk with file locking for multi-instance safety."""
     with open(TOOLS_CONFIG_PATH, "w") as f:
-        json.dump(tools, f, indent=2)
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            json.dump(tools, f, indent=2)
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
 
 
 def _update_tool_enabled(name: str, enabled: bool) -> None:
@@ -121,12 +126,56 @@ def _resolve_names_to_tools(names: List[str]) -> List[str]:
     return result
 
 
+# ---------------------------------------------------------------------------
+# Tool state refresh — sync in-process state with tools.json (for scaling)
+# ---------------------------------------------------------------------------
+_TOOL_STATE_TTL = 5  # seconds between re-reads of tools.json
+_tool_state_last_refresh: float = 0.0
+
+
+def _refresh_tool_state() -> None:
+    """Re-read tools.json and sync mcp tool registration if it changed on disk.
+
+    Uses a TTL cache to avoid reading the file on every request. When running
+    multiple instances behind a load balancer, a toggle on one instance writes
+    to the shared tools.json; other instances pick up the change within the TTL.
+    """
+    global _tool_state_last_refresh
+    now = time.monotonic()
+    if now - _tool_state_last_refresh < _TOOL_STATE_TTL:
+        return
+    _tool_state_last_refresh = now
+
+    if os.environ.get("ENABLE_ALL_TOOLS", "").lower() == "true":
+        return
+
+    config = _load_tools_config()
+    for name, meta in config.items():
+        if name in MANAGEMENT_TOOLS:
+            continue
+        should_be_enabled = meta.get("enabled", True)
+        is_enabled = name in mcp._tool_manager._tools
+
+        if should_be_enabled and not is_enabled and name in _disabled_tools:
+            # Re-enable: tool was enabled on disk but disabled in this process
+            tool_obj = _disabled_tools.pop(name)
+            mcp._tool_manager.add_tool(tool_obj)
+            logger.debug("Refresh: re-enabled tool %s", name)
+        elif not should_be_enabled and is_enabled:
+            # Disable: tool was disabled on disk but enabled in this process
+            _disabled_tools[name] = mcp._tool_manager._tools[name]
+            mcp._tool_manager.remove_tool(name)
+            logger.debug("Refresh: disabled tool %s", name)
+
+
 def _get_reachable_cluster() -> Cluster:
     """Create a cluster from vault and verify network reachability via ping.
 
     Raises RuntimeError if the cluster host cannot be reached.
     This should be used by all domain tools instead of Cluster.from_vault() directly.
+    Also refreshes tool state from disk for multi-instance consistency.
     """
+    _refresh_tool_state()
     c = Cluster.from_vault()
     host_for_ping = re.sub(r'^https?://', '', c.host) if c.host else None
     if not host_for_ping:
@@ -213,7 +262,7 @@ def powerscale_check_health() -> dict:
         return health.check()
 
     except Exception as e:
-        return (f"Error {e}")
+        return {"error": str(e)}
 
 @mcp.tool()
 def powerscale_capacity() -> dict:
@@ -254,7 +303,7 @@ def powerscale_capacity() -> dict:
         return capacity.get()
 
     except Exception as e:
-        return (f"Error {e}")
+        return {"error": str(e)}
 
 @mcp.tool()
 def powerscale_config() -> dict:
@@ -306,7 +355,7 @@ def powerscale_config() -> dict:
         return config.get()
 
     except Exception as e:
-        return (f"Error {e}")
+        return {"error": str(e)}
 
 @mcp.tool()
 def powerscale_quota_get(
@@ -409,7 +458,7 @@ def powerscale_quota_set(path:str, size:int) -> str:
         return quotas.set_hard_quota(path, size)
 
     except Exception as e:
-        return (f"Error {e}")
+        return {"error": str(e)}
 
 @mcp.tool()
 def powerscale_quota_increment(path:str, size:int) -> str:
@@ -446,7 +495,7 @@ def powerscale_quota_increment(path:str, size:int) -> str:
         return quotas.increment_hard_quota(path, size)
 
     except Exception as e:
-        return (f"Error {e}")
+        return {"error": str(e)}
 
 @mcp.tool()
 def powerscale_quota_decrement(path:str, size:int) -> str:
@@ -487,7 +536,7 @@ def powerscale_quota_decrement(path:str, size:int) -> str:
         return quotas.decrement_hard_quota(path, size)
 
     except Exception as e:
-        return (f"Error {e}")
+        return {"error": str(e)}
 
 @mcp.tool()
 def powerscale_snapshot_get(
@@ -4397,7 +4446,7 @@ def _apply_startup_config() -> None:
     """
     if os.environ.get("ENABLE_ALL_TOOLS", "").lower() == "true":
         total = len(mcp._tool_manager._tools)
-        print(f"  [tool-config] ENABLE_ALL_TOOLS set — all {total} tools enabled")
+        logger.info("ENABLE_ALL_TOOLS set — all %d tools enabled", total)
         return
 
     config = _load_tools_config()
@@ -4409,11 +4458,11 @@ def _apply_startup_config() -> None:
         if name in mcp._tool_manager._tools:
             _disabled_tools[name] = mcp._tool_manager._tools[name]
             mcp._tool_manager.remove_tool(name)
-            print(f"  [tool-config] Disabled: {name}")
+            logger.info("Disabled tool: %s", name)
 
     enabled = len(mcp._tool_manager._tools)
     disabled = len(_disabled_tools)
-    print(f"  [tool-config] {enabled} tools enabled, {disabled} tools disabled")
+    logger.info("%d tools enabled, %d tools disabled", enabled, disabled)
 
 
 # ---------------------------------------------------------------------------
@@ -4962,7 +5011,7 @@ def powerscale_event_get(
             result["error"] = page["error"]
         return result
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -4988,7 +5037,7 @@ def powerscale_event_get_by_id(event_id: str) -> Dict[str, Any]:
         events = Events(cluster)
         return events.get_by_id(event_id)
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 # ---------------------------------------------------------------------------
@@ -5027,7 +5076,7 @@ def powerscale_stats_cpu() -> Dict[str, Any]:
         stats = Statistics(cluster)
         return stats.get_cpu()
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5063,7 +5112,7 @@ def powerscale_stats_network() -> Dict[str, Any]:
         stats = Statistics(cluster)
         return stats.get_network()
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5098,7 +5147,7 @@ def powerscale_stats_disk() -> Dict[str, Any]:
         stats = Statistics(cluster)
         return stats.get_disk()
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5132,7 +5181,7 @@ def powerscale_stats_ifs() -> Dict[str, Any]:
         stats = Statistics(cluster)
         return stats.get_ifs()
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5178,7 +5227,7 @@ def powerscale_stats_node() -> Dict[str, Any]:
         stats = Statistics(cluster)
         return stats.get_node_performance()
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5214,7 +5263,7 @@ def powerscale_stats_protocol() -> Dict[str, Any]:
         stats = Statistics(cluster)
         return stats.get_protocol()
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5257,7 +5306,7 @@ def powerscale_stats_clients() -> Dict[str, Any]:
         stats = Statistics(cluster)
         return stats.get_clients()
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5295,7 +5344,7 @@ def powerscale_stats_get(
         stats = Statistics(cluster)
         return stats.get_current(keys, show_nodes=show_nodes)
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5336,7 +5385,7 @@ def powerscale_stats_keys(
         stats = Statistics(cluster)
         return stats.get_keys(limit=limit, resume=resume, queryable=queryable)
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5367,7 +5416,7 @@ def powerscale_network_groupnets_get() -> Any:
         network = Network(cluster)
         return network.get_groupnets()
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5410,7 +5459,7 @@ def powerscale_network_subnets_get(
         network = Network(cluster)
         return network.get_subnets(groupnet=groupnet)
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5459,7 +5508,7 @@ def powerscale_network_pools_get(
         network = Network(cluster)
         return network.get_pools(groupnet=groupnet, subnet=subnet, access_zone=access_zone)
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5505,7 +5554,7 @@ def powerscale_network_interfaces_get(
         network = Network(cluster)
         return network.get_interfaces(lnn=lnn)
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5541,7 +5590,7 @@ def powerscale_network_external_get() -> Dict[str, Any]:
         network = Network(cluster)
         return network.get_external()
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5577,7 +5626,7 @@ def powerscale_network_dns_get() -> Dict[str, Any]:
         network = Network(cluster)
         return network.get_dns_cache()
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5616,7 +5665,7 @@ def powerscale_zones_get() -> Any:
         network = Network(cluster)
         return network.get_zones()
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5690,7 +5739,7 @@ def powerscale_network_map() -> Dict[str, Any]:
         network = Network(cluster)
         return network.get_network_map()
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 # ---------------------------------------------------------------------------
@@ -5718,7 +5767,7 @@ def powerscale_cluster_nodes_get() -> dict:
         nodes = ClusterNodes(cluster)
         return nodes.get()
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5745,7 +5794,7 @@ def powerscale_cluster_node_get_by_id(node_id: int) -> dict:
         nodes = ClusterNodes(cluster)
         return nodes.get_by_id(node_id)
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 # ---------------------------------------------------------------------------
@@ -5773,7 +5822,7 @@ def powerscale_storagepool_nodetypes_get() -> dict:
         nodetypes = StoragepoolNodetypes(cluster)
         return nodetypes.get()
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5790,7 +5839,7 @@ def powerscale_storagepool_nodetype_get_by_id(nodetype_id: int) -> dict:
         nodetypes = StoragepoolNodetypes(cluster)
         return nodetypes.get_by_id(nodetype_id)
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 # ---------------------------------------------------------------------------
@@ -5824,7 +5873,7 @@ def powerscale_license_get(resume: Optional[str] = None) -> dict:
         lic = License(cluster)
         return lic.get(resume=resume)
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5852,7 +5901,7 @@ def powerscale_license_get_by_name(name: str) -> dict:
         lic = License(cluster)
         return lic.get_by_name(name)
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 # ---------------------------------------------------------------------------
@@ -5882,7 +5931,7 @@ def powerscale_zones_summary_get(groupnet: Optional[str] = None) -> dict:
         zs = ZonesSummary(cluster)
         return zs.get(groupnet=groupnet)
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 @mcp.tool()
@@ -5903,13 +5952,29 @@ def powerscale_zones_summary_zone_get(zone_id: int) -> dict:
         zs = ZonesSummary(cluster)
         return zs.get_zone(zone_id)
     except Exception as e:
-        return f"Error: {e}"
+        return {"error": str(e)}
 
 
 _apply_startup_config()
 
 
-app = mcp.http_app()
+app = mcp.http_app(stateless_http=True)
 app.state.json_response = True
+
+
+# ---------------------------------------------------------------------------
+# Health endpoint for Docker HEALTHCHECK and K8s probes
+# ---------------------------------------------------------------------------
+from starlette.responses import JSONResponse
+from starlette.routing import Route
+
+
+async def _health_handler(request):
+    """Lightweight health check — confirms the server is running and tools are loaded."""
+    tool_count = len(mcp._tool_manager._tools)
+    return JSONResponse({"status": "ok", "tools_loaded": tool_count})
+
+
+app.routes.insert(0, Route("/health", _health_handler, methods=["GET"]))
 
 
