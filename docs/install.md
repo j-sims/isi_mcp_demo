@@ -110,6 +110,10 @@ docker-compose restart nginx
 
 For production, replace `nginx/certs/server.crt` and `nginx/certs/server.key` with certificates from your CA. The certificate files are gitignored.
 
+### Client Certificate Trust
+
+MCP clients connecting to the server must trust the self-signed certificate. The certificate is generated on the **server host** (not inside the container) at `nginx/certs/server.crt`. See **[Client Integration](clients.md)** for step-by-step instructions to copy and trust the certificate on client machines.
+
 ## Endpoints
 
 | Endpoint | Protocol | Description |

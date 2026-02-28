@@ -36,6 +36,8 @@ docker-compose up -d
 # Server is now available at https://localhost/mcp (via nginx reverse proxy)
 ```
 
+> **Client setup required**: MCP clients must trust the server's self-signed certificate before connecting. See **[Client Integration](docs/clients.md)** for instructions.
+
 See **[Installation & Setup](docs/install.md)** for detailed Docker deployment instructions.
 
 See **[Features & Tools](docs/features.md)** for the complete feature list, tool groups, and detailed tool descriptions.
