@@ -5978,3 +5978,19 @@ async def _health_handler(request):
 app.routes.insert(0, Route("/health", _health_handler, methods=["GET"]))
 
 
+async def _version_handler(request):
+    """Return the VERSION file contents."""
+    version_file = "/app/VERSION"
+    try:
+        with open(version_file, "r") as f:
+            version = f.read().strip()
+        return JSONResponse({"version": version})
+    except FileNotFoundError:
+        return JSONResponse({"error": "VERSION file not found"}, status_code=404)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+app.routes.insert(0, Route("/version", _version_handler, methods=["GET"]))
+
+

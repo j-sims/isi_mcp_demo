@@ -23,6 +23,7 @@ services:
       - VAULT_FILE=/app/vault/vault.yml
       - VAULT_PASSWORD=${VAULT_PASSWORD:-}
     volumes:
+      - ./VERSION:/app/VERSION:ro
       - ./vault:/app/vault
       - ./playbooks:/app/playbooks
       - ./isi_mcp_demo/isi_mcp/config:/app/config
