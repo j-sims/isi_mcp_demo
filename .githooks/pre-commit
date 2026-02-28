@@ -1,0 +1,32 @@
+#!/bin/bash
+# Auto-increment patch version on every commit.
+# If VERSION is already staged (manual minor/major bump), skip auto-increment.
+
+set -e
+
+VERSION_FILE="$(git rev-parse --show-toplevel)/VERSION"
+
+if [ ! -f "$VERSION_FILE" ]; then
+    echo "Warning: VERSION file not found, skipping auto-increment"
+    exit 0
+fi
+
+# If VERSION is already staged, the user set it intentionally — don't touch it.
+if git diff --cached --name-only | grep -q "^VERSION$"; then
+    echo "VERSION already staged — using manually set version"
+    exit 0
+fi
+
+CURRENT=$(tr -d '[:space:]' < "$VERSION_FILE")
+IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+if [[ -z "$MAJOR" || -z "$MINOR" || -z "$PATCH" ]]; then
+    echo "Warning: VERSION is not valid semver (X.Y.Z), skipping"
+    exit 0
+fi
+
+PATCH=$((PATCH + 1))
+NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+echo "$NEW_VERSION" > "$VERSION_FILE"
+git add "$VERSION_FILE"
+echo "Version: $CURRENT → $NEW_VERSION"
