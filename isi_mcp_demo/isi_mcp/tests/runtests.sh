@@ -14,11 +14,11 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/../../../" && pwd)"
 VENV_DIR="${ROOT_DIR}/.venv"
 ISI_MCP_DIR="${SCRIPT_DIR}/.."
 TESTS_DIR="${SCRIPT_DIR}"
-OVERRIDE_FILE="${ROOT_DIR}/docker-compose.test-override.yml"
+OVERRIDE_FILE="${TESTS_DIR}/docker-compose.test-override.yml"
 
 # Colors for output
 RED='\033[0;31m'
