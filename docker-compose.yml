@@ -15,8 +15,6 @@ services:
 
   isi_mcp:
     build: isi_mcp_demo/isi_mcp/
-    expose:
-      - "8000"
     environment:
       - DEBUG=${DEBUG:-}
       - ENABLE_ALL_TOOLS=${ENABLE_ALL_TOOLS:-}
