@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: isi-mcp
+  namespace: isi-mcp
+  labels:
+    app.kubernetes.io/name: isi-mcp
+    app.kubernetes.io/component: mcp-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: isi-mcp
+  template:
+    metadata:
+      labels:
+        app: isi-mcp
+        app.kubernetes.io/name: isi-mcp
+    spec:
+      # Copy tools.json from the (read-only) ConfigMap into the writable emptyDir
+      # so the server can persist runtime tool enable/disable state.
+      initContainers:
+        - name: init-config
+          image: isi-mcp-server:latest
+          imagePullPolicy: Never
+          command:
+            - cp
+            - /config-source/tools.json
+            - /app/config/tools.json
+          volumeMounts:
+            - name: config-source
+              mountPath: /config-source
+              readOnly: true
+            - name: config
+              mountPath: /app/config
+
+      containers:
+        - name: isi-mcp
+          image: isi-mcp-server:latest
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+
+          env:
+            - name: DEBUG
+              valueFrom:
+                configMapKeyRef:
+                  name: isi-mcp-env
+                  key: DEBUG
+                  optional: true
+            - name: ENABLE_ALL_TOOLS
+              valueFrom:
+                configMapKeyRef:
+                  name: isi-mcp-env
+                  key: ENABLE_ALL_TOOLS
+                  optional: true
+            - name: VAULT_FILE
+              value: /app/vault/vault.yml
+            - name: VAULT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: isi-mcp-credentials
+                  key: vault-password
+            - name: TOOLS_CONFIG_PATH
+              value: /app/config/tools.json
+
+          volumeMounts:
+            - name: config-source
+              mountPath: /config-source
+              readOnly: true
+            - name: config
+              mountPath: /app/config
+            - name: vault
+              mountPath: /app/vault
+              readOnly: true
+            - name: playbooks
+              mountPath: /app/playbooks
+
+          # TCP liveness: restart pod if port 8000 stops responding
+          livenessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 3
+
+          # TCP readiness: wait until uvicorn is bound before routing traffic
+          readinessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+
+      volumes:
+        # ConfigMap mount (read-only) — source of truth for tools.json
+        - name: config-source
+          configMap:
+            name: isi-mcp-tools
+
+        # EmptyDir — writable copy of tools.json for runtime tool toggles
+        # Note: changes are lost on pod restart; the ConfigMap is the baseline
+        - name: config
+          emptyDir: {}
+
+        # Secret containing the encrypted vault.yml file
+        - name: vault
+          secret:
+            secretName: isi-mcp-vault
+
+        # EmptyDir for rendered Ansible playbooks (audit trail, ephemeral)
+        - name: playbooks
+          emptyDir: {}
