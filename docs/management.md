@@ -55,19 +55,47 @@ All other PowerScale tools automatically operate against the currently selected 
 
 ## Dynamic Tool Management
 
-Tools are organized into groups that can be enabled or disabled at runtime. This keeps the LLM's context window efficient — only the tools relevant to the current task are loaded.
+Each MCP tool has a **mode** (`read` or `write`) and an **enabled** flag. The server ships in read-only mode — all 51 write tools are disabled by default and must be explicitly enabled.
 
-The LLM automatically manages this using two always-available management tools:
+Tool state is persisted in `config/tools.json` across container restarts.
 
-- `powerscale_tools_list` — shows all groups and their enabled/disabled status
-- `powerscale_tools_toggle` — enables or disables groups by name
+### Inspecting Tool State
 
-Tool state is persisted in `tool_config.json` across server restarts.
+Three always-available listing tools show the current state of all 126 tools:
+
+- `powerscale_tools_list` — flat alphabetical list with name, group, mode, and enabled status for every tool
+- `powerscale_tools_list_by_group` — tools grouped by functional area
+- `powerscale_tools_list_by_mode` — tools split into read vs write, with counts
+
+### Enabling Write Tools
+
+Use `powerscale_tools_toggle` to enable or disable tools at runtime. The `names` parameter accepts:
+
+- A **mode** string: `"read"` or `"write"` — toggles all tools of that mode
+- A **group** name: e.g. `"quotas"`, `"filemgmt"`, `"smb"` — toggles all tools in that group
+- An **individual tool** name: e.g. `"powerscale_quota_set"` — toggles a single tool
+
+```
+# Enable all write tools at once
+powerscale_tools_toggle(names=["write"], action="enable")
+
+# Enable only quota write tools
+powerscale_tools_toggle(names=["quotas"], action="enable")
+
+# Enable a single tool
+powerscale_tools_toggle(names=["powerscale_quota_set"], action="enable")
+
+# Disable write tools (return to read-only mode)
+powerscale_tools_toggle(names=["write"], action="disable")
+```
+
+Changes persist to `config/tools.json` and survive container restarts.
 
 ### Always-Available Management Tools
 
 These tools cannot be disabled and are always accessible to the LLM:
 
-- `powerscale_tools_list` / `powerscale_tools_toggle` — manage which tool groups are loaded
+- `powerscale_tools_list` / `powerscale_tools_list_by_group` / `powerscale_tools_list_by_mode` — inspect tool state
+- `powerscale_tools_toggle` — enable or disable tools by mode, group, or name
 - `powerscale_cluster_list` / `powerscale_cluster_select` — view and switch target clusters
-- `powerscale_cluster_add` / `powerscale_cluster_remove` — add new clusters to the vault or remove existing ones
+- `powerscale_cluster_add` / `powerscale_cluster_remove` — add or remove clusters from the vault

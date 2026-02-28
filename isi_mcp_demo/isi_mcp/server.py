@@ -45,174 +45,50 @@ mcp = FastMCP(
 )
 
 # ---------------------------------------------------------------------------
-# Tool group registry — maps group names to the tool function names they contain
+# Tool config — loaded from config/tools.json at startup
 # ---------------------------------------------------------------------------
-TOOL_GROUPS: Dict[str, List[str]] = {
-    "health": [
-        "powerscale_check_health",
-    ],
-    "capacity": [
-        "powerscale_capacity",
-        "powerscale_config",
-    ],
-    "quotas": [
-        "powerscale_quota_get",
-        "powerscale_quota_set",
-        "powerscale_quota_increment",
-        "powerscale_quota_decrement",
-        "powerscale_quota_create",
-        "powerscale_quota_remove",
-    ],
-    "snapshots": [
-        "powerscale_snapshot_get",
-        "powerscale_snapshot_schedule_get",
-        "powerscale_snapshot_schedule_create",
-        "powerscale_snapshot_schedule_remove",
-        "powerscale_snapshot_create",
-        "powerscale_snapshot_delete",
-        "powerscale_snapshot_pending_get",
-        "powerscale_snapshot_alias_create",
-        "powerscale_snapshot_alias_get",
-    ],
-    "synciq": [
-        "powerscale_synciq_get",
-        "powerscale_synciq_create",
-        "powerscale_synciq_remove",
-    ],
-    "datamover": [
-        "powerscale_datamover_policy_get",
-        "powerscale_datamover_policy_get_by_id",
-        "powerscale_datamover_policy_create",
-        "powerscale_datamover_policy_delete",
-        "powerscale_datamover_policy_last_job",
-        "powerscale_datamover_account_get",
-        "powerscale_datamover_account_get_by_id",
-        "powerscale_datamover_account_create",
-        "powerscale_datamover_account_delete",
-        "powerscale_datamover_base_policy_get",
-        "powerscale_datamover_base_policy_get_by_id",
-        "powerscale_datamover_base_policy_create",
-        "powerscale_datamover_base_policy_delete",
-    ],
-    "filepool": [
-        "powerscale_filepool_policy_get",
-        "powerscale_filepool_policy_get_by_name",
-        "powerscale_filepool_default_policy_get",
-        "powerscale_filepool_policy_create",
-        "powerscale_filepool_policy_update",
-        "powerscale_filepool_policy_remove",
-    ],
-    "nfs": [
-        "powerscale_nfs_get",
-        "powerscale_nfs_create",
-        "powerscale_nfs_remove",
-        "powerscale_nfs_global_settings_get",
-        "powerscale_nfs_global_settings_set",
-    ],
-    "smb": [
-        "powerscale_smb_get",
-        "powerscale_smb_create",
-        "powerscale_smb_remove",
-        "powerscale_smb_global_settings_get",
-        "powerscale_smb_global_settings_set",
-        "powerscale_smb_sessions_get",
-        "powerscale_smb_session_close",
-        "powerscale_smb_sessions_close_by_user",
-        "powerscale_smb_openfiles_get",
-        "powerscale_smb_openfile_close",
-    ],
-    "s3": [
-        "powerscale_s3_get",
-        "powerscale_s3_create",
-        "powerscale_s3_remove",
-    ],
-    "filemgmt": [
-        "powerscale_directory_list",
-        "powerscale_directory_attributes",
-        "powerscale_directory_create",
-        "powerscale_directory_delete",
-        "powerscale_directory_move",
-        "powerscale_directory_copy",
-        "powerscale_file_read",
-        "powerscale_file_attributes",
-        "powerscale_file_create",
-        "powerscale_file_delete",
-        "powerscale_file_move",
-        "powerscale_file_copy",
-        "powerscale_acl_get",
-        "powerscale_acl_set",
-        "powerscale_metadata_get",
-        "powerscale_metadata_set",
-        "powerscale_access_point_list",
-        "powerscale_access_point_create",
-        "powerscale_access_point_delete",
-        "powerscale_worm_get",
-        "powerscale_worm_set",
-        "powerscale_directory_query",
-    ],
-    "users": [
-        "powerscale_user_get",
-        "powerscale_user_create",
-        "powerscale_user_modify",
-        "powerscale_user_remove",
-    ],
-    "groups": [
-        "powerscale_group_get",
-        "powerscale_group_create",
-        "powerscale_group_modify",
-        "powerscale_group_remove",
-    ],
-    "events": [
-        "powerscale_event_get",
-        "powerscale_event_get_by_id",
-    ],
-    "statistics": [
-        "powerscale_stats_cpu",
-        "powerscale_stats_network",
-        "powerscale_stats_disk",
-        "powerscale_stats_ifs",
-        "powerscale_stats_node",
-        "powerscale_stats_protocol",
-        "powerscale_stats_clients",
-        "powerscale_stats_get",
-        "powerscale_stats_keys",
-    ],
-    "utils": [
-        "current_time",
-        "bytes_to_human",
-        "human_to_bytes",
-    ],
-    "networking": [
-        "powerscale_network_groupnets_get",
-        "powerscale_network_subnets_get",
-        "powerscale_network_pools_get",
-        "powerscale_network_interfaces_get",
-        "powerscale_network_external_get",
-        "powerscale_network_dns_get",
-        "powerscale_zones_get",
-        "powerscale_network_map",
-    ],
-    "cluster_nodes": [
-        "powerscale_cluster_nodes_get",
-        "powerscale_cluster_node_get_by_id",
-    ],
-    "storagepool_nodetypes": [
-        "powerscale_storagepool_nodetypes_get",
-        "powerscale_storagepool_nodetype_get_by_id",
-    ],
-    "licensing": [
-        "powerscale_license_get",
-        "powerscale_license_get_by_name",
-    ],
-    "zones_summary": [
-        "powerscale_zones_summary_get",
-        "powerscale_zones_summary_zone_get",
-    ],
-}
 
+TOOLS_CONFIG_PATH = os.environ.get("TOOLS_CONFIG_PATH", "/app/config/tools.json")
+
+
+def _load_tools_config() -> dict:
+    """Load tools.json, returning the raw dict keyed by tool name."""
+    with open(TOOLS_CONFIG_PATH, "r") as f:
+        return json.load(f)
+
+
+def _save_tools_config(tools: dict) -> None:
+    """Persist tools.json back to disk."""
+    with open(TOOLS_CONFIG_PATH, "w") as f:
+        json.dump(tools, f, indent=2)
+
+
+def _update_tool_enabled(name: str, enabled: bool) -> None:
+    """Flip the enabled flag for a single tool in tools.json."""
+    tools = _load_tools_config()
+    if name in tools:
+        tools[name]["enabled"] = enabled
+        _save_tools_config(tools)
+
+
+# Build runtime data structures from tools.json at import time
+_tools_raw = _load_tools_config()
+
+TOOL_GROUPS: Dict[str, List[str]] = {}
+_TOOL_TO_MODE: Dict[str, str] = {}
+for _name, _meta in _tools_raw.items():
+    _grp = _meta["tool_group"]
+    TOOL_GROUPS.setdefault(_grp, []).append(_name)
+    _TOOL_TO_MODE[_name] = _meta["tool_mode"]
+
+# ---------------------------------------------------------------------------
+# (legacy reference kept for shape — actual data is now in tools.json)
+# ---------------------------------------------------------------------------
 # Management tools — these cannot be disabled
 MANAGEMENT_TOOLS = {
     "powerscale_tools_list",
+    "powerscale_tools_list_by_group",
+    "powerscale_tools_list_by_mode",
     "powerscale_tools_toggle",
     "powerscale_cluster_list",
     "powerscale_cluster_select",
@@ -229,32 +105,17 @@ for _grp, _tools in TOOL_GROUPS.items():
 # Stash for disabled tools so they can be re-enabled at runtime
 _disabled_tools: Dict[str, Any] = {}  # tool_name -> Tool object
 
-# Path to the persistent config file
-TOOL_CONFIG_PATH = os.environ.get("TOOL_CONFIG_PATH", "/app/tool_config.json")
-
-
-def _load_tool_config() -> dict:
-    """Load tool_config.json, returning defaults if missing or invalid."""
-    try:
-        with open(TOOL_CONFIG_PATH, "r") as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {"disabled_groups": [], "disabled_tools": []}
-
-
-def _save_tool_config(config: dict) -> None:
-    """Persist tool config to disk."""
-    with open(TOOL_CONFIG_PATH, "w") as f:
-        json.dump(config, f, indent=2)
-
 
 def _resolve_names_to_tools(names: List[str]) -> List[str]:
-    """Resolve a mix of group names and individual tool names to a flat
-    list of individual tool names. Unknown names are silently skipped."""
+    """Resolve group names, mode targets ("read"/"write"), or individual tool
+    names to a flat list of individual tool names. Unknown names are silently
+    skipped."""
     result = []
     for name in names:
         if name in TOOL_GROUPS:
             result.extend(TOOL_GROUPS[name])
+        elif name in ("read", "write"):
+            result.extend(t for t, m in _TOOL_TO_MODE.items() if m == name)
         elif name in _TOOL_TO_GROUP or name in _disabled_tools:
             result.append(name)
     return result
@@ -4185,47 +4046,113 @@ def human_to_bytes(human_value: str) -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_tools_list() -> Dict[str, Any]:
+def powerscale_tools_list() -> List[Dict[str, Any]]:
     """
-    List all available PowerScale MCP tools and their current status.
+    List all PowerScale MCP tools alphabetically by name.
 
-    Returns every tool organised by group, showing whether each tool is
-    currently enabled (registered with the MCP server) or disabled (removed
-    from the tool list to save tokens).
+    Returns a flat list of every tool with its name, group, mode (read/write),
+    and whether it is currently enabled or disabled.
 
     Use this tool to:
-    - See which tool groups and individual tools are available
-    - Check which tools are currently disabled
-    - Decide which groups to enable or disable with powerscale_tools_toggle
+    - Get a complete inventory of all available tools
+    - See each tool's group and mode at a glance
+    - Check which individual tools are currently enabled or disabled
+
+    Each entry contains:
+    - name: Tool function name
+    - group: Tool group (e.g. "quotas", "filemgmt", "management")
+    - mode: "read" (non-destructive) or "write" (modifies cluster state)
+    - enabled: true if the tool is currently registered with the MCP server
+    """
+    enabled_set = set(mcp._tool_manager._tools.keys())
+    config = _load_tools_config()
+    return sorted(
+        [
+            {
+                "name": name,
+                "group": meta["tool_group"],
+                "mode": meta["tool_mode"],
+                "enabled": name in enabled_set,
+            }
+            for name, meta in config.items()
+        ],
+        key=lambda x: x["name"],
+    )
+
+
+@mcp.tool()
+def powerscale_tools_list_by_group() -> Dict[str, Any]:
+    """
+    List all PowerScale MCP tools organised by group.
+
+    Returns a dict with each group mapped to its tools, showing the mode
+    (read/write) and enabled status of every tool in that group.
+
+    Use this tool to:
+    - See which tools belong to each functional area
+    - Compare enabled/disabled counts across groups
+    - Decide which group to enable or disable with powerscale_tools_toggle
 
     Response fields:
     - groups: Dict mapping group name to a list of tool entries, each with
-      "name" and "status" ("enabled" or "disabled")
-    - total_enabled: Number of currently enabled tools
-    - total_disabled: Number of currently disabled tools
+      "name", "mode", and "enabled"
+    - total_enabled: Total number of currently enabled tools
+    - total_disabled: Total number of currently disabled tools
     """
-    enabled_tools = set(mcp._tool_manager._tools.keys())
-    groups = {}
+    enabled_set = set(mcp._tool_manager._tools.keys())
+    groups: Dict[str, List[Dict[str, Any]]] = {}
     for group_name, tool_names in TOOL_GROUPS.items():
-        entries = []
-        for tool_name in tool_names:
-            status = "enabled" if tool_name in enabled_tools else "disabled"
-            entries.append({"name": tool_name, "status": status})
-        groups[group_name] = entries
-
-    total_enabled = sum(
-        1 for entries in groups.values()
-        for e in entries if e["status"] == "enabled"
-    )
-    total_disabled = sum(
-        1 for entries in groups.values()
-        for e in entries if e["status"] == "disabled"
-    )
-
+        groups[group_name] = [
+            {
+                "name": t,
+                "mode": _TOOL_TO_MODE.get(t, "read"),
+                "enabled": t in enabled_set,
+            }
+            for t in tool_names
+        ]
     return {
         "groups": groups,
-        "total_enabled": total_enabled,
-        "total_disabled": total_disabled,
+        "total_enabled": len(enabled_set),
+        "total_disabled": len(_disabled_tools),
+    }
+
+
+@mcp.tool()
+def powerscale_tools_list_by_mode() -> Dict[str, Any]:
+    """
+    List all PowerScale MCP tools organised by mode (read or write).
+
+    Read tools only retrieve information from the cluster without making changes.
+    Write tools modify cluster state (create, update, or delete resources).
+
+    Use this tool to:
+    - See all read-only tools vs all write (mutating) tools at a glance
+    - Decide whether to restrict the LLM to read-only operations by disabling
+      all write tools via powerscale_tools_toggle(["write"], "disable")
+    - Check how many write tools are currently enabled
+
+    Response fields:
+    - by_mode: Dict with "read" and "write" keys, each containing a list of
+      tool entries with "name", "group", and "enabled"
+    - read_count: Total number of read tools
+    - write_count: Total number of write tools
+    """
+    enabled_set = set(mcp._tool_manager._tools.keys())
+    config = _load_tools_config()
+    by_mode: Dict[str, List[Dict[str, Any]]] = {"read": [], "write": []}
+    for name, meta in sorted(config.items()):
+        mode = meta["tool_mode"]
+        by_mode[mode].append(
+            {
+                "name": name,
+                "group": meta["tool_group"],
+                "enabled": name in enabled_set,
+            }
+        )
+    return {
+        "by_mode": by_mode,
+        "read_count": len(by_mode["read"]),
+        "write_count": len(by_mode["write"]),
     }
 
 
@@ -4239,14 +4166,18 @@ def powerscale_tools_toggle(names: List[str], action: str) -> Dict[str, Any]:
     that the tool list has changed and will re-fetch it automatically.
 
     You can pass group names (e.g. "filemgmt", "synciq") to toggle all tools
-    in that group at once, or individual tool names for fine-grained control.
+    in that group at once, individual tool names for fine-grained control, or
+    the special mode targets "read" or "write" to toggle all read-only or all
+    write tools at once.
 
     Available groups: health, capacity, quotas, snapshots, synciq, datamover,
-    filepool, nfs, smb, s3, filemgmt, utils
+    filepool, nfs, smb, s3, filemgmt, users, groups, events, statistics, utils,
+    networking, cluster_nodes, storagepool_nodetypes, licensing, zones_summary
 
     Arguments:
-    - names: List of group names and/or individual tool names to toggle.
-      Examples: ["filemgmt"], ["synciq", "s3"], ["powerscale_quota_remove"]
+    - names: List of group names, individual tool names, and/or mode targets.
+      Examples: ["filemgmt"], ["synciq", "s3"], ["powerscale_quota_remove"],
+      ["write"] to disable all write tools, ["read"] to enable all read tools.
     - action: "disable" to remove tools from the tool list, or "enable" to
       restore them.
 
@@ -4289,26 +4220,9 @@ def powerscale_tools_toggle(names: List[str], action: str) -> Dict[str, Any]:
             else:
                 skipped.append(name)
 
-    # Persist to config file
-    config = _load_tool_config()
-    disabled_set = set(config.get("disabled_groups", []))
-    disabled_tool_set = set(config.get("disabled_tools", []))
-
-    for name in names:
-        if name in TOOL_GROUPS:
-            if action == "disable":
-                disabled_set.add(name)
-            else:
-                disabled_set.discard(name)
-        elif name in _TOOL_TO_GROUP:
-            if action == "disable":
-                disabled_tool_set.add(name)
-            else:
-                disabled_tool_set.discard(name)
-
-    config["disabled_groups"] = sorted(disabled_set)
-    config["disabled_tools"] = sorted(disabled_tool_set)
-    _save_tool_config(config)
+    # Persist enabled state back to tools.json
+    for name in toggled:
+        _update_tool_enabled(name, enabled=(action == "enable"))
 
     return {
         "action": action,
@@ -4477,7 +4391,7 @@ def powerscale_cluster_remove(name: str) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 def _apply_startup_config() -> None:
-    """Disable tools listed in tool_config.json at server startup.
+    """Disable tools whose enabled=false in tools.json at server startup.
 
     Set ENABLE_ALL_TOOLS=true to skip disabling (used by test harness).
     """
@@ -4486,18 +4400,10 @@ def _apply_startup_config() -> None:
         print(f"  [tool-config] ENABLE_ALL_TOOLS set — all {total} tools enabled")
         return
 
-    config = _load_tool_config()
-    names_to_disable = []
-
-    for group in config.get("disabled_groups", []):
-        if group in TOOL_GROUPS:
-            names_to_disable.extend(TOOL_GROUPS[group])
-
-    for tool_name in config.get("disabled_tools", []):
-        if tool_name not in names_to_disable:
-            names_to_disable.append(tool_name)
-
-    for name in names_to_disable:
+    config = _load_tools_config()
+    for name, meta in config.items():
+        if meta.get("enabled", True):
+            continue
         if name in MANAGEMENT_TOOLS:
             continue
         if name in mcp._tool_manager._tools:

@@ -5,7 +5,8 @@
 The PowerScale MCP server provides comprehensive automation and management capabilities for PowerScale clusters:
 
 - **Multi-cluster support** with runtime cluster switching
-- **124 MCP tools** organized into 21 manageable tool groups
+- **126 MCP tools** organized into 22 groups (118 domain + 8 management)
+- **Read-only by default** — all 51 write tools are disabled at startup; enable as needed
 - **Dynamic tool management** to keep LLM context efficient
 - **Health checks** including quorum, service lights, critical events, network, and capacity
 - **Node inventory** with per-node hardware, drive, sensor, and state details
@@ -24,33 +25,47 @@ The PowerScale MCP server provides comprehensive automation and management capab
 
 ## Tool Groups
 
-| Group | Count | Description |
-|-------|-------|-------------|
-| Health | 1 | Cluster health checks (quorum, service lights, critical events, network, capacity) |
-| Capacity | 2 | Storage statistics and configuration |
-| Quotas | 6 | Quota CRUD and adjustment |
-| Snapshots | 9 | Snapshots, schedules, and aliases |
-| SyncIQ | 3 | Replication policies |
-| DataMover | 13 | Data movement policies and accounts |
-| FilePool | 6 | File pool policy management |
-| NFS | 5 | NFS exports and global settings |
-| SMB | 10 | SMB shares, settings, and sessions |
-| S3 | 3 | S3 bucket management |
-| FileMgmt | 22 | Directory/file/ACL/metadata operations |
-| Users | 4 | Local user management |
-| Groups | 4 | Local group management |
-| Events | 2 | Event and alert browsing |
-| Statistics | 9 | Performance metrics |
-| Networking | 8 | Network topology (groupnets, subnets, pools, interfaces, DNS, zones, map) |
-| ClusterNodes | 2 | Node inventory with hardware, drives, sensors, and state |
-| StoragepoolNodetypes | 2 | Storage pool node type listings |
-| Licensing | 2 | Feature license status and expiry |
-| ZonesSummary | 2 | Lightweight access zone count and path summary |
-| Utils | 3 | Utilities (time, unit conversion) |
+| Group | Tools | Read | Write | Description |
+|-------|-------|------|-------|-------------|
+| Health | 1 | 1 | 0 | Cluster health checks (quorum, service lights, critical events, network, capacity) |
+| Capacity | 2 | 2 | 0 | Storage statistics and configuration |
+| Quotas | 6 | 1 | 5 | Quota CRUD and adjustment |
+| Snapshots | 9 | 4 | 5 | Snapshots, schedules, and aliases |
+| SyncIQ | 3 | 1 | 2 | Replication policies |
+| DataMover | 13 | 7 | 6 | Data movement policies and accounts |
+| FilePool | 6 | 3 | 3 | File pool policy management |
+| NFS | 5 | 2 | 3 | NFS exports and global settings |
+| SMB | 10 | 4 | 6 | SMB shares, settings, and sessions |
+| S3 | 3 | 1 | 2 | S3 bucket management |
+| FileMgmt | 22 | 9 | 13 | Directory/file/ACL/metadata operations |
+| Users | 4 | 1 | 3 | Local user management |
+| Groups | 4 | 1 | 3 | Local group management |
+| Events | 2 | 2 | 0 | Event and alert browsing |
+| Statistics | 9 | 9 | 0 | Performance metrics |
+| Networking | 8 | 8 | 0 | Network topology (groupnets, subnets, pools, interfaces, DNS, zones, map) |
+| ClusterNodes | 2 | 2 | 0 | Node inventory with hardware, drives, sensors, and state |
+| StoragepoolNodetypes | 2 | 2 | 0 | Storage pool node type listings |
+| Licensing | 2 | 2 | 0 | Feature license status and expiry |
+| ZonesSummary | 2 | 2 | 0 | Lightweight access zone count and path summary |
+| Utils | 3 | 3 | 0 | Utilities (time, unit conversion) |
+| Management | 8 | 4 | 4 | Tool listing/toggling and cluster switching (always enabled) |
 
-**Total: 124 tools across 21 groups**
+**Total: 126 tools across 22 groups (71 read + 51 write + 4 management-write)**
 
-All tool groups are enabled by default but can be dynamically disabled to keep the LLM's context window efficient. Use `powerscale_tools_list` and `powerscale_tools_toggle` to manage which groups are active.
+**Default state**: The server starts in read-only mode. All 51 write tools (across domain groups) are disabled at startup. Use `powerscale_tools_toggle` to enable write functionality as needed:
+
+```
+# Enable all write tools
+powerscale_tools_toggle(names=["write"], action="enable")
+
+# Enable a specific group
+powerscale_tools_toggle(names=["quotas"], action="enable")
+
+# Enable a single tool
+powerscale_tools_toggle(names=["powerscale_quota_set"], action="enable")
+```
+
+Use `powerscale_tools_list`, `powerscale_tools_list_by_group`, and `powerscale_tools_list_by_mode` to inspect the current enabled/disabled state of all tools.
 
 ## Detailed Tool Descriptions
 

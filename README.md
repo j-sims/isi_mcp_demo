@@ -2,7 +2,9 @@
 
 An MCP (Model Context Protocol) server for Dell PowerScale (Isilon) storage cluster automation. It exposes cluster management capabilities as MCP tools that any LLM client can use to query, configure, and manage one or more PowerScale clusters through natural language.
 
-The server provides 124 tools across 21 groups, including cluster health checks, capacity analysis, node inventory, license status, quota management, snapshots, replication, file operations, SMB/NFS/S3 configuration, user and group management, events, live performance metrics, and network topology. All operations are audited through rendered Ansible playbooks saved for compliance tracking. Credentials are stored in an encrypted Ansible Vault with support for multiple clusters and runtime switching.
+The server provides 126 tools across 22 groups, including cluster health checks, capacity analysis, node inventory, license status, quota management, snapshots, replication, file operations, SMB/NFS/S3 configuration, user and group management, events, live performance metrics, and network topology. All operations are audited through rendered Ansible playbooks saved for compliance tracking. Credentials are stored in an encrypted Ansible Vault with support for multiple clusters and runtime switching.
+
+The server ships in **read-only mode by default** — all write tools are disabled at startup and must be explicitly enabled using the `powerscale_tools_toggle` management tool. This safe-by-default posture prevents accidental modifications.
 
 ## Documentation
 

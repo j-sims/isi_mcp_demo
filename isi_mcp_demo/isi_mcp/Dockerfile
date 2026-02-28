@@ -38,7 +38,7 @@ COPY server.py .
 COPY modules modules
 COPY Templates Templates
 COPY tests tests
-COPY tool_config.json .
+COPY config config
 
 # Create playbooks directory for rendered playbooks
 RUN mkdir -p playbooks

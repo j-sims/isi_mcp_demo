@@ -83,7 +83,8 @@ class TestClusterNodesDirect:
         detail = nodes.get_by_id(first_lnn)
         assert isinstance(detail, dict), \
             f"get_by_id() must return dict, got {type(detail).__name__}"
-        assert "error" not in detail, f"get_by_id() returned error: {detail}"
+        # The SDK to_dict() includes 'error': None as a model field; check value not presence
+        assert detail.get("error") is None, f"get_by_id() returned error: {detail.get('error')}"
 
     def test_cluster_node_detail_has_hardware(self, test_cluster_direct):
         """Node detail from get_by_id() should include hardware info."""

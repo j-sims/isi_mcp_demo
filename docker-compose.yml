@@ -11,9 +11,11 @@ services:
       - VAULT_PASSWORD=${VAULT_PASSWORD:-}
     volumes:
       - ./vault:/app/vault
+      - ./playbooks:/app/playbooks
+      - ./isi_mcp_demo/isi_mcp/config:/app/config
     networks:
-      - demonet
+      - isi_mcp_net
 
 networks:
-  demonet:
+  isi_mcp_net:
     driver: bridge

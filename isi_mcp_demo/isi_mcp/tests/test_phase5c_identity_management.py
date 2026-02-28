@@ -253,27 +253,25 @@ class TestManagementTools:
     """Test cluster and tool management operations."""
 
     def test_tools_list_returns_tools(self, mcp_session):
-        """powerscale_tools_list returns available tools."""
+        """powerscale_tools_list returns a flat alphabetical list of all tools."""
         result = mcp_session("powerscale_tools_list")
 
         assert_no_error(result, "powerscale_tools_list")
-        # Result is a list or dict depending on implementation
-        assert isinstance(result, (dict, list)), \
-            f"Result must be dict/list, got {type(result).__name__}"
+        assert isinstance(result, list), \
+            f"Result must be list, got {type(result).__name__}"
+        assert len(result) > 0, "No tools returned"
+        # Each entry must have name, group, mode, enabled
+        entry = result[0]
+        for field in ("name", "group", "mode", "enabled"):
+            assert field in entry, f"Missing field '{field}' in entry"
 
     def test_tools_list_has_content(self, mcp_session):
-        """Tools list should have substantial content."""
+        """Tools list should have substantial content (>100 tools)."""
         result = mcp_session("powerscale_tools_list")
 
         assert_no_error(result, "powerscale_tools_list")
-
-        # Should return actual tools
-        if isinstance(result, dict):
-            # May be grouped by category
-            assert len(result) > 0, "No tool groups returned"
-        elif isinstance(result, list):
-            # Should have multiple tools
-            assert len(result) > 0, "No tools returned"
+        assert isinstance(result, list) and len(result) > 100, \
+            f"Expected >100 tools, got {len(result) if isinstance(result, list) else type(result).__name__}"
 
     def test_tools_toggle_exists(self, mcp_session):
         """Tool toggle tool should exist."""
@@ -319,6 +317,8 @@ class TestManagementTools:
 
         management_tools = [
             "powerscale_tools_list",
+            "powerscale_tools_list_by_group",
+            "powerscale_tools_list_by_mode",
             "powerscale_tools_toggle",
             "powerscale_cluster_list",
             "powerscale_cluster_select",
@@ -350,3 +350,52 @@ class TestManagementTools:
 
         assert "powerscale_capacity" in tool_names, \
             "powerscale_capacity not found"
+
+    def test_tools_list_mode_values_valid(self, mcp_session):
+        """Every tool in powerscale_tools_list must have mode 'read' or 'write'."""
+        result = mcp_session("powerscale_tools_list")
+
+        assert isinstance(result, list) and len(result) > 0
+        invalid = [e for e in result if e.get("mode") not in ("read", "write")]
+        assert invalid == [], \
+            f"Tools with invalid mode: {[e['name'] for e in invalid]}"
+
+    def test_tools_list_by_mode_counts_match_total(self, mcp_session):
+        """read_count + write_count should equal total tool count."""
+        flat = mcp_session("powerscale_tools_list")
+        by_mode = mcp_session("powerscale_tools_list_by_mode")
+
+        assert isinstance(flat, list) and isinstance(by_mode, dict)
+        total = len(flat)
+        assert by_mode["read_count"] + by_mode["write_count"] == total, (
+            f"Mode counts {by_mode['read_count']}+{by_mode['write_count']}"
+            f" != total {total}"
+        )
+
+    def test_tools_toggle_by_write_mode(self, mcp_session):
+        """Toggle all write tools off then back on; verify runtime state changes."""
+        # Disable all write tools
+        disable_result = mcp_session("powerscale_tools_toggle",
+                                     {"names": ["write"], "action": "disable"})
+        assert "error" not in str(disable_result).lower() or isinstance(disable_result, dict), \
+            f"Toggle disable failed: {disable_result}"
+
+        try:
+            # Verify at least one known write tool is now disabled
+            flat = mcp_session("powerscale_tools_list")
+            assert isinstance(flat, list)
+            quota_set = next((e for e in flat if e["name"] == "powerscale_quota_set"), None)
+            assert quota_set is not None, "powerscale_quota_set not found in list"
+            assert quota_set["enabled"] is False, \
+                "powerscale_quota_set should be disabled after write mode toggle"
+        finally:
+            # Always re-enable write tools regardless of assertion outcome
+            enable_result = mcp_session("powerscale_tools_toggle",
+                                        {"names": ["write"], "action": "enable"})
+            flat_after = mcp_session("powerscale_tools_list")
+            quota_set_after = next(
+                (e for e in flat_after if e["name"] == "powerscale_quota_set"), None
+            )
+            assert quota_set_after is not None
+            assert quota_set_after["enabled"] is True, \
+                "powerscale_quota_set should be re-enabled after write mode toggle"

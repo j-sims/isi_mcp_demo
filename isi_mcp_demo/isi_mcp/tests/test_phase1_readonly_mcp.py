@@ -355,16 +355,38 @@ class TestManagementTools:
     """Test tool management operations."""
 
     def test_mcp_tools_list(self, mcp_session):
-        """powerscale_tools_list returns available tool groups."""
+        """powerscale_tools_list returns a flat list of all tools."""
         result = mcp_session("powerscale_tools_list")
 
-        # Verify structure
         assert_no_error(result, "powerscale_tools_list")
-        assert_result_is_dict(result, "powerscale_tools_list")
+        assert isinstance(result, list), \
+            f"powerscale_tools_list: expected list, got {type(result).__name__}"
+        assert len(result) > 0, "powerscale_tools_list should return tools"
+        # Each entry should have name, group, mode, enabled
+        entry = result[0]
+        for field in ("name", "group", "mode", "enabled"):
+            assert field in entry, \
+                f"powerscale_tools_list: missing field '{field}' in entry"
 
-        # Should have tool groups
-        assert "groups" in result or "tools" in result or len(result) > 0, \
-            "tools_list should return tool information"
+    def test_mcp_tools_list_by_group(self, mcp_session):
+        """powerscale_tools_list_by_group returns tools organised by group."""
+        result = mcp_session("powerscale_tools_list_by_group")
+
+        assert_no_error(result, "powerscale_tools_list_by_group")
+        assert_result_is_dict(result, "powerscale_tools_list_by_group")
+        assert "groups" in result, "tools_list_by_group should have 'groups' key"
+        assert "total_enabled" in result
+        assert isinstance(result["groups"], dict) and len(result["groups"]) > 0
+
+    def test_mcp_tools_list_by_mode(self, mcp_session):
+        """powerscale_tools_list_by_mode returns tools grouped into read/write."""
+        result = mcp_session("powerscale_tools_list_by_mode")
+
+        assert_no_error(result, "powerscale_tools_list_by_mode")
+        assert_result_is_dict(result, "powerscale_tools_list_by_mode")
+        assert "by_mode" in result, "tools_list_by_mode should have 'by_mode' key"
+        assert "read" in result["by_mode"] and "write" in result["by_mode"]
+        assert result["read_count"] > 0 and result["write_count"] > 0
 
     def test_mcp_cluster_list(self, mcp_session):
         """powerscale_cluster_list returns available clusters."""
