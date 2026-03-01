@@ -35,6 +35,8 @@ def pytest_configure(config):
 
     config.addinivalue_line("markers", "read: tests that exercise read-mode (non-mutating) tools")
     config.addinivalue_line("markers", "write: tests that exercise write-mode (mutating) tools")
+    config.addinivalue_line("markers", "nginx: tests that validate nginx reverse proxy behavior")
+    config.addinivalue_line("markers", "scaling: tests that validate horizontal scaling and load distribution")
     for fn in functions:
         config.addinivalue_line("markers", f"func_{fn}: tests for PowerScale function '{fn}'")
     for grp in groups:

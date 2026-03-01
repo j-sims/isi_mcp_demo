@@ -75,6 +75,12 @@ data:
             proxy_set_header Host $host;
         }
 
+        location /version {
+            proxy_pass http://mcp_backend;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+        }
+
         location / {
             return 404;
         }
