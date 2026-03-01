@@ -5,7 +5,7 @@
 The PowerScale MCP server provides comprehensive automation and management capabilities for PowerScale clusters:
 
 - **Multi-cluster support** with runtime cluster switching
-- **126 MCP tools** organized into 22 groups (118 domain + 8 management)
+- **212 MCP tools** organized into 41 groups (157 read + 55 write; 4 management-write always enabled)
 - **Read-only by default** — all 51 write tools are disabled at startup; enable as needed
 - **Dynamic tool management** to keep LLM context efficient
 - **Health checks** including quorum, service lights, critical events, network, and capacity
@@ -20,6 +20,10 @@ The PowerScale MCP server provides comprehensive automation and management capab
 - **User & group** management for local authentication
 - **Events & alerts** with filtering, sorting, and pagination
 - **Live performance metrics** including CPU, network, disk, IFS, protocol, and client stats
+- **Advanced analytics** including FSA (File System Analytics), MetadataIQ, and MPA (Multi-Party Authorization)
+- **API session management** and connectivity status
+- **Job engine** with job types, policies, events, reports, and statistics
+- **Security hardening** and compliance reporting
 - **Audited operations** through rendered Ansible playbooks
 - **Encrypted credentials** in Ansible Vault format
 
@@ -49,10 +53,29 @@ The PowerScale MCP server provides comprehensive automation and management capab
 | ZonesSummary | 2 | 2 | 0 | Lightweight access zone count and path summary |
 | Utils | 3 | 3 | 0 | Utilities (time, unit conversion) |
 | Management | 8 | 4 | 4 | Tool listing/toggling and cluster switching (always enabled) |
+| **Phase 8 — Read-Only Analytics & Diagnostics** | | | | |
+| Hardware | 3 | 3 | 0 | FC ports and tape/changer device inventory |
+| Jobs | 12 | 12 | 0 | Job engine: running/recent jobs, types, policies, events, reports, statistics |
+| Performance | 9 | 9 | 0 | Performance datasets, metrics catalog, and settings |
+| Hardening | 3 | 3 | 0 | Security hardening profiles, state, and compliance reports |
+| SupportAssist | 6 | 6 | 0 | SupportAssist settings, status, license, tasks, and terms |
+| Connectivity | 6 | 6 | 0 | Connectivity settings, status, license, tasks, and terms |
+| DebugStats | 1 | 1 | 0 | API call statistics per resource |
+| FSA | 12 | 12 | 0 | File System Analytics result sets, indexes, and settings |
+| SyncReports | 2 | 2 | 0 | SyncIQ report subreports and metadata |
+| SnapshotChangelists | 4 | 4 | 0 | Snapshot changelist entries and LINs |
+| QuotaReports | 1 | 1 | 0 | Quota report metadata |
+| IdResolution | 4 | 4 | 0 | UID/GID/SID to name mappings per zone |
+| LFN | 2 | 2 | 0 | Long file name configuration domains |
+| MetadataIQ | 3 | 3 | 0 | MetadataIQ settings, status, and certificate |
+| MPA | 8 | 8 | 0 | Multi-Party Authorization: approvers, requests, settings, lifecycle, and trust anchors |
+| LocalInfo | 6 | 6 | 0 | Local node time, network interfaces, and firmware status |
+| ApiSessions | 3 | 3 | 0 | Platform API session settings and invalidations |
+| GroupnetsSummary | 1 | 1 | 0 | GroupNet summary information |
 
-**Total: 126 tools across 22 groups (71 read + 51 write + 4 management-write)**
+**Total: 212 tools across 41 groups (157 read + 55 write; 4 management-write always enabled)**
 
-**Default state**: The server starts in read-only mode. All 51 write tools (across domain groups) are disabled at startup. Use `powerscale_tools_toggle` to enable write functionality as needed:
+**Default state**: The server starts in read-only mode. All 51 write tools (across domain groups) are disabled at startup, plus 4 management write tools are always enabled. Use `powerscale_tools_toggle` to enable domain write functionality as needed:
 
 ```
 # Enable all write tools

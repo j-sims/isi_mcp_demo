@@ -37,27 +37,27 @@
   "powerscale_quota_set": {
     "tool_group": "quotas",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_quota_increment": {
     "tool_group": "quotas",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_quota_decrement": {
     "tool_group": "quotas",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_quota_create": {
     "tool_group": "quotas",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_quota_remove": {
     "tool_group": "quotas",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_snapshot_get": {
     "tool_group": "snapshots",
@@ -82,27 +82,27 @@
   "powerscale_snapshot_schedule_create": {
     "tool_group": "snapshots",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_snapshot_schedule_remove": {
     "tool_group": "snapshots",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_snapshot_create": {
     "tool_group": "snapshots",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_snapshot_delete": {
     "tool_group": "snapshots",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_snapshot_alias_create": {
     "tool_group": "snapshots",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_synciq_get": {
     "tool_group": "synciq",
@@ -112,12 +112,12 @@
   "powerscale_synciq_create": {
     "tool_group": "synciq",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_synciq_remove": {
     "tool_group": "synciq",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_datamover_policy_get": {
     "tool_group": "datamover",
@@ -137,12 +137,12 @@
   "powerscale_datamover_policy_create": {
     "tool_group": "datamover",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_datamover_policy_delete": {
     "tool_group": "datamover",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_datamover_account_get": {
     "tool_group": "datamover",
@@ -157,12 +157,12 @@
   "powerscale_datamover_account_create": {
     "tool_group": "datamover",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_datamover_account_delete": {
     "tool_group": "datamover",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_datamover_base_policy_get": {
     "tool_group": "datamover",
@@ -177,12 +177,12 @@
   "powerscale_datamover_base_policy_create": {
     "tool_group": "datamover",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_datamover_base_policy_delete": {
     "tool_group": "datamover",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_filepool_policy_get": {
     "tool_group": "filepool",
@@ -202,17 +202,17 @@
   "powerscale_filepool_policy_create": {
     "tool_group": "filepool",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_filepool_policy_update": {
     "tool_group": "filepool",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_filepool_policy_remove": {
     "tool_group": "filepool",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_nfs_get": {
     "tool_group": "nfs",
@@ -227,17 +227,17 @@
   "powerscale_nfs_create": {
     "tool_group": "nfs",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_nfs_remove": {
     "tool_group": "nfs",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_nfs_global_settings_set": {
     "tool_group": "nfs",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_smb_get": {
     "tool_group": "smb",
@@ -262,32 +262,32 @@
   "powerscale_smb_create": {
     "tool_group": "smb",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_smb_remove": {
     "tool_group": "smb",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_smb_global_settings_set": {
     "tool_group": "smb",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_smb_session_close": {
     "tool_group": "smb",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_smb_sessions_close_by_user": {
     "tool_group": "smb",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_smb_openfile_close": {
     "tool_group": "smb",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_s3_get": {
     "tool_group": "s3",
@@ -297,12 +297,12 @@
   "powerscale_s3_create": {
     "tool_group": "s3",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_s3_remove": {
     "tool_group": "s3",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_directory_list": {
     "tool_group": "filemgmt",
@@ -352,67 +352,67 @@
   "powerscale_directory_create": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_directory_delete": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_directory_move": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_directory_copy": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_file_create": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_file_delete": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_file_move": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_file_copy": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_acl_set": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_metadata_set": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_access_point_create": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_access_point_delete": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_worm_set": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_user_get": {
     "tool_group": "users",
@@ -422,17 +422,17 @@
   "powerscale_user_create": {
     "tool_group": "users",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_user_modify": {
     "tool_group": "users",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_user_remove": {
     "tool_group": "users",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_group_get": {
     "tool_group": "groups",
@@ -442,17 +442,17 @@
   "powerscale_group_create": {
     "tool_group": "groups",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_group_modify": {
     "tool_group": "groups",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_group_remove": {
     "tool_group": "groups",
     "tool_mode": "write",
-    "enabled": false
+    "enabled": true
   },
   "powerscale_event_get": {
     "tool_group": "events",
@@ -627,6 +627,436 @@
   "powerscale_cluster_remove": {
     "tool_group": "management",
     "tool_mode": "write",
+    "enabled": true
+  },
+  "powerscale_hardware_fcports_get": {
+    "tool_group": "hardware",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_hardware_fcport_get": {
+    "tool_group": "hardware",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_hardware_tapes_get": {
+    "tool_group": "hardware",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_job_list": {
+    "tool_group": "jobs",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_job_get": {
+    "tool_group": "jobs",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_job_recent_get": {
+    "tool_group": "jobs",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_job_summary_get": {
+    "tool_group": "jobs",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_job_types_get": {
+    "tool_group": "jobs",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_job_type_get": {
+    "tool_group": "jobs",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_job_events_get": {
+    "tool_group": "jobs",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_job_reports_get": {
+    "tool_group": "jobs",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_job_statistics_get": {
+    "tool_group": "jobs",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_job_policies_get": {
+    "tool_group": "jobs",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_job_policy_get": {
+    "tool_group": "jobs",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_job_settings_get": {
+    "tool_group": "jobs",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_performance_datasets_get": {
+    "tool_group": "performance",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_performance_dataset_get": {
+    "tool_group": "performance",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_performance_metrics_get": {
+    "tool_group": "performance",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_performance_metric_get": {
+    "tool_group": "performance",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_performance_settings_get": {
+    "tool_group": "performance",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_performance_dataset_filters_get": {
+    "tool_group": "performance",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_performance_dataset_filter_get": {
+    "tool_group": "performance",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_performance_dataset_workloads_get": {
+    "tool_group": "performance",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_performance_dataset_workload_get": {
+    "tool_group": "performance",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_hardening_profiles_get": {
+    "tool_group": "hardening",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_hardening_state_get": {
+    "tool_group": "hardening",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_hardening_reports_get": {
+    "tool_group": "hardening",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_supportassist_settings_get": {
+    "tool_group": "supportassist",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_supportassist_status_get": {
+    "tool_group": "supportassist",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_supportassist_license_get": {
+    "tool_group": "supportassist",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_supportassist_terms_get": {
+    "tool_group": "supportassist",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_supportassist_tasks_get": {
+    "tool_group": "supportassist",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_supportassist_task_get": {
+    "tool_group": "supportassist",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_connectivity_settings_get": {
+    "tool_group": "connectivity",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_connectivity_status_get": {
+    "tool_group": "connectivity",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_connectivity_license_get": {
+    "tool_group": "connectivity",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_connectivity_terms_get": {
+    "tool_group": "connectivity",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_connectivity_tasks_get": {
+    "tool_group": "connectivity",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_connectivity_task_get": {
+    "tool_group": "connectivity",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_debug_stats_get": {
+    "tool_group": "debug",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_fsa_results_get": {
+    "tool_group": "fsa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_fsa_result_get": {
+    "tool_group": "fsa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_fsa_index_get": {
+    "tool_group": "fsa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_fsa_settings_get": {
+    "tool_group": "fsa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_fsa_top_dirs_get": {
+    "tool_group": "fsa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_fsa_top_dir_get": {
+    "tool_group": "fsa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_fsa_top_files_get": {
+    "tool_group": "fsa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_fsa_top_file_get": {
+    "tool_group": "fsa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_fsa_histogram_get": {
+    "tool_group": "fsa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_fsa_histogram_stat_get": {
+    "tool_group": "fsa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_fsa_directories_get": {
+    "tool_group": "fsa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_fsa_directory_get": {
+    "tool_group": "fsa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_synciq_report_subreports_get": {
+    "tool_group": "synciq_reports",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_synciq_report_subreport_get": {
+    "tool_group": "synciq_reports",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_snapshot_changelist_entries_get": {
+    "tool_group": "snapshot_changelists",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_snapshot_changelist_entry_get": {
+    "tool_group": "snapshot_changelists",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_snapshot_changelist_lins_get": {
+    "tool_group": "snapshot_changelists",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_snapshot_changelist_lin_get": {
+    "tool_group": "snapshot_changelists",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_quota_report_about_get": {
+    "tool_group": "quota_reports",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_id_resolution_users_get": {
+    "tool_group": "id_resolution",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_id_resolution_user_get": {
+    "tool_group": "id_resolution",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_id_resolution_groups_get": {
+    "tool_group": "id_resolution",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_id_resolution_group_get": {
+    "tool_group": "id_resolution",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_lfn_domains_get": {
+    "tool_group": "lfn",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_lfn_path_get": {
+    "tool_group": "lfn",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_metadataiq_settings_get": {
+    "tool_group": "metadataiq",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_metadataiq_status_get": {
+    "tool_group": "metadataiq",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_metadataiq_certificate_get": {
+    "tool_group": "metadataiq",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_mpa_approvers_get": {
+    "tool_group": "mpa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_mpa_approver_get": {
+    "tool_group": "mpa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_mpa_requests_get": {
+    "tool_group": "mpa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_mpa_request_get": {
+    "tool_group": "mpa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_mpa_settings_get": {
+    "tool_group": "mpa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_mpa_request_lifecycle_get": {
+    "tool_group": "mpa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_mpa_privilege_actions_get": {
+    "tool_group": "mpa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_mpa_trust_anchors_get": {
+    "tool_group": "mpa",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_local_cluster_time_get": {
+    "tool_group": "local_info",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_local_network_interfaces_get": {
+    "tool_group": "local_info",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_firmware_status_get": {
+    "tool_group": "local_info",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_firmware_device_get": {
+    "tool_group": "local_info",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_node_internal_ip_get": {
+    "tool_group": "local_info",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_os_security_get": {
+    "tool_group": "local_info",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_api_session_settings_get": {
+    "tool_group": "api_sessions",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_api_session_invalidations_get": {
+    "tool_group": "api_sessions",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_api_session_invalidation_get": {
+    "tool_group": "api_sessions",
+    "tool_mode": "read",
+    "enabled": true
+  },
+  "powerscale_groupnets_summary_get": {
+    "tool_group": "groupnets_summary",
+    "tool_mode": "read",
     "enabled": true
   }
 }

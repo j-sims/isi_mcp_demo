@@ -248,6 +248,7 @@ if [[ "${RUN_PART1}" == true ]]; then
        python -m pytest \
         "${TESTS_DIR}/test_modules.py" \
         "${TESTS_DIR}/test_phase1_readonly_modules.py" \
+        "${TESTS_DIR}/test_phase8_readonly_modules.py" \
         -v; then
         ok "Part 1 passed"
     else
@@ -347,6 +348,7 @@ EOF
         "${TESTS_DIR}/test_phase5c_identity_management.py" \
         "${TESTS_DIR}/test_phase6_network.py" \
         "${TESTS_DIR}/test_phase7_cluster_capacity.py" \
+        "${TESTS_DIR}/test_phase8_readonly_mcp.py" \
         -v; then
         ok "Part 2 passed"
     else

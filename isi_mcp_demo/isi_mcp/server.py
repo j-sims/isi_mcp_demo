@@ -31,6 +31,24 @@ from modules.onefs.v9_12_0.cluster_nodes import ClusterNodes
 from modules.onefs.v9_12_0.storagepool_nodetypes import StoragepoolNodetypes
 from modules.onefs.v9_12_0.license import License
 from modules.onefs.v9_12_0.zones_summary import ZonesSummary
+from modules.onefs.v9_12_0.hardware import Hardware
+from modules.onefs.v9_12_0.jobs import Jobs
+from modules.onefs.v9_12_0.performance import Performance
+from modules.onefs.v9_12_0.hardening import Hardening
+from modules.onefs.v9_12_0.supportassist import SupportAssist
+from modules.onefs.v9_12_0.connectivity import Connectivity
+from modules.onefs.v9_12_0.debug_stats import DebugStats
+from modules.onefs.v9_12_0.fsa import FSA
+from modules.onefs.v9_12_0.sync_reports import SyncReports
+from modules.onefs.v9_12_0.snapshot_changelists import SnapshotChangelists
+from modules.onefs.v9_12_0.quota_reports import QuotaReports
+from modules.onefs.v9_12_0.id_resolution import IdResolution
+from modules.onefs.v9_12_0.lfn import LFN
+from modules.onefs.v9_12_0.metadataiq import MetadataIQ
+from modules.onefs.v9_12_0.mpa import MPA
+from modules.onefs.v9_12_0.local_info import LocalInfo
+from modules.onefs.v9_12_0.api_sessions import ApiSessions
+from modules.onefs.v9_12_0.groupnets_summary import GroupnetsSummary
 from modules.network.utils import pingable
 from modules.ansible.vault_manager import VaultManager
 
@@ -5951,6 +5969,1596 @@ def powerscale_zones_summary_zone_get(zone_id: int) -> dict:
         cluster = _get_reachable_cluster()
         zs = ZonesSummary(cluster)
         return zs.get_zone(zone_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Hardware tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_hardware_fcports_get() -> dict:
+    """
+    List all Fibre Channel ports on the PowerScale cluster.
+
+    Returns FC port details including WWNN, WWPN, state, topology, rate,
+    and port identifier. Useful for SAN fabric inventory and troubleshooting.
+
+    Returns:
+    - items: List of FC port objects
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        hw = Hardware(cluster)
+        return hw.get_fcports()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_hardware_fcport_get(port_id: str) -> dict:
+    """
+    Get details for a specific Fibre Channel port.
+
+    Returns WWNN, WWPN, state, topology, rate, and firmware info.
+
+    Arguments:
+    - port_id: The FC port identifier (e.g. '1:0')
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        hw = Hardware(cluster)
+        return hw.get_fcport(port_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_hardware_tapes_get() -> dict:
+    """
+    List all tape and changer devices on the PowerScale cluster.
+
+    Returns tape device inventory including device names, types, and status.
+    Useful for NDMP backup infrastructure assessment.
+
+    Returns:
+    - items: List of tape/changer device objects
+    - resume: Pagination token (if more results available)
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        hw = Hardware(cluster)
+        return hw.get_tapes()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Job Engine tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_job_list() -> dict:
+    """
+    List all running and paused jobs on the PowerScale cluster.
+
+    Returns active job instances from the Job Engine, including job type,
+    state (running/paused/waiting), priority, impact policy, progress,
+    and phase information.
+
+    Returns:
+    - items: List of job objects
+    - total: Total number of active jobs
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        j = Jobs(cluster)
+        return j.list_jobs()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_job_get(job_id: int) -> dict:
+    """
+    Get details for a specific running or paused job.
+
+    Arguments:
+    - job_id: The job instance ID
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        j = Jobs(cluster)
+        return j.get_job(job_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_job_recent_get(limit: int = 50) -> dict:
+    """
+    List recently completed jobs on the PowerScale cluster.
+
+    Shows jobs that have finished, failed, or been cancelled. Useful for
+    post-execution auditing and troubleshooting.
+
+    Arguments:
+    - limit: Maximum number of recent jobs to return (default 50)
+
+    Returns:
+    - items: List of recently completed job objects
+    - total: Total count
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        j = Jobs(cluster)
+        return j.get_recent(limit=limit)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_job_summary_get() -> dict:
+    """
+    Get the Job Engine status summary.
+
+    Returns high-level engine state including whether the job engine is
+    running, paused, or disabled, and aggregate counts of active jobs.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        j = Jobs(cluster)
+        return j.get_summary()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_job_types_get() -> dict:
+    """
+    List all available job types on the PowerScale cluster.
+
+    Returns the full catalog of job types (e.g. TreeDelete, SmartPools,
+    MultiScan, Collect, ShadowStoreProtect, etc.) with their descriptions,
+    enabled state, priority, impact policy, and schedule.
+
+    Returns:
+    - items: List of job type objects
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        j = Jobs(cluster)
+        return j.get_types()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_job_type_get(job_type_id: str) -> dict:
+    """
+    Get details for a specific job type.
+
+    Arguments:
+    - job_type_id: The job type name (e.g. 'TreeDelete', 'SmartPools',
+                   'Collect', 'MultiScan', 'ShadowStoreProtect', 'FlexProtect')
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        j = Jobs(cluster)
+        return j.get_type(job_type_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_job_events_get(
+    resume: Optional[str] = None,
+    limit: int = 100,
+    job_id: Optional[int] = None,
+    job_type: Optional[str] = None,
+) -> dict:
+    """
+    Retrieve Job Engine events with optional filtering and pagination.
+
+    Events include job state changes, completions, failures, and progress updates.
+
+    Arguments:
+    - resume: Pagination token from a previous call
+    - limit: Maximum number of results (default 100)
+    - job_id: Filter events by job instance ID
+    - job_type: Filter events by job type name
+    """
+    resume = None if resume in (None, "null", "None") else resume
+    try:
+        cluster = _get_reachable_cluster()
+        j = Jobs(cluster)
+        return j.get_events(resume=resume, limit=limit, job_id=job_id, job_type=job_type)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_job_reports_get(
+    resume: Optional[str] = None,
+    limit: int = 100,
+    job_id: Optional[int] = None,
+    job_type: Optional[str] = None,
+) -> dict:
+    """
+    List Job Engine reports with optional filtering and pagination.
+
+    Reports contain detailed execution results for completed jobs.
+
+    Arguments:
+    - resume: Pagination token from a previous call
+    - limit: Maximum number of results (default 100)
+    - job_id: Filter reports by job instance ID
+    - job_type: Filter reports by job type name
+    """
+    resume = None if resume in (None, "null", "None") else resume
+    try:
+        cluster = _get_reachable_cluster()
+        j = Jobs(cluster)
+        return j.get_reports(resume=resume, limit=limit, job_id=job_id, job_type=job_type)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_job_statistics_get() -> dict:
+    """
+    Get Job Engine statistics.
+
+    Returns aggregate statistics about job execution, throughput, and resource usage.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        j = Jobs(cluster)
+        return j.get_statistics()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_job_policies_get() -> dict:
+    """
+    List all job impact policies.
+
+    Impact policies control how aggressively jobs consume cluster resources
+    (e.g. LOW, MEDIUM, HIGH, OFF_HOURS).
+
+    Returns:
+    - items: List of impact policy objects
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        j = Jobs(cluster)
+        return j.get_policies()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_job_policy_get(policy_id: str) -> dict:
+    """
+    Get details for a specific job impact policy.
+
+    Arguments:
+    - policy_id: The impact policy name (e.g. 'LOW', 'MEDIUM', 'HIGH', 'OFF_HOURS')
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        j = Jobs(cluster)
+        return j.get_policy(policy_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_job_settings_get() -> dict:
+    """
+    Get Job Engine generic settings.
+
+    Returns engine-level configuration like default priority, scheduling parameters,
+    and global enable/disable state.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        j = Jobs(cluster)
+        return j.get_settings()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Performance tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_performance_datasets_get() -> dict:
+    """
+    List all performance datasets on the PowerScale cluster.
+
+    Datasets define collections of metrics for performance monitoring and analysis.
+
+    Returns:
+    - items: List of dataset objects
+    - total: Total number of datasets
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        p = Performance(cluster)
+        return p.list_datasets()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_performance_dataset_get(dataset_id: int) -> dict:
+    """
+    Get details for a specific performance dataset.
+
+    Arguments:
+    - dataset_id: The dataset ID
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        p = Performance(cluster)
+        return p.get_dataset(dataset_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_performance_metrics_get() -> dict:
+    """
+    List all available performance metrics on the cluster.
+
+    Returns the full catalog of metrics that can be included in performance
+    datasets for monitoring (throughput, latency, IOPS, etc.).
+
+    Returns:
+    - items: List of metric objects with name, description, units, and type
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        p = Performance(cluster)
+        return p.get_metrics()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_performance_metric_get(metric_id: str) -> dict:
+    """
+    Get details for a specific performance metric.
+
+    Arguments:
+    - metric_id: The metric name/ID
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        p = Performance(cluster)
+        return p.get_metric(metric_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_performance_settings_get() -> dict:
+    """
+    Get performance monitoring settings.
+
+    Returns configuration for the performance monitoring subsystem.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        p = Performance(cluster)
+        return p.get_settings()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_performance_dataset_filters_get(dataset_id: int) -> dict:
+    """
+    List all filters for a specific performance dataset.
+
+    Filters define which metrics/nodes are included in the dataset.
+
+    Arguments:
+    - dataset_id: The dataset ID
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        p = Performance(cluster)
+        return p.list_dataset_filters(dataset_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_performance_dataset_filter_get(dataset_id: int, filter_id: int) -> dict:
+    """
+    Get a specific filter for a performance dataset.
+
+    Arguments:
+    - dataset_id: The dataset ID
+    - filter_id: The filter ID
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        p = Performance(cluster)
+        return p.get_dataset_filter(dataset_id, filter_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_performance_dataset_workloads_get(dataset_id: int) -> dict:
+    """
+    List all workloads for a specific performance dataset.
+
+    Workloads define workload categories being tracked within a dataset.
+
+    Arguments:
+    - dataset_id: The dataset ID
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        p = Performance(cluster)
+        return p.list_dataset_workloads(dataset_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_performance_dataset_workload_get(dataset_id: int, workload_id: int) -> dict:
+    """
+    Get a specific workload for a performance dataset.
+
+    Arguments:
+    - dataset_id: The dataset ID
+    - workload_id: The workload ID
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        p = Performance(cluster)
+        return p.get_dataset_workload(dataset_id, workload_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Hardening tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_hardening_profiles_get() -> dict:
+    """
+    List available security hardening profiles on the PowerScale cluster.
+
+    Returns profile names, descriptions, and whether each is currently applied.
+    Useful for security compliance auditing.
+
+    Returns:
+    - items: List of hardening profile objects
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        h = Hardening(cluster)
+        return h.get_profiles()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_hardening_state_get() -> dict:
+    """
+    Get the current state of the hardening service.
+
+    Returns whether the hardening service is 'Running' or 'Available' and
+    which profiles are active.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        h = Hardening(cluster)
+        return h.get_state()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_hardening_reports_get() -> dict:
+    """
+    List compliance reports for all hardening rules.
+
+    Returns a per-rule compliance status showing which hardening rules
+    are passing or failing. Useful for security audit and remediation.
+
+    Returns:
+    - items: List of hardening report objects
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        h = Hardening(cluster)
+        return h.get_reports()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# SupportAssist tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_supportassist_settings_get() -> dict:
+    """
+    Get SupportAssist configuration settings.
+
+    Returns connection settings, proxy configuration, auto-case creation status,
+    and gateway settings for Dell SupportAssist integration.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        sa = SupportAssist(cluster)
+        return sa.get_settings()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_supportassist_status_get() -> dict:
+    """
+    Get SupportAssist current status.
+
+    Returns connectivity status, last contact time, and overall health
+    of the SupportAssist service.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        sa = SupportAssist(cluster)
+        return sa.get_status()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_supportassist_license_get() -> dict:
+    """
+    Get SupportAssist license activation status.
+
+    Returns whether SupportAssist is activated and license entitlement details.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        sa = SupportAssist(cluster)
+        return sa.get_license()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_supportassist_terms_get() -> dict:
+    """
+    Get SupportAssist Terms & Conditions text and acceptance status.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        sa = SupportAssist(cluster)
+        return sa.get_terms()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_supportassist_tasks_get() -> dict:
+    """
+    List all SupportAssist tasks.
+
+    Returns pending, running, and completed SupportAssist tasks such as
+    log collection, diagnostics uploads, and payload requests.
+
+    Returns:
+    - items: List of task objects
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        sa = SupportAssist(cluster)
+        return sa.list_tasks()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_supportassist_task_get(task_id: str) -> dict:
+    """
+    Get a specific SupportAssist task by ID.
+
+    Arguments:
+    - task_id: The task identifier
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        sa = SupportAssist(cluster)
+        return sa.get_task(task_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Connectivity tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_connectivity_settings_get() -> dict:
+    """
+    Get connectivity diagnostic configuration settings.
+
+    Returns configuration for Dell connectivity services including proxy
+    settings, gateway info, and service enablement status.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        conn = Connectivity(cluster)
+        return conn.get_settings()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_connectivity_status_get() -> dict:
+    """
+    Get connectivity diagnostic current status.
+
+    Returns current connectivity health, last check time, and any issues.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        conn = Connectivity(cluster)
+        return conn.get_status()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_connectivity_license_get() -> dict:
+    """
+    Get connectivity service license activation status.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        conn = Connectivity(cluster)
+        return conn.get_license()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_connectivity_terms_get() -> dict:
+    """
+    Get telemetry notice text for Dell Technologies connectivity services.
+
+    Returns the terms and acceptance status for telemetry data collection.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        conn = Connectivity(cluster)
+        return conn.get_terms()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_connectivity_tasks_get() -> dict:
+    """
+    List all connectivity diagnostic tasks.
+
+    Returns:
+    - items: List of connectivity task objects
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        conn = Connectivity(cluster)
+        return conn.list_tasks()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_connectivity_task_get(task_id: str) -> dict:
+    """
+    Get a specific connectivity diagnostic task by ID.
+
+    Arguments:
+    - task_id: The task identifier
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        conn = Connectivity(cluster)
+        return conn.get_task(task_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Debug Stats tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_debug_stats_get() -> dict:
+    """
+    Get cumulative Platform API call statistics per resource.
+
+    Returns call counts for each API resource endpoint, useful for
+    understanding API usage patterns and diagnosing performance bottlenecks.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        ds = DebugStats(cluster)
+        return ds.get()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# FSA (File System Analytics) tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_fsa_results_get() -> dict:
+    """
+    List all available FSA (File System Analytics) result sets.
+
+    FSA scans the filesystem and produces result sets containing statistics
+    about file distribution, sizes, ages, and storage pool usage.
+
+    Returns:
+    - items: List of FSA result set objects (with ID, timestamp, status, path)
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        fsa = FSA(cluster)
+        return fsa.get_results()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_fsa_result_get(result_id: int) -> dict:
+    """
+    Get details for a specific FSA result set.
+
+    Arguments:
+    - result_id: The FSA result set ID
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        fsa = FSA(cluster)
+        return fsa.get_result(result_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_fsa_index_get() -> dict:
+    """
+    Get available FSA index table names.
+
+    Returns the list of index tables that can be queried for FSA data.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        fsa = FSA(cluster)
+        return fsa.get_index()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_fsa_settings_get(scope: Optional[str] = None) -> dict:
+    """
+    Get FSA configuration settings.
+
+    Arguments:
+    - scope: Optional scope filter for settings
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        fsa = FSA(cluster)
+        return fsa.get_settings(scope=scope)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_fsa_top_dirs_get(result_id: int) -> dict:
+    """
+    Get top directories from an FSA result set.
+
+    Returns directories ranked by space consumption, file count, or other
+    metrics. Useful for identifying storage hotspots.
+
+    Arguments:
+    - result_id: The FSA result set ID
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        fsa = FSA(cluster)
+        return fsa.get_top_dirs(result_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_fsa_top_dir_get(result_id: int, top_dir_id: int) -> dict:
+    """
+    Get a specific top directory entry from an FSA result set.
+
+    Arguments:
+    - result_id: The FSA result set ID
+    - top_dir_id: The top directory entry ID
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        fsa = FSA(cluster)
+        return fsa.get_top_dir(result_id, top_dir_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_fsa_top_files_get(result_id: int) -> dict:
+    """
+    Get top files from an FSA result set.
+
+    Returns files ranked by size. Useful for identifying the largest files
+    consuming storage.
+
+    Arguments:
+    - result_id: The FSA result set ID
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        fsa = FSA(cluster)
+        return fsa.get_top_files(result_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_fsa_top_file_get(result_id: int, top_file_id: int) -> dict:
+    """
+    Get a specific top file entry from an FSA result set.
+
+    Arguments:
+    - result_id: The FSA result set ID
+    - top_file_id: The top file entry ID
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        fsa = FSA(cluster)
+        return fsa.get_top_file(result_id, top_file_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_fsa_histogram_get(result_id: int) -> dict:
+    """
+    Get histogram of file counts for an FSA result set.
+
+    Returns file distribution data (e.g. by size bucket, age bucket).
+
+    Arguments:
+    - result_id: The FSA result set ID
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        fsa = FSA(cluster)
+        return fsa.get_histogram(result_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_fsa_histogram_stat_get(result_id: int, stat: str) -> dict:
+    """
+    Get histogram filtered by a specific statistic.
+
+    Arguments:
+    - result_id: The FSA result set ID
+    - stat: The statistic name to filter histogram by
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        fsa = FSA(cluster)
+        return fsa.get_histogram_stat(result_id, stat)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_fsa_directories_get(result_id: int) -> dict:
+    """
+    Get directory information from an FSA result set.
+
+    Returns directory-level statistics including file counts, sizes, and paths.
+
+    Arguments:
+    - result_id: The FSA result set ID
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        fsa = FSA(cluster)
+        return fsa.get_directories(result_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_fsa_directory_get(result_id: int, directory_id: int) -> dict:
+    """
+    Get specific directory information from an FSA result set.
+
+    Arguments:
+    - result_id: The FSA result set ID
+    - directory_id: The directory entry ID
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        fsa = FSA(cluster)
+        return fsa.get_directory(result_id, directory_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# SyncIQ Reports tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_synciq_report_subreports_get(
+    report_id: str,
+    resume: Optional[str] = None,
+    limit: int = 100,
+) -> dict:
+    """
+    List subreports for a SyncIQ policy report.
+
+    Subreports provide per-run execution details (bytes transferred, files
+    scanned, errors, duration, etc.) for SyncIQ replication operations.
+
+    Arguments:
+    - report_id: The SyncIQ report ID (from powerscale_synciq_get or sync report APIs)
+    - resume: Pagination token from a previous call
+    - limit: Maximum number of results (default 100)
+    """
+    resume = None if resume in (None, "null", "None") else resume
+    try:
+        cluster = _get_reachable_cluster()
+        sr = SyncReports(cluster)
+        return sr.get_subreports(report_id, resume=resume, limit=limit)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_synciq_report_subreport_get(report_id: str, subreport_id: str) -> dict:
+    """
+    Get a specific subreport from a SyncIQ report.
+
+    Arguments:
+    - report_id: The SyncIQ report ID
+    - subreport_id: The subreport ID
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        sr = SyncReports(cluster)
+        return sr.get_subreport(report_id, subreport_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Snapshot Changelists tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_snapshot_changelist_entries_get(
+    changelist_id: str,
+    resume: Optional[str] = None,
+    limit: int = 100,
+) -> dict:
+    """
+    List entries in a snapshot changelist.
+
+    Changelists track file and directory changes between two snapshots.
+    Each entry represents a changed file/directory with its change type.
+
+    Arguments:
+    - changelist_id: The changelist identifier
+    - resume: Pagination token from a previous call
+    - limit: Maximum number of results (default 100)
+    """
+    resume = None if resume in (None, "null", "None") else resume
+    try:
+        cluster = _get_reachable_cluster()
+        sc = SnapshotChangelists(cluster)
+        return sc.get_entries(changelist_id, resume=resume, limit=limit)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_snapshot_changelist_entry_get(changelist_id: str, entry_id: str) -> dict:
+    """
+    Get a specific entry from a snapshot changelist.
+
+    Arguments:
+    - changelist_id: The changelist identifier
+    - entry_id: The entry ID within the changelist
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        sc = SnapshotChangelists(cluster)
+        return sc.get_entry(changelist_id, entry_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_snapshot_changelist_lins_get(
+    changelist_id: str,
+    resume: Optional[str] = None,
+    limit: int = 100,
+) -> dict:
+    """
+    List LIN (Logical Inode Number) entries for a snapshot changelist.
+
+    LIN entries provide inode-level change tracking between snapshots.
+
+    Arguments:
+    - changelist_id: The changelist identifier
+    - resume: Pagination token from a previous call
+    - limit: Maximum number of results (default 100)
+    """
+    resume = None if resume in (None, "null", "None") else resume
+    try:
+        cluster = _get_reachable_cluster()
+        sc = SnapshotChangelists(cluster)
+        return sc.get_lins(changelist_id, resume=resume, limit=limit)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_snapshot_changelist_lin_get(changelist_id: str, lin_id: str) -> dict:
+    """
+    Get a specific LIN entry from a snapshot changelist.
+
+    Arguments:
+    - changelist_id: The changelist identifier
+    - lin_id: The LIN (Logical Inode Number)
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        sc = SnapshotChangelists(cluster)
+        return sc.get_lin(changelist_id, lin_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Quota Reports tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_quota_report_about_get(report_id: str) -> dict:
+    """
+    Get metadata about a specific quota report.
+
+    Returns report info such as generation time, scope, and parameters.
+
+    Arguments:
+    - report_id: The quota report ID
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        qr = QuotaReports(cluster)
+        return qr.get_report_about(report_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# ID Resolution tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_id_resolution_users_get(
+    zone_id: str,
+    resume: Optional[str] = None,
+    limit: int = 100,
+) -> dict:
+    """
+    List UID/SID to username mappings for an access zone.
+
+    Resolves numeric user identifiers to their associated names.
+
+    Arguments:
+    - zone_id: The access zone name or ID (e.g. 'System')
+    - resume: Pagination token from a previous call
+    - limit: Maximum number of results (default 100)
+    """
+    resume = None if resume in (None, "null", "None") else resume
+    try:
+        cluster = _get_reachable_cluster()
+        idr = IdResolution(cluster)
+        return idr.get_zone_users(zone_id, resume=resume, limit=limit)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_id_resolution_user_get(zone_id: str, user_id: str) -> dict:
+    """
+    Resolve a specific UID/SID to a username within an access zone.
+
+    Arguments:
+    - zone_id: The access zone name or ID
+    - user_id: The user UID or SID to resolve
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        idr = IdResolution(cluster)
+        return idr.get_zone_user(zone_id, user_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_id_resolution_groups_get(
+    zone_id: str,
+    resume: Optional[str] = None,
+    limit: int = 100,
+) -> dict:
+    """
+    List GID/GSID to groupname mappings for an access zone.
+
+    Resolves numeric group identifiers to their associated names.
+
+    Arguments:
+    - zone_id: The access zone name or ID (e.g. 'System')
+    - resume: Pagination token from a previous call
+    - limit: Maximum number of results (default 100)
+    """
+    resume = None if resume in (None, "null", "None") else resume
+    try:
+        cluster = _get_reachable_cluster()
+        idr = IdResolution(cluster)
+        return idr.get_zone_groups(zone_id, resume=resume, limit=limit)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_id_resolution_group_get(zone_id: str, group_id: str) -> dict:
+    """
+    Resolve a specific GID/GSID to a groupname within an access zone.
+
+    Arguments:
+    - zone_id: The access zone name or ID
+    - group_id: The group GID or GSID to resolve
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        idr = IdResolution(cluster)
+        return idr.get_zone_group(zone_id, group_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# LFN (Long File Name) tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_lfn_domains_get(resume: Optional[str] = None) -> dict:
+    """
+    List all Long File Name configuration domains.
+
+    LFN domains control maximum file name lengths for specific filesystem
+    paths. Returns path and configuration for each domain.
+
+    Arguments:
+    - resume: Pagination token from a previous call
+    """
+    resume = None if resume in (None, "null", "None") else resume
+    try:
+        cluster = _get_reachable_cluster()
+        l = LFN(cluster)
+        return l.list_domains(resume=resume)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_lfn_path_get(path: str) -> dict:
+    """
+    Get Long File Name configuration for a specific path.
+
+    Arguments:
+    - path: The filesystem path to query (e.g. '/ifs/data')
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        l = LFN(cluster)
+        return l.get_path(path)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# MetadataIQ tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_metadataiq_settings_get() -> dict:
+    """
+    Get MetadataIQ configuration settings.
+
+    Returns settings for the MetadataIQ service that indexes filesystem
+    metadata for analytical querying.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        miq = MetadataIQ(cluster)
+        return miq.get_settings()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_metadataiq_status_get() -> dict:
+    """
+    Get MetadataIQ current cycle status.
+
+    Returns the state of the current metadata indexing cycle (running,
+    idle, completing, etc.) and progress information.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        miq = MetadataIQ(cluster)
+        return miq.get_status()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_metadataiq_certificate_get() -> dict:
+    """
+    Get MetadataIQ CA certificate information.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        miq = MetadataIQ(cluster)
+        return miq.get_certificate()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# MPA (Multi-Party Authorization) tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_mpa_approvers_get() -> dict:
+    """
+    List all Multi-Party Authorization (MPA) approvers on the cluster.
+
+    MPA requires approval from multiple parties before executing
+    privileged operations.
+
+    Returns:
+    - items: List of approver objects
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        m = MPA(cluster)
+        return m.get_approvers()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_mpa_approver_get(approver_id: str) -> dict:
+    """
+    Get details for a specific MPA approver.
+
+    Arguments:
+    - approver_id: The approver identifier
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        m = MPA(cluster)
+        return m.get_approver(approver_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_mpa_requests_get() -> dict:
+    """
+    List all MPA (Multi-Party Authorization) requests.
+
+    Returns pending, approved, and denied authorization requests.
+
+    Returns:
+    - items: List of MPA request objects
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        m = MPA(cluster)
+        return m.list_requests()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_mpa_request_get(request_id: str) -> dict:
+    """
+    Get details for a specific MPA request.
+
+    Arguments:
+    - request_id: The MPA request identifier
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        m = MPA(cluster)
+        return m.get_request(request_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_mpa_settings_get() -> dict:
+    """
+    Get MPA global configuration settings.
+
+    Returns whether MPA is enabled, required approval count, and other
+    global configuration parameters.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        m = MPA(cluster)
+        return m.get_global_settings()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_mpa_request_lifecycle_get() -> dict:
+    """
+    Get MPA request lifecycle configuration.
+
+    Returns timeout values, expiration policies, and other lifecycle
+    parameters for MPA authorization requests.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        m = MPA(cluster)
+        return m.get_request_lifecycle()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_mpa_privilege_actions_get() -> dict:
+    """
+    Get MPA privileged action metadata.
+
+    Returns the list of actions that require Multi-Party Authorization
+    and their associated metadata.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        m = MPA(cluster)
+        return m.get_privilege_action_metadata()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_mpa_trust_anchors_get() -> dict:
+    """
+    List trusted root CAs for MPA.
+
+    Returns:
+    - items: List of trust anchor (CA certificate) objects
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        m = MPA(cluster)
+        return m.list_trust_anchors()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Local Info tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_local_cluster_time_get() -> dict:
+    """
+    Get the current time on the local cluster node.
+
+    Returns the node's system clock time. Useful for verifying NTP sync
+    and time consistency across the cluster.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        li = LocalInfo(cluster)
+        return li.get_cluster_time()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_local_network_interfaces_get() -> dict:
+    """
+    List network interfaces on the local cluster node.
+
+    Returns interface details including name, IP addresses, MTU, flags,
+    and link status.
+
+    Returns:
+    - items: List of network interface objects
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        li = LocalInfo(cluster)
+        return li.get_network_interfaces()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_firmware_status_get() -> dict:
+    """
+    Get firmware status for the cluster.
+
+    Returns current firmware versions and upgrade status.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        li = LocalInfo(cluster)
+        return li.get_firmware_status()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_firmware_device_get() -> dict:
+    """
+    Get firmware device information for the cluster.
+
+    Returns per-node firmware device status and version details.
+
+    Returns:
+    - items: List of node firmware objects
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        li = LocalInfo(cluster)
+        return li.get_firmware_device()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_node_internal_ip_get(node_lnn: int) -> dict:
+    """
+    Get the internal IP address for a specific cluster node.
+
+    Arguments:
+    - node_lnn: Logical Node Number (LNN) of the node
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        li = LocalInfo(cluster)
+        return li.get_node_internal_ip(node_lnn)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_os_security_get() -> dict:
+    """
+    Get per-node OS security settings status.
+
+    Returns OS-level security configuration such as FIPS mode, secure boot
+    status, and other security posture information.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        li = LocalInfo(cluster)
+        return li.get_os_security()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# API Sessions tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_api_session_settings_get() -> dict:
+    """
+    Get HTTP API session settings.
+
+    Returns session timeout, maximum sessions, and other session
+    configuration parameters for the Platform API.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        api_s = ApiSessions(cluster)
+        return api_s.get_session_settings()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_api_session_invalidations_get() -> dict:
+    """
+    List all Platform API session invalidations.
+
+    Returns:
+    - items: List of session invalidation objects
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        api_s = ApiSessions(cluster)
+        return api_s.list_invalidations()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def powerscale_api_session_invalidation_get(invalidation_id: str) -> dict:
+    """
+    Get a specific Platform API session invalidation.
+
+    Arguments:
+    - invalidation_id: The invalidation identifier
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        api_s = ApiSessions(cluster)
+        return api_s.get_invalidation(invalidation_id)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Groupnets Summary tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def powerscale_groupnets_summary_get() -> dict:
+    """
+    Get groupnet summary information.
+
+    Returns aggregate information about network groupnets including count,
+    names, and subnet details. A lighter-weight alternative to
+    powerscale_network_groupnets_get for quick topology overview.
+    """
+    try:
+        cluster = _get_reachable_cluster()
+        gs = GroupnetsSummary(cluster)
+        return gs.get()
     except Exception as e:
         return {"error": str(e)}
 
