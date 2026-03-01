@@ -22,7 +22,10 @@ class LocalInfo:
         api = isi_sdk.LocalApi(self.cluster.api_client)
         try:
             result = api.get_cluster_time()
-            return result.time.to_dict() if hasattr(result, "time") and result.time else {}
+            if hasattr(result, "time") and result.time:
+                # time is already a numeric value (Unix timestamp), not an object
+                return {"time": result.time}
+            return {}
         except ApiException as e:
             return {"error": str(e)}
 

@@ -18,9 +18,6 @@ RUN set -eux; \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install the Dell PowerScale Ansible collection
-RUN ansible-galaxy collection install dellemc.powerscale
-
 # Shim for pkg_resources (parse_version removed in setuptools>=78).
 # The dellemc.powerscale collection imports parse_version and working_set
 # from pkg_resources; this shim injects them into the existing package.
@@ -50,6 +47,10 @@ RUN mkdir -p playbooks .ansible/tmp && chown -R mcp:mcp /app
 ENV HOME=/app
 
 USER mcp
+
+# Install the Dell PowerScale Ansible collection as mcp user
+# This ensures the collection is installed to /app/.ansible/collections (readable by mcp)
+RUN ansible-galaxy collection install dellemc.powerscale
 
 EXPOSE 8000
 

@@ -123,11 +123,19 @@ class AnsibleRunner:
             "api_password": self.cluster.password,
         }
 
+        # Set environment variables for ansible-runner to find collections
+        # In Docker: /app/.ansible/collections (installed as mcp user)
+        # On host: ~/.ansible/collections or system paths
+        env_vars = {
+            "ANSIBLE_COLLECTIONS_PATHS": f"{os.path.expanduser('~')}/.ansible/collections:/usr/share/ansible/collections",
+        }
+
         runner = ansible_runner.run(
             private_data_dir=str(self.playbooks_dir),
             playbook=str(playbook_path.name),
             quiet=not self.debug,
             extravars=extravars,
+            envvars=env_vars,
         )
 
         result = {

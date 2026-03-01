@@ -44,6 +44,9 @@ class Hardware:
         try:
             result = api.get_hardware_tapes()
             devices = result.devices if hasattr(result, "devices") and result.devices else []
+            # Handle case where devices is a single object, not a list
+            if devices and not isinstance(devices, list):
+                devices = [devices]
             return {
                 "items": [d.to_dict() for d in devices],
                 "resume": getattr(result, "resume", None),

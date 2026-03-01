@@ -43,10 +43,16 @@ _CLUSTER_CONFIGURED = bool(
 
 @pytest.fixture(scope="session")
 def cluster():
-    """Create a single Cluster instance for all module tests (uses vault/env)."""
+    """Create a single Cluster instance for all module tests."""
     if not _CLUSTER_CONFIGURED:
         pytest.skip("Test cluster credentials not configured.")
-    return Cluster()
+    return Cluster(
+        host=f"https://{TEST_CLUSTER_HOST}",
+        port=TEST_CLUSTER_PORT,
+        username=TEST_CLUSTER_USERNAME,
+        password=TEST_CLUSTER_PASSWORD,
+        verify_ssl=TEST_CLUSTER_VERIFY_SSL
+    )
 
 
 @pytest.fixture(scope="session")
