@@ -175,7 +175,7 @@ Follow Dell's published capacity guidelines:
 ### Before Any Mutating Operation
 
 1. **Verify the target cluster**: Use `powerscale_cluster_list` to confirm which cluster is currently selected.
-2. **Check cluster health**: Run `powerscale_check_health` to verify the cluster is healthy before making changes.
+2. **Check cluster health**: Run `powerscale_cluster_verify` to verify the cluster is healthy before making changes.
 3. **Check capacity**: Run `powerscale_capacity` if the operation will consume storage (creating files, directories, snapshots).
 4. **Explain the operation**: Tell the user what you are about to do, what parameters will be used, and what the expected outcome is.
 5. **Get confirmation**: For any mutating operation, ask the user to confirm before executing.
@@ -207,7 +207,7 @@ Follow Dell's published capacity guidelines:
 
 ### When Troubleshooting
 
-1. Start with `powerscale_check_health` for an overall health assessment.
+1. Start with `powerscale_cluster_verify` for an overall health assessment.
 2. Check `powerscale_event_get` for recent events, filtering by severity if needed.
 3. Use performance statistics tools (`powerscale_stats_*`) to identify bottlenecks.
 4. Check active sessions and open files if users report access issues.
@@ -326,7 +326,7 @@ The PowerScale MCP tool suite works with both **physical** and **virtual** clust
 **Tool Workarounds for Virtual Clusters**:
 - Instead of `powerscale_stats_node()` for individual node stats, use `powerscale_stats_cpu()` and `powerscale_stats_network()` for cluster-wide view
 - Event monitoring via `powerscale_event_get()` works fully on both deployment types
-- Health checks via `powerscale_check_health()` work on both (though per-node hardware issues may not be visible in virtual)
+- Health checks via `powerscale_cluster_verify()` work on both (though per-node hardware issues may not be visible in virtual)
 
 ---
 

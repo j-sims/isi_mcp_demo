@@ -327,13 +327,13 @@ class TestManagementTools:
         for tool in management_tools:
             assert tool in tool_names, f"{tool} not found in tool list"
 
-    def test_health_check_tool_exists(self, mcp_session):
-        """Health check tool should be available."""
+    def test_cluster_verify_tool_exists(self, mcp_session):
+        """Cluster verification tool should be available."""
         tools = mcp_session.list_tools()
         tool_names = [t["name"] for t in tools]
 
-        assert "powerscale_check_health" in tool_names, \
-            "powerscale_check_health not found"
+        assert "powerscale_cluster_verify" in tool_names, \
+            "powerscale_cluster_verify not found"
 
     def test_config_tool_exists(self, mcp_session):
         """Config tool should be available."""

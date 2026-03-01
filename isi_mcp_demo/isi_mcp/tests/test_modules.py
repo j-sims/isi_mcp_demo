@@ -10,7 +10,7 @@ Run from the isi_mcp/ directory:
 """
 
 from modules.onefs.v9_12_0.cluster import Cluster
-from modules.onefs.v9_12_0.health import Health
+from modules.onefs.v9_12_0.verify import Verify
 from modules.onefs.v9_12_0.capacity import Capacity
 from modules.onefs.v9_12_0.quotas import Quotas
 from modules.onefs.v9_12_0.smb import Smb
@@ -37,12 +37,12 @@ class TestCluster:
 # Health & Capacity (automation modules — unique return shapes)
 # ---------------------------------------------------------------------------
 
-class TestHealth:
+class TestVerify:
 
-    def test_health_check(self, cluster):
-        """Health.check() returns {status: bool, message: str}."""
-        health = Health(cluster)
-        result = health.check()
+    def test_cluster_verify(self, cluster):
+        """Verify.verify() returns {status: bool, message: str}."""
+        verifier = Verify(cluster)
+        result = verifier.verify()
         assert isinstance(result, dict)
         assert "status" in result
         assert "message" in result

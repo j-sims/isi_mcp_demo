@@ -27,7 +27,7 @@ class TestToolsList:
 
         expected = [
             "current_time",
-            "powerscale_check_health",
+            "powerscale_cluster_verify",
             "powerscale_capacity",
             "powerscale_quota_get",
             "powerscale_quota_set",
@@ -95,11 +95,11 @@ class TestUtilityTools:
 # Cluster tools (require live PowerScale)
 # ---------------------------------------------------------------------------
 
-class TestHealthTool:
+class TestVerifyTool:
 
-    def test_mcp_check_health(self, mcp_session):
-        """powerscale_check_health returns status and message."""
-        result = mcp_session("powerscale_check_health")
+    def test_mcp_cluster_verify(self, mcp_session):
+        """powerscale_cluster_verify returns status and message."""
+        result = mcp_session("powerscale_cluster_verify")
         assert isinstance(result, dict)
         assert "status" in result
         assert "message" in result

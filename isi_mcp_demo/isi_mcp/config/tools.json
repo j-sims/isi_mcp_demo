@@ -14,8 +14,8 @@
     "tool_mode": "read",
     "enabled": true
   },
-  "powerscale_check_health": {
-    "tool_group": "health",
+  "powerscale_cluster_verify": {
+    "tool_group": "verify",
     "tool_mode": "read",
     "enabled": true
   },

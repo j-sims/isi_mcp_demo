@@ -9,7 +9,7 @@ from typing import Dict, Any, Optional, List
 from fastmcp import FastMCP
 from modules.logging_config import configure_logging
 from modules.onefs.v9_12_0.cluster import Cluster
-from modules.onefs.v9_12_0.health import Health
+from modules.onefs.v9_12_0.verify import Verify
 from modules.onefs.v9_12_0.capacity import Capacity
 from modules.onefs.v9_12_0.quotas import Quotas
 from modules.onefs.v9_12_0.snapshots import Snapshots
@@ -239,16 +239,16 @@ def current_time() -> dict:
     }
 
 @mcp.tool()
-def powerscale_check_health() -> dict:
+def powerscale_cluster_verify() -> dict:
     """
-    Perform a comprehensive health check on the PowerScale (formerly Isilon) cluster.
+    Perform a comprehensive cluster state verification on the PowerScale (formerly Isilon) cluster.
 
     This tool runs a series of diagnostic checks against the live cluster and returns
     a pass/fail result with an explanation. The checks are performed in priority order
     and the first failure stops the sequence — this means the most critical issue is
     always reported first.
 
-    Health checks performed (in order):
+    Verification checks performed (in order):
     1. Quorum — Is the cluster in quorum? Loss of quorum is a critical failure
        indicating the cluster cannot reach consensus among its nodes.
     2. Service light — Is the front-panel service light illuminated? An active
@@ -262,11 +262,11 @@ def powerscale_check_health() -> dict:
        out of space.
 
     Response fields:
-    - status: Boolean — True means the cluster is healthy, False means unhealthy
+    - status: Boolean — True means verification passed, False means verification failed
     - message: Human-readable explanation of the result
 
     Use this tool to answer questions such as:
-    - Is the PowerScale cluster healthy?
+    - Is the PowerScale cluster in a good operational state?
     - Are there any problems with the cluster right now?
     - Is the cluster in quorum?
     - Are there any critical alerts or events?
@@ -276,8 +276,8 @@ def powerscale_check_health() -> dict:
 
     try:
         cluster = _get_reachable_cluster()
-        health = Health(cluster)
-        return health.check()
+        verifier = Verify(cluster)
+        return verifier.verify()
 
     except Exception as e:
         return {"error": str(e)}
