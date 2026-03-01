@@ -116,6 +116,85 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ---------------------------------------------------------------------------
+# Validate filter inputs against tools.json
+# ---------------------------------------------------------------------------
+TOOLS_JSON="${ROOT_DIR}/isi_mcp_demo/isi_mcp/config/tools.json"
+
+if [[ ! -f "$TOOLS_JSON" ]]; then
+    fail "tools.json not found at: $TOOLS_JSON"
+fi
+
+# Extract valid functions, groups, and tool names from tools.json
+VALID_FUNCTIONS=$(python3 -c "
+import json
+with open('$TOOLS_JSON') as f:
+    tools = json.load(f)
+    functions = set()
+    for tool_name, tool_data in tools.items():
+        if 'function' in tool_data:
+            functions.add(tool_data['function'])
+    for func in sorted(functions):
+        print(func)
+" 2>/dev/null)
+
+VALID_GROUPS=$(python3 -c "
+import json
+with open('$TOOLS_JSON') as f:
+    tools = json.load(f)
+    groups = set()
+    for tool_name, tool_data in tools.items():
+        if 'tool_group' in tool_data:
+            groups.add(tool_data['tool_group'])
+    for group in sorted(groups):
+        print(group)
+" 2>/dev/null)
+
+VALID_TOOLS=$(python3 -c "
+import json
+with open('$TOOLS_JSON') as f:
+    tools = json.load(f)
+    for tool_name in sorted(tools.keys()):
+        print(tool_name)
+" 2>/dev/null)
+
+# Validate --func argument
+if [[ -n "$FILTER_FUNC" ]]; then
+    if ! echo "$VALID_FUNCTIONS" | grep -q "^${FILTER_FUNC}$"; then
+        fail "--func '$FILTER_FUNC' is not a valid function"
+        echo ""
+        echo "Valid functions are:"
+        echo "$VALID_FUNCTIONS" | sed 's/^/  - /'
+        echo ""
+        exit 1
+    fi
+fi
+
+# Validate --group argument
+if [[ -n "$FILTER_GROUP" ]]; then
+    if ! echo "$VALID_GROUPS" | grep -q "^${FILTER_GROUP}$"; then
+        fail "--group '$FILTER_GROUP' is not a valid tool group"
+        echo ""
+        echo "Valid tool groups are:"
+        echo "$VALID_GROUPS" | sed 's/^/  - /'
+        echo ""
+        exit 1
+    fi
+fi
+
+# Validate --tool argument
+if [[ -n "$FILTER_TOOL" ]]; then
+    if ! echo "$VALID_TOOLS" | grep -q "^${FILTER_TOOL}$"; then
+        fail "--tool '$FILTER_TOOL' is not a valid tool name"
+        echo ""
+        echo "Valid tool names (first 20):"
+        echo "$VALID_TOOLS" | head -20 | sed 's/^/  - /'
+        echo "  ... and more (use --func or --group to filter by function/group)"
+        echo ""
+        exit 1
+    fi
+fi
+
+# ---------------------------------------------------------------------------
 # Build pytest marker expression from filter arguments
 # ---------------------------------------------------------------------------
 MARKER_PARTS=()
@@ -125,12 +204,13 @@ MARKER_PARTS=()
 [[ -n "$FILTER_MODE" ]]  && MARKER_PARTS+=("${FILTER_MODE}")
 
 MARKER_EXPR=""
-if [[ ${#MARKER_PARTS[@]} -gt 0 ]]; then
-    MARKER_EXPR=$(IFS=" and "; echo "${MARKER_PARTS[*]}")
-fi
-
 PYTEST_MARKER_ARGS=()
-if [[ -n "$MARKER_EXPR" ]]; then
+if [[ ${#MARKER_PARTS[@]} -gt 0 ]]; then
+    # Build marker expression with "and" between parts for valid pytest syntax
+    MARKER_EXPR="${MARKER_PARTS[0]}"
+    for ((i=1; i<${#MARKER_PARTS[@]}; i++)); do
+        MARKER_EXPR="${MARKER_EXPR} and ${MARKER_PARTS[$i]}"
+    done
     PYTEST_MARKER_ARGS=("-m" "$MARKER_EXPR")
     info "Test filter: -m \"${MARKER_EXPR}\""
 fi
@@ -206,6 +286,46 @@ fi
 ok "MCP server is responding on localhost:${MCP_PORT}."
 
 # ---------------------------------------------------------------------------
+# Validate test filter matches some tests (dry-run collection)
+# ---------------------------------------------------------------------------
+validate_filter_matches_tests() {
+    local test_file="$1"
+
+    # Do a dry-run collection to count matching tests
+    # Count lines that match pytest test item format (e.g., "test_file.py::TestClass::test_method")
+    local count=$(python3 -m pytest \
+        "${test_file}" \
+        "${PYTEST_MARKER_ARGS[@]}" \
+        --collect-only -q 2>/dev/null | grep -E "^[^ ].*::" | wc -l)
+
+    if [[ "$count" -eq 0 ]]; then
+        fail "No tests match the given filter(s)"
+        echo ""
+        echo "Filter expression: -m \"${MARKER_EXPR}\""
+        echo ""
+        if [[ -n "$FILTER_FUNC" ]]; then
+            echo "  --func ${FILTER_FUNC}"
+        fi
+        if [[ -n "$FILTER_GROUP" ]]; then
+            echo "  --group ${FILTER_GROUP}"
+        fi
+        if [[ -n "$FILTER_TOOL" ]]; then
+            echo "  --tool ${FILTER_TOOL}"
+        fi
+        if [[ -n "$FILTER_MODE" ]]; then
+            echo "  --mode ${FILTER_MODE}"
+        fi
+        echo ""
+        echo "Run without filters to see all available tests, or use:"
+        echo "  ./runtests-k8s.sh -h  # for valid functions, groups, and modes"
+        echo ""
+        exit 1
+    fi
+
+    info "${count} test(s) match the filter"
+}
+
+# ---------------------------------------------------------------------------
 # Run tests
 # ---------------------------------------------------------------------------
 MCP_BASE_URL="http://localhost:${MCP_PORT}"
@@ -227,6 +347,11 @@ echo ""
 
 # Change to the isi_mcp dir so conftest.py imports work
 cd "${SCRIPT_DIR}/.."
+
+# Validate filter before running (if filters are applied)
+if [[ ${#MARKER_PARTS[@]} -gt 0 ]]; then
+    validate_filter_matches_tests "tests/test_k8s_minikube.py"
+fi
 
 RESULT=0
 MCP_BASE_URL="$MCP_BASE_URL" \

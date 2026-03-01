@@ -176,6 +176,86 @@ if [[ -z "$CLUSTER_HOST" ]] || [[ -z "$CLUSTER_USER" ]] || [[ -z "$CLUSTER_PASS"
 fi
 
 # ---------------------------------------------------------------------------
+# Validate filter inputs against tools.json
+# ---------------------------------------------------------------------------
+TOOLS_JSON="${ROOT_DIR}/isi_mcp_demo/isi_mcp/config/tools.json"
+
+if [[ ! -f "$TOOLS_JSON" ]]; then
+    fail "tools.json not found at: $TOOLS_JSON"
+    exit 1
+fi
+
+# Extract valid functions, groups, and tool names from tools.json
+VALID_FUNCTIONS=$(python3 -c "
+import json
+with open('$TOOLS_JSON') as f:
+    tools = json.load(f)
+    functions = set()
+    for tool_name, tool_data in tools.items():
+        if 'function' in tool_data:
+            functions.add(tool_data['function'])
+    for func in sorted(functions):
+        print(func)
+" 2>/dev/null)
+
+VALID_GROUPS=$(python3 -c "
+import json
+with open('$TOOLS_JSON') as f:
+    tools = json.load(f)
+    groups = set()
+    for tool_name, tool_data in tools.items():
+        if 'tool_group' in tool_data:
+            groups.add(tool_data['tool_group'])
+    for group in sorted(groups):
+        print(group)
+" 2>/dev/null)
+
+VALID_TOOLS=$(python3 -c "
+import json
+with open('$TOOLS_JSON') as f:
+    tools = json.load(f)
+    for tool_name in sorted(tools.keys()):
+        print(tool_name)
+" 2>/dev/null)
+
+# Validate --func argument
+if [[ -n "$FILTER_FUNC" ]]; then
+    if ! echo "$VALID_FUNCTIONS" | grep -q "^${FILTER_FUNC}$"; then
+        fail "--func '$FILTER_FUNC' is not a valid function"
+        echo ""
+        echo "Valid functions are:"
+        echo "$VALID_FUNCTIONS" | sed 's/^/  - /'
+        echo ""
+        exit 1
+    fi
+fi
+
+# Validate --group argument
+if [[ -n "$FILTER_GROUP" ]]; then
+    if ! echo "$VALID_GROUPS" | grep -q "^${FILTER_GROUP}$"; then
+        fail "--group '$FILTER_GROUP' is not a valid tool group"
+        echo ""
+        echo "Valid tool groups are:"
+        echo "$VALID_GROUPS" | sed 's/^/  - /'
+        echo ""
+        exit 1
+    fi
+fi
+
+# Validate --tool argument
+if [[ -n "$FILTER_TOOL" ]]; then
+    if ! echo "$VALID_TOOLS" | grep -q "^${FILTER_TOOL}$"; then
+        fail "--tool '$FILTER_TOOL' is not a valid tool name"
+        echo ""
+        echo "Valid tool names (first 20):"
+        echo "$VALID_TOOLS" | head -20 | sed 's/^/  - /'
+        echo "  ... and more (use --func or --group to filter by function/group)"
+        echo ""
+        exit 1
+    fi
+fi
+
+# ---------------------------------------------------------------------------
 # Build pytest marker expression from filter arguments
 # ---------------------------------------------------------------------------
 MARKER_PARTS=()
@@ -185,12 +265,13 @@ MARKER_PARTS=()
 [[ -n "$FILTER_MODE" ]]  && MARKER_PARTS+=("${FILTER_MODE}")
 
 MARKER_EXPR=""
-if [[ ${#MARKER_PARTS[@]} -gt 0 ]]; then
-    MARKER_EXPR=$(IFS=" and "; echo "${MARKER_PARTS[*]}")
-fi
-
 PYTEST_MARKER_ARGS=()
-if [[ -n "$MARKER_EXPR" ]]; then
+if [[ ${#MARKER_PARTS[@]} -gt 0 ]]; then
+    # Build marker expression with "and" between parts for valid pytest syntax
+    MARKER_EXPR="${MARKER_PARTS[0]}"
+    for ((i=1; i<${#MARKER_PARTS[@]}; i++)); do
+        MARKER_EXPR="${MARKER_EXPR} and ${MARKER_PARTS[$i]}"
+    done
     PYTEST_MARKER_ARGS=("-m" "$MARKER_EXPR")
     info "Test filter: -m \"${MARKER_EXPR}\""
 fi
@@ -301,6 +382,49 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# 3. Validate test filter matches some tests (dry-run collection)
+# ---------------------------------------------------------------------------
+validate_filter_matches_tests() {
+    local part_name="$1"
+    shift
+    local test_files=("$@")
+
+    # Do a dry-run collection to count matching tests
+    # Count lines that match pytest test item format (e.g., "test_file.py::TestClass::test_method")
+    local count=$(python -m pytest \
+        "${test_files[@]}" \
+        "${PYTEST_MARKER_ARGS[@]}" \
+        --collect-only -q 2>/dev/null | grep -E "^[^ ].*::" | wc -l)
+
+    if [[ "$count" -eq 0 ]]; then
+        fail "${part_name}: No tests match the given filter(s)"
+        echo ""
+        echo "Filter expression: -m \"${MARKER_EXPR}\""
+        echo ""
+        if [[ -n "$FILTER_FUNC" ]]; then
+            echo "  --func ${FILTER_FUNC}"
+        fi
+        if [[ -n "$FILTER_GROUP" ]]; then
+            echo "  --group ${FILTER_GROUP}"
+        fi
+        if [[ -n "$FILTER_TOOL" ]]; then
+            echo "  --tool ${FILTER_TOOL}"
+        fi
+        if [[ -n "$FILTER_MODE" ]]; then
+            echo "  --mode ${FILTER_MODE}"
+        fi
+        echo ""
+        echo "Run without filters to see all available tests, or use:"
+        echo "  ./runtests.sh --help  # for valid functions, groups, and modes"
+        echo ""
+        return 1
+    fi
+
+    info "${part_name}: ${count} test(s) match the filter"
+    return 0
+}
+
+# ---------------------------------------------------------------------------
 # 3. Run Part 1 — Direct module tests
 # ---------------------------------------------------------------------------
 if [[ "${RUN_PART1}" == true ]]; then
@@ -309,6 +433,19 @@ if [[ "${RUN_PART1}" == true ]]; then
     info "  Part 1 — Direct module tests"
     info "=========================================="
     echo ""
+
+    # Validate filter before running (if filters are applied)
+    if [[ ${#MARKER_PARTS[@]} -gt 0 ]]; then
+        if ! validate_filter_matches_tests "Part 1" \
+            "${TESTS_DIR}/test_modules.py" \
+            "${TESTS_DIR}/test_phase1_readonly_modules.py" \
+            "${TESTS_DIR}/test_phase8_readonly_modules.py" \
+            "${TESTS_DIR}/test_nfs_client_validation.py" \
+            "${TESTS_DIR}/test_path_normalization.py" \
+            "${TESTS_DIR}/test_statistics_availability.py"; then
+            exit 1
+        fi
+    fi
 
     if TEST_CLUSTER_HOST="$CLUSTER_HOST" \
        TEST_CLUSTER_USER="$CLUSTER_USER" \
@@ -402,6 +539,27 @@ EOF
     info "  Part 2 — MCP server tests"
     info "=========================================="
     echo ""
+
+    # Validate filter before running (if filters are applied)
+    if [[ ${#MARKER_PARTS[@]} -gt 0 ]]; then
+        if ! validate_filter_matches_tests "Part 2" \
+            "${TESTS_DIR}/test_mcp_server.py" \
+            "${TESTS_DIR}/test_phase1_readonly_mcp.py" \
+            "${TESTS_DIR}/test_phase2_lowrisk_mutations.py" \
+            "${TESTS_DIR}/test_phase3_mutations.py" \
+            "${TESTS_DIR}/test_phase4_filemgmt.py" \
+            "${TESTS_DIR}/test_phase4_filemgmt_advanced.py" \
+            "${TESTS_DIR}/test_phase4_datamover.py" \
+            "${TESTS_DIR}/test_phase4_filepool.py" \
+            "${TESTS_DIR}/test_phase5a_events_utilities.py" \
+            "${TESTS_DIR}/test_phase5b_statistics_worm_sessions.py" \
+            "${TESTS_DIR}/test_phase5c_identity_management.py" \
+            "${TESTS_DIR}/test_phase6_network.py" \
+            "${TESTS_DIR}/test_phase7_cluster_capacity.py" \
+            "${TESTS_DIR}/test_phase8_readonly_mcp.py"; then
+            exit 1
+        fi
+    fi
 
     if TEST_CLUSTER_HOST="$CLUSTER_HOST" \
        TEST_CLUSTER_USER="$CLUSTER_USER" \
