@@ -1,12 +1,7 @@
 """Tests for path normalization in FileMgmt module."""
 import pytest
-import sys
-import os
 
-# Add the isi_mcp_demo module to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'isi_mcp_demo'))
-
-from isi_mcp.modules.onefs.v9_12_0.filemgmt import FileMgmt
+from modules.onefs.v9_12_0.filemgmt import FileMgmt
 
 
 class MockCluster:

@@ -249,6 +249,9 @@ if [[ "${RUN_PART1}" == true ]]; then
         "${TESTS_DIR}/test_modules.py" \
         "${TESTS_DIR}/test_phase1_readonly_modules.py" \
         "${TESTS_DIR}/test_phase8_readonly_modules.py" \
+        "${TESTS_DIR}/test_nfs_client_validation.py" \
+        "${TESTS_DIR}/test_path_normalization.py" \
+        "${TESTS_DIR}/test_statistics_availability.py" \
         -v; then
         ok "Part 1 passed"
     else

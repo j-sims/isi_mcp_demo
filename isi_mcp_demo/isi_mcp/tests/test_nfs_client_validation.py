@@ -1,19 +1,12 @@
 """Tests for NFS client validation in Nfs module."""
 import pytest
+from unittest.mock import Mock
+
+# Prevent AnsibleRunner import (not needed for unit tests)
 import sys
-import os
-from unittest.mock import Mock, patch
-
-# Add the isi_mcp_demo module and modules directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'isi_mcp_demo'))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'isi_mcp_demo', 'isi_mcp'))
-
-# Mock the AnsibleRunner before importing Nfs
 sys.modules['modules.ansible.runner'] = Mock()
-sys.modules['modules'] = Mock()
-sys.modules['modules.ansible'] = Mock()
 
-from isi_mcp.modules.onefs.v9_12_0.nfs import Nfs
+from modules.onefs.v9_12_0.nfs import Nfs
 
 
 class MockCluster:

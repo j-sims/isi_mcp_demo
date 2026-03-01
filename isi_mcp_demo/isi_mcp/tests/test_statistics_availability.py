@@ -1,13 +1,8 @@
 """Tests for statistics availability checking in Statistics module."""
 import pytest
-import sys
-import os
 from unittest.mock import Mock, patch, MagicMock
 
-# Add the isi_mcp_demo module to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'isi_mcp_demo'))
-
-from isi_mcp.modules.onefs.v9_12_0.statistics import Statistics
+from modules.onefs.v9_12_0.statistics import Statistics
 from isilon_sdk.v9_12_0.rest import ApiException
 
 
