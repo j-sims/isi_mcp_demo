@@ -19,6 +19,7 @@ import pytest
 # ---------------------------------------------------------------------------
 
 class TestToolsList:
+    pytestmark = [pytest.mark.func_none, pytest.mark.read]
 
     def test_mcp_tools_list(self, mcp_session):
         """Server should expose all expected tools."""
@@ -62,6 +63,7 @@ class TestToolsList:
 # ---------------------------------------------------------------------------
 
 class TestUtilityTools:
+    pytestmark = [pytest.mark.func_none, pytest.mark.group_utils, pytest.mark.read]
 
     def test_mcp_current_time(self, mcp_session):
         """current_time returns date, time, timezone, gmt_offset."""
@@ -96,6 +98,7 @@ class TestUtilityTools:
 # ---------------------------------------------------------------------------
 
 class TestVerifyTool:
+    pytestmark = [pytest.mark.func_verify, pytest.mark.group_verify, pytest.mark.read]
 
     def test_mcp_cluster_verify(self, mcp_session):
         """powerscale_cluster_verify returns status and message."""
@@ -106,6 +109,7 @@ class TestVerifyTool:
 
 
 class TestCapacityTool:
+    pytestmark = [pytest.mark.func_capacity, pytest.mark.group_capacity, pytest.mark.read]
 
     def test_mcp_capacity(self, mcp_session):
         """powerscale_capacity returns capacity stat keys."""
@@ -121,6 +125,7 @@ class TestCapacityTool:
 
 
 class TestQuotaTool:
+    pytestmark = [pytest.mark.func_quotas, pytest.mark.group_quotas, pytest.mark.read]
 
     def test_mcp_quota_get(self, mcp_session):
         """powerscale_quota_get returns paginated items."""
@@ -133,6 +138,7 @@ class TestQuotaTool:
 
 
 class TestSnapshotTool:
+    pytestmark = [pytest.mark.func_snapshots, pytest.mark.group_snapshots, pytest.mark.read]
 
     def test_mcp_snapshot_get(self, mcp_session):
         """powerscale_snapshot_get returns paginated items."""
@@ -145,6 +151,7 @@ class TestSnapshotTool:
 
 
 class TestSyncIQTool:
+    pytestmark = [pytest.mark.func_synciq, pytest.mark.group_synciq, pytest.mark.read]
 
     def test_mcp_synciq_get(self, mcp_session):
         """powerscale_synciq_get returns items list."""
@@ -155,6 +162,7 @@ class TestSyncIQTool:
 
 
 class TestNfsTool:
+    pytestmark = [pytest.mark.func_nfs, pytest.mark.group_nfs, pytest.mark.read]
 
     def test_mcp_nfs_get(self, mcp_session):
         """powerscale_nfs_get returns paginated items."""
@@ -167,6 +175,7 @@ class TestNfsTool:
 
 
 class TestS3Tool:
+    pytestmark = [pytest.mark.func_s3, pytest.mark.group_s3, pytest.mark.read]
 
     def test_mcp_s3_get(self, mcp_session):
         """powerscale_s3_get returns paginated items."""

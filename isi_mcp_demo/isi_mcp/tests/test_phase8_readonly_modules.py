@@ -39,6 +39,7 @@ from tests.test_utils import (
 # ---------------------------------------------------------------------------
 
 class TestHardware:
+    pytestmark = [pytest.mark.func_hardware, pytest.mark.group_hardware, pytest.mark.read]
     """Test hardware inventory operations."""
 
     def test_hardware_fcports(self, test_cluster_direct):
@@ -62,6 +63,7 @@ class TestHardware:
 # ---------------------------------------------------------------------------
 
 class TestJobs:
+    pytestmark = [pytest.mark.func_jobs, pytest.mark.group_jobs, pytest.mark.read]
     """Test Job Engine operations."""
 
     def test_job_list(self, test_cluster_direct):
@@ -128,6 +130,7 @@ class TestJobs:
 # ---------------------------------------------------------------------------
 
 class TestPerformance:
+    pytestmark = [pytest.mark.func_performance, pytest.mark.group_performance, pytest.mark.read]
     """Test performance monitoring operations."""
 
     def test_performance_datasets(self, test_cluster_direct):
@@ -156,6 +159,7 @@ class TestPerformance:
 # ---------------------------------------------------------------------------
 
 class TestHardening:
+    pytestmark = [pytest.mark.func_hardening, pytest.mark.group_hardening, pytest.mark.read]
     """Test security hardening operations."""
 
     def test_hardening_state(self, test_cluster_direct):
@@ -177,6 +181,7 @@ class TestHardening:
 # ---------------------------------------------------------------------------
 
 class TestSupportAssist:
+    pytestmark = [pytest.mark.func_supportassist, pytest.mark.group_supportassist, pytest.mark.read]
     """Test SupportAssist diagnostics operations."""
 
     def test_supportassist_status(self, test_cluster_direct):
@@ -204,6 +209,7 @@ class TestSupportAssist:
 # ---------------------------------------------------------------------------
 
 class TestConnectivity:
+    pytestmark = [pytest.mark.func_connectivity, pytest.mark.group_connectivity, pytest.mark.read]
     """Test connectivity diagnostics operations."""
 
     def test_connectivity_status(self, test_cluster_direct):
@@ -231,6 +237,7 @@ class TestConnectivity:
 # ---------------------------------------------------------------------------
 
 class TestDebugStats:
+    pytestmark = [pytest.mark.func_debug, pytest.mark.group_debug, pytest.mark.read]
     """Test API debug statistics."""
 
     def test_debug_stats(self, test_cluster_direct):
@@ -245,6 +252,7 @@ class TestDebugStats:
 # ---------------------------------------------------------------------------
 
 class TestFSA:
+    pytestmark = [pytest.mark.func_fsa, pytest.mark.group_fsa, pytest.mark.read]
     """Test File System Analytics operations."""
 
     def test_fsa_results(self, test_cluster_direct):
@@ -266,6 +274,7 @@ class TestFSA:
 # ---------------------------------------------------------------------------
 
 class TestLocalInfo:
+    pytestmark = [pytest.mark.func_local_info, pytest.mark.group_local_info, pytest.mark.read]
     """Test local node information operations."""
 
     def test_cluster_time(self, test_cluster_direct):
@@ -293,6 +302,7 @@ class TestLocalInfo:
 # ---------------------------------------------------------------------------
 
 class TestApiSessions:
+    pytestmark = [pytest.mark.func_api_sessions, pytest.mark.group_api_sessions, pytest.mark.read]
     """Test Platform API session operations."""
 
     def test_session_settings(self, test_cluster_direct):
@@ -314,6 +324,7 @@ class TestApiSessions:
 # ---------------------------------------------------------------------------
 
 class TestGroupnetsSummary:
+    pytestmark = [pytest.mark.func_groupnets_summary, pytest.mark.group_groupnets_summary, pytest.mark.read]
     """Test groupnet summary operations."""
 
     def test_groupnets_summary(self, test_cluster_direct):
@@ -328,6 +339,7 @@ class TestGroupnetsSummary:
 # ---------------------------------------------------------------------------
 
 class TestLFN:
+    pytestmark = [pytest.mark.func_lfn, pytest.mark.group_lfn, pytest.mark.read]
     """Test Long File Name configuration operations."""
 
     def test_lfn_domains(self, test_cluster_direct):
@@ -343,6 +355,7 @@ class TestLFN:
 # ---------------------------------------------------------------------------
 
 class TestMetadataIQ:
+    pytestmark = [pytest.mark.func_metadataiq, pytest.mark.group_metadataiq, pytest.mark.read]
     """Test MetadataIQ operations."""
 
     def test_metadataiq_settings(self, test_cluster_direct):
@@ -363,6 +376,7 @@ class TestMetadataIQ:
 # ---------------------------------------------------------------------------
 
 class TestMPA:
+    pytestmark = [pytest.mark.func_mpa, pytest.mark.group_mpa, pytest.mark.read]
     """Test Multi-Party Authorization operations."""
 
     def test_mpa_settings(self, test_cluster_direct):

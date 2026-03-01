@@ -63,6 +63,7 @@ def _unique_name(prefix="test"):
 # ---------------------------------------------------------------------------
 
 class TestQuotaOperations:
+    pytestmark = [pytest.mark.func_quotas, pytest.mark.group_quotas, pytest.mark.write]
     """
     Test quota create/remove/set/increment/decrement via MCP.
 
@@ -289,6 +290,7 @@ class TestQuotaOperations:
 # ---------------------------------------------------------------------------
 
 class TestNFSExportLifecycle:
+    pytestmark = [pytest.mark.func_nfs, pytest.mark.group_nfs, pytest.mark.write]
     """
     Test NFS export create + verify + remove lifecycle via MCP.
 
@@ -392,6 +394,7 @@ class TestNFSExportLifecycle:
 # ---------------------------------------------------------------------------
 
 class TestSMBShareLifecycle:
+    pytestmark = [pytest.mark.func_smb, pytest.mark.group_smb, pytest.mark.write]
     """
     Test SMB share create + verify + remove lifecycle via MCP.
 
@@ -477,6 +480,7 @@ class TestSMBShareLifecycle:
 # ---------------------------------------------------------------------------
 
 class TestS3BucketLifecycle:
+    pytestmark = [pytest.mark.func_s3, pytest.mark.group_s3, pytest.mark.write]
     """
     Test S3 bucket create + verify + remove lifecycle via MCP.
 
@@ -587,6 +591,7 @@ class TestS3BucketLifecycle:
 # ---------------------------------------------------------------------------
 
 class TestSyncIQPolicyLifecycle:
+    pytestmark = [pytest.mark.func_synciq, pytest.mark.group_synciq, pytest.mark.write]
     """
     Test SyncIQ policy create + verify + remove lifecycle via MCP.
 
@@ -676,6 +681,7 @@ class TestSyncIQPolicyLifecycle:
 # ---------------------------------------------------------------------------
 
 class TestSnapshotScheduleLifecycle:
+    pytestmark = [pytest.mark.func_snapshots, pytest.mark.group_snapshots, pytest.mark.write]
     """
     Test snapshot schedule create + verify + remove lifecycle via MCP.
 

@@ -20,6 +20,7 @@ from tests.test_utils import (
 # ---------------------------------------------------------------------------
 
 class TestStatisticsReadOnly:
+    pytestmark = [pytest.mark.func_statistics, pytest.mark.group_statistics, pytest.mark.read]
     """Test statistics retrieval tools."""
 
     def test_stats_cpu_returns_data(self, mcp_session):
@@ -145,6 +146,7 @@ class TestStatisticsReadOnly:
 # ---------------------------------------------------------------------------
 
 class TestWormFeatures:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.read]
     """Test WORM (Write Once Read Many) compliance features."""
 
     def test_worm_tools_exist(self, mcp_session):
@@ -163,6 +165,7 @@ class TestWormFeatures:
 # ---------------------------------------------------------------------------
 
 class TestSmbSessions:
+    pytestmark = [pytest.mark.func_smb, pytest.mark.group_smb]
     """Test SMB active session management."""
 
     def test_smb_sessions_get_returns_list(self, mcp_session):

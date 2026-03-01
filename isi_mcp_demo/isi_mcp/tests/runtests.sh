@@ -10,6 +10,11 @@
 #   ./runtests.sh --cluster-host HOST --cluster-user USER --cluster-pass PASS
 #   ./runtests.sh --cluster-host HOST --cluster-user USER --cluster-pass PASS --part1
 #   ./runtests.sh --cluster-host HOST --cluster-user USER --cluster-pass PASS --part2
+#   ./runtests.sh ... --func datamover                                  # only datamover tests
+#   ./runtests.sh ... --func datamover --mode read                      # datamover read tests
+#   ./runtests.sh ... --group snapshots                                 # snapshot tool group
+#   ./runtests.sh ... --tool powerscale_snapshot_get                    # single tool
+#   ./runtests.sh ... --mode write                                      # all write tests
 
 set -euo pipefail
 
@@ -46,26 +51,46 @@ Required Arguments:
   --cluster-user USER   Cluster username (e.g., root)
   --cluster-pass PASS   Cluster password
 
-Optional Arguments:
+Part Selection (default: both):
+  --part1              Run only Part 1 (direct module tests)
+  --part2              Run only Part 2 (MCP server tests)
+
+Test Filters (can be combined; applied within the selected parts):
+  --func FUNCTION      Filter by PowerScale function (e.g. datamover, snapshots, synciq)
+  --group GROUP        Filter by tool group (e.g. datamover, quota_reports, synciq_reports)
+  --tool TOOL          Filter by individual tool name (e.g. powerscale_snapshot_get)
+  --mode MODE          Filter by tool mode: read or write
+
+Other Arguments:
   -o, --output-dir DIR  Top-level directory for test artifacts (default: /tmp)
                         A timestamped subdir isi_mcp_demo_tests_DDMMYYYY_HHMM is
                         created inside DIR for each run.
-  --part1              Run only Part 1 (direct module tests)
-  --part2              Run only Part 2 (MCP server tests)
   -h, --help           Show this help message
 
 Examples:
-  # Run full test suite against a cluster (artifacts go to /tmp/isi_mcp_demo_tests_<DATE>)
+  # Run full test suite
   ./runtests.sh --cluster-host 172.16.10.10 --cluster-user root --cluster-pass password
-
-  # Run with a custom output directory
-  ./runtests.sh --cluster-host 172.16.10.10 --cluster-user root --cluster-pass password -o /var/log/tests
 
   # Run only Part 1 tests
   ./runtests.sh --cluster-host 172.16.10.10 --cluster-user root --cluster-pass password --part1
 
-  # Run only Part 2 tests
-  ./runtests.sh --cluster-host 172.16.10.10 --cluster-user root --cluster-pass password --part2
+  # Run only datamover tests (both parts)
+  ./runtests.sh --cluster-host 172.16.10.10 --cluster-user root --cluster-pass password --func datamover
+
+  # Run only datamover read tests
+  ./runtests.sh --cluster-host 172.16.10.10 --cluster-user root --cluster-pass password --func datamover --mode read
+
+  # Run snapshot group tests
+  ./runtests.sh --cluster-host 172.16.10.10 --cluster-user root --cluster-pass password --group snapshots
+
+  # Run a single tool's tests
+  ./runtests.sh --cluster-host 172.16.10.10 --cluster-user root --cluster-pass password --tool powerscale_snapshot_get
+
+  # Run all write tests
+  ./runtests.sh --cluster-host 172.16.10.10 --cluster-user root --cluster-pass password --mode write
+
+  # Part 1 only, datamover function
+  ./runtests.sh --cluster-host 172.16.10.10 --cluster-user root --cluster-pass password --part1 --func datamover
 HELP
 }
 
@@ -78,6 +103,10 @@ CLUSTER_HOST=""
 CLUSTER_USER=""
 CLUSTER_PASS=""
 OUTPUT_DIR="/tmp"
+FILTER_FUNC=""
+FILTER_GROUP=""
+FILTER_TOOL=""
+FILTER_MODE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -109,6 +138,26 @@ while [[ $# -gt 0 ]]; do
             RUN_PART1=false
             shift
             ;;
+        --func)
+            FILTER_FUNC="$2"
+            shift 2
+            ;;
+        --group)
+            FILTER_GROUP="$2"
+            shift 2
+            ;;
+        --tool)
+            FILTER_TOOL="$2"
+            shift 2
+            ;;
+        --mode)
+            FILTER_MODE="$2"
+            if [[ "$FILTER_MODE" != "read" && "$FILTER_MODE" != "write" ]]; then
+                fail "--mode must be 'read' or 'write', got: $FILTER_MODE"
+                exit 1
+            fi
+            shift 2
+            ;;
         *)
             fail "Unknown option: $1"
             echo ""
@@ -124,6 +173,26 @@ if [[ -z "$CLUSTER_HOST" ]] || [[ -z "$CLUSTER_USER" ]] || [[ -z "$CLUSTER_PASS"
     echo ""
     show_help
     exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# Build pytest marker expression from filter arguments
+# ---------------------------------------------------------------------------
+MARKER_PARTS=()
+[[ -n "$FILTER_FUNC" ]]  && MARKER_PARTS+=("func_${FILTER_FUNC}")
+[[ -n "$FILTER_GROUP" ]] && MARKER_PARTS+=("group_${FILTER_GROUP}")
+[[ -n "$FILTER_TOOL" ]]  && MARKER_PARTS+=("tool_${FILTER_TOOL}")
+[[ -n "$FILTER_MODE" ]]  && MARKER_PARTS+=("${FILTER_MODE}")
+
+MARKER_EXPR=""
+if [[ ${#MARKER_PARTS[@]} -gt 0 ]]; then
+    MARKER_EXPR=$(IFS=" and "; echo "${MARKER_PARTS[*]}")
+fi
+
+PYTEST_MARKER_ARGS=()
+if [[ -n "$MARKER_EXPR" ]]; then
+    PYTEST_MARKER_ARGS=("-m" "$MARKER_EXPR")
+    info "Test filter: -m \"${MARKER_EXPR}\""
 fi
 
 # ---------------------------------------------------------------------------
@@ -252,6 +321,7 @@ if [[ "${RUN_PART1}" == true ]]; then
         "${TESTS_DIR}/test_nfs_client_validation.py" \
         "${TESTS_DIR}/test_path_normalization.py" \
         "${TESTS_DIR}/test_statistics_availability.py" \
+        "${PYTEST_MARKER_ARGS[@]}" \
         -v; then
         ok "Part 1 passed"
     else
@@ -352,6 +422,7 @@ EOF
         "${TESTS_DIR}/test_phase6_network.py" \
         "${TESTS_DIR}/test_phase7_cluster_capacity.py" \
         "${TESTS_DIR}/test_phase8_readonly_mcp.py" \
+        "${PYTEST_MARKER_ARGS[@]}" \
         -v; then
         ok "Part 2 passed"
     else

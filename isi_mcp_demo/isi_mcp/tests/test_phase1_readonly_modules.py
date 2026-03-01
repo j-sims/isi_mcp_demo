@@ -38,6 +38,7 @@ from tests.test_utils import (
 
 class TestClusterConnectivity:
     """Test cluster connection via test_cluster_direct fixture."""
+    pytestmark = [pytest.mark.func_verify, pytest.mark.group_verify, pytest.mark.read]
 
     def test_cluster_connection(self, test_cluster_direct):
         """Cluster() should create a usable api_client."""
@@ -56,6 +57,7 @@ class TestClusterConnectivity:
 
 class TestConfig:
     """Test cluster configuration retrieval."""
+    pytestmark = [pytest.mark.func_capacity, pytest.mark.group_capacity, pytest.mark.read]
 
     def test_config_get(self, test_cluster_direct):
         """Config.get() returns cluster configuration."""
@@ -91,6 +93,7 @@ class TestConfig:
 
 class TestCapacity:
     """Test storage capacity retrieval."""
+    pytestmark = [pytest.mark.func_capacity, pytest.mark.group_capacity, pytest.mark.read]
 
     def test_capacity_get(self, test_cluster_direct):
         """Capacity.get() returns storage capacity stats."""
@@ -130,6 +133,7 @@ class TestCapacity:
 
 class TestQuotas:
     """Test quota listing and pagination."""
+    pytestmark = [pytest.mark.func_quotas, pytest.mark.group_quotas, pytest.mark.read]
 
     def test_quotas_get(self, test_cluster_direct):
         """Quotas.get() returns paginated quota list."""
@@ -177,6 +181,7 @@ class TestQuotas:
 
 class TestSnapshots:
     """Test snapshot listing."""
+    pytestmark = [pytest.mark.func_snapshots, pytest.mark.group_snapshots, pytest.mark.read]
 
     def test_snapshots_get(self, test_cluster_direct):
         """Snapshots.get() returns snapshot list."""
@@ -215,6 +220,7 @@ class TestSnapshots:
 
 class TestNfs:
     """Test NFS export listing and global settings."""
+    pytestmark = [pytest.mark.func_nfs, pytest.mark.group_nfs, pytest.mark.read]
 
     def test_nfs_get(self, test_cluster_direct):
         """Nfs.get() returns NFS export list."""
@@ -249,6 +255,7 @@ class TestNfs:
 
 class TestSmb:
     """Test SMB share listing and global settings."""
+    pytestmark = [pytest.mark.func_smb, pytest.mark.group_smb, pytest.mark.read]
 
     def test_smb_get(self, test_cluster_direct):
         """Smb.get() returns SMB share list."""
@@ -283,6 +290,7 @@ class TestSmb:
 
 class TestS3:
     """Test S3 bucket listing."""
+    pytestmark = [pytest.mark.func_s3, pytest.mark.group_s3, pytest.mark.read]
 
     def test_s3_get(self, test_cluster_direct):
         """S3.get() returns S3 bucket list."""
@@ -308,6 +316,7 @@ class TestS3:
 
 class TestDataMover:
     """Test DataMover policy and account listing."""
+    pytestmark = [pytest.mark.func_datamover, pytest.mark.group_datamover, pytest.mark.read]
 
     def test_datamover_get_policies(self, test_cluster_direct):
         """DataMover.get_policies() returns policies."""
@@ -352,6 +361,7 @@ class TestDataMover:
 
 class TestFilePool:
     """Test FilePool policy listing."""
+    pytestmark = [pytest.mark.func_filepool, pytest.mark.group_filepool, pytest.mark.read]
 
     def test_filepool_get(self, test_cluster_direct):
         """FilePool.get() returns policies."""

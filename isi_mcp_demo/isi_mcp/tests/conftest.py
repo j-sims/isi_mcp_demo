@@ -12,6 +12,35 @@ pytest_plugins = ["tests.test_phase2_fixtures", "tests.test_phase3_fixtures", "t
 
 # Ensure the isi_mcp package root is on sys.path so "modules.*" imports work
 ISI_MCP_DIR = Path(__file__).resolve().parent.parent
+
+# ---------------------------------------------------------------------------
+# Marker registration — driven by config/tools.json
+# ---------------------------------------------------------------------------
+
+def pytest_configure(config):
+    """Register all markers derived from the tools.json configuration."""
+    tools_path = os.environ.get(
+        "TOOLS_CONFIG_PATH",
+        str(ISI_MCP_DIR / "config" / "tools.json"),
+    )
+    try:
+        with open(tools_path) as f:
+            tools = json.load(f)
+    except FileNotFoundError:
+        tools = {}
+
+    functions = sorted({v["function"] for v in tools.values() if "function" in v})
+    groups = sorted({v["tool_group"] for v in tools.values()})
+    tool_names = sorted(tools.keys())
+
+    config.addinivalue_line("markers", "read: tests that exercise read-mode (non-mutating) tools")
+    config.addinivalue_line("markers", "write: tests that exercise write-mode (mutating) tools")
+    for fn in functions:
+        config.addinivalue_line("markers", f"func_{fn}: tests for PowerScale function '{fn}'")
+    for grp in groups:
+        config.addinivalue_line("markers", f"group_{grp}: tests for tool group '{grp}'")
+    for name in tool_names:
+        config.addinivalue_line("markers", f"tool_{name}: tests for MCP tool '{name}'")
 if str(ISI_MCP_DIR) not in sys.path:
     sys.path.insert(0, str(ISI_MCP_DIR))
 

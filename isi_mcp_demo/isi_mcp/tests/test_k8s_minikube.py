@@ -194,6 +194,7 @@ def mcp_client():
 # ---------------------------------------------------------------------------
 
 class TestK8sInfrastructure:
+    pytestmark = [pytest.mark.func_none, pytest.mark.read]
     """Verify the K8s deployment resources are correctly configured."""
 
     def test_namespace_exists(self):
@@ -302,6 +303,7 @@ class TestK8sInfrastructure:
 # ---------------------------------------------------------------------------
 
 class TestMCPProtocol:
+    pytestmark = [pytest.mark.func_none, pytest.mark.read]
     """Verify MCP protocol basics work via the K8s-hosted server."""
 
     def test_initialize_response_structure(self, mcp_client):
@@ -363,6 +365,7 @@ class TestMCPProtocol:
 # ---------------------------------------------------------------------------
 
 class TestUtilityTools:
+    pytestmark = [pytest.mark.func_none, pytest.mark.group_utils, pytest.mark.read]
     """Utility tools must work without a PowerScale cluster."""
 
     def test_current_time(self, mcp_client):
@@ -404,6 +407,7 @@ class TestUtilityTools:
 # ---------------------------------------------------------------------------
 
 class TestManagementTools:
+    pytestmark = [pytest.mark.func_none, pytest.mark.group_management, pytest.mark.read]
     """Management tools must work without a PowerScale cluster."""
 
     def test_tools_list_flat(self, mcp_client):
@@ -490,6 +494,7 @@ class TestManagementTools:
 # ---------------------------------------------------------------------------
 
 class TestConfigPersistence:
+    pytestmark = [pytest.mark.func_none, pytest.mark.read]
     """Verify tools.json is writable at runtime (emptyDir config volume)."""
 
     def test_tools_config_writable_in_pod(self):
@@ -546,6 +551,7 @@ class TestConfigPersistence:
 # ---------------------------------------------------------------------------
 
 class TestServerHealth:
+    pytestmark = [pytest.mark.func_none, pytest.mark.read]
     """Verify the server started cleanly and loaded all tools."""
 
     def test_server_loaded_tools(self):

@@ -1,6 +1,8 @@
 """Tests for path normalization in FileMgmt module."""
 import pytest
 
+pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.read]
+
 from modules.onefs.v9_12_0.filemgmt import FileMgmt
 
 

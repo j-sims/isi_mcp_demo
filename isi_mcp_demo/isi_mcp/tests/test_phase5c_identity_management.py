@@ -24,6 +24,7 @@ def _get_test_username():
 
 
 class TestUsersReadOnly:
+    pytestmark = [pytest.mark.func_users, pytest.mark.group_users, pytest.mark.read]
     """Test user query operations."""
 
     def test_user_get_returns_list(self, mcp_session):
@@ -71,6 +72,7 @@ class TestUsersReadOnly:
 
 
 class TestUsersLifecycle:
+    pytestmark = [pytest.mark.func_users, pytest.mark.group_users, pytest.mark.write]
     """Test user create/modify/remove operations."""
 
     def test_user_create_requires_confirmation(self, mcp_session):
@@ -143,6 +145,7 @@ def _get_test_groupname():
 
 
 class TestGroupsReadOnly:
+    pytestmark = [pytest.mark.func_groups, pytest.mark.group_groups, pytest.mark.read]
     """Test group query operations."""
 
     def test_group_get_returns_list(self, mcp_session):
@@ -189,6 +192,7 @@ class TestGroupsReadOnly:
 
 
 class TestGroupsLifecycle:
+    pytestmark = [pytest.mark.func_groups, pytest.mark.group_groups, pytest.mark.write]
     """Test group create/modify/remove operations."""
 
     def test_group_create_requires_confirmation(self, mcp_session):
@@ -250,6 +254,7 @@ class TestGroupsLifecycle:
 # ---------------------------------------------------------------------------
 
 class TestManagementTools:
+    pytestmark = [pytest.mark.func_none, pytest.mark.group_management, pytest.mark.read]
     """Test cluster and tool management operations."""
 
     def test_tools_list_returns_tools(self, mcp_session):

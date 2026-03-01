@@ -18,6 +18,8 @@
 #   ./runtests-k8s.sh
 #   ./runtests-k8s.sh --cluster-host 172.16.10.10 --cluster-user root --cluster-pass password
 #   ./runtests-k8s.sh --mcp-port 18000
+#   ./runtests-k8s.sh --func none --mode read    # filter by function/mode
+#   ./runtests-k8s.sh --group utils              # filter by tool group
 #   ./runtests-k8s.sh -h
 
 set -euo pipefail
@@ -47,6 +49,10 @@ NAMESPACE="isi-mcp"
 CLUSTER_HOST=""
 CLUSTER_USER=""
 CLUSTER_PASS=""
+FILTER_FUNC=""
+FILTER_GROUP=""
+FILTER_TOOL=""
+FILTER_MODE=""
 
 # ---------------------------------------------------------------------------
 # Parse arguments
@@ -63,6 +69,13 @@ Options:
   --cluster-host HOST     PowerScale cluster host for cluster tests (optional)
   --cluster-user USER     PowerScale cluster username (optional)
   --cluster-pass PASS     PowerScale cluster password (optional)
+
+Test Filters (can be combined):
+  --func FUNCTION         Filter by PowerScale function (e.g. none, utils)
+  --group GROUP           Filter by tool group (e.g. utils, management)
+  --tool TOOL             Filter by individual tool name
+  --mode MODE             Filter by tool mode: read or write
+
   -h, --help              Show this help message
 
 Examples:
@@ -71,6 +84,12 @@ Examples:
 
   # Include cluster-facing tool tests
   ./runtests-k8s.sh --cluster-host 172.16.10.10 --cluster-user root --cluster-pass password
+
+  # Run only utility tool tests
+  ./runtests-k8s.sh --group utils
+
+  # Run all read tests
+  ./runtests-k8s.sh --mode read
 HELP
     exit 0
 }
@@ -82,10 +101,39 @@ while [[ $# -gt 0 ]]; do
     --cluster-host)  CLUSTER_HOST="$2"; shift 2 ;;
     --cluster-user)  CLUSTER_USER="$2"; shift 2 ;;
     --cluster-pass)  CLUSTER_PASS="$2"; shift 2 ;;
+    --func)          FILTER_FUNC="$2"; shift 2 ;;
+    --group)         FILTER_GROUP="$2"; shift 2 ;;
+    --tool)          FILTER_TOOL="$2"; shift 2 ;;
+    --mode)
+      FILTER_MODE="$2"
+      if [[ "$FILTER_MODE" != "read" && "$FILTER_MODE" != "write" ]]; then
+        fail "--mode must be 'read' or 'write', got: $FILTER_MODE"
+      fi
+      shift 2 ;;
     -h|--help)       show_help ;;
     *)               fail "Unknown argument: $1 (use -h for help)" ;;
   esac
 done
+
+# ---------------------------------------------------------------------------
+# Build pytest marker expression from filter arguments
+# ---------------------------------------------------------------------------
+MARKER_PARTS=()
+[[ -n "$FILTER_FUNC" ]]  && MARKER_PARTS+=("func_${FILTER_FUNC}")
+[[ -n "$FILTER_GROUP" ]] && MARKER_PARTS+=("group_${FILTER_GROUP}")
+[[ -n "$FILTER_TOOL" ]]  && MARKER_PARTS+=("tool_${FILTER_TOOL}")
+[[ -n "$FILTER_MODE" ]]  && MARKER_PARTS+=("${FILTER_MODE}")
+
+MARKER_EXPR=""
+if [[ ${#MARKER_PARTS[@]} -gt 0 ]]; then
+    MARKER_EXPR=$(IFS=" and "; echo "${MARKER_PARTS[*]}")
+fi
+
+PYTEST_MARKER_ARGS=()
+if [[ -n "$MARKER_EXPR" ]]; then
+    PYTEST_MARKER_ARGS=("-m" "$MARKER_EXPR")
+    info "Test filter: -m \"${MARKER_EXPR}\""
+fi
 
 # ---------------------------------------------------------------------------
 # Check prerequisites
@@ -188,6 +236,7 @@ K8S_NAMESPACE="$K8S_NAMESPACE" \
   -v \
   --tb=short \
   "${EXTRA_ENV_ARGS[@]}" \
+  "${PYTEST_MARKER_ARGS[@]}" \
   || RESULT=$?
 
 # ---------------------------------------------------------------------------

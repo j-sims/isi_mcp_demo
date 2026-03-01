@@ -56,6 +56,7 @@ def _strip_json_quotes(s: str) -> str:
 # ---------------------------------------------------------------------------
 
 class TestDirectoryCreate:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.write]
     """Test directory creation via MCP."""
 
     def test_directory_create(self, mcp_session, created_directories):
@@ -97,6 +98,7 @@ class TestDirectoryCreate:
 
 
 class TestDirectoryList:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.read]
     """Test directory listing via MCP."""
 
     def test_directory_list_ifs(self, mcp_session):
@@ -142,6 +144,7 @@ class TestDirectoryList:
 
 
 class TestDirectoryAttributes:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.read]
     """Test directory attribute retrieval via MCP."""
 
     def test_directory_attributes_ifs_data(self, mcp_session):
@@ -164,6 +167,7 @@ class TestDirectoryAttributes:
 
 
 class TestDirectoryCopy:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.write]
     """Test directory copy via MCP."""
 
     def test_directory_copy(
@@ -200,6 +204,7 @@ class TestDirectoryCopy:
 
 
 class TestDirectoryMove:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.write]
     """Test directory move/rename via MCP."""
 
     def test_directory_move(
@@ -233,6 +238,7 @@ class TestDirectoryMove:
 
 
 class TestDirectoryDelete:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.write]
     """Test directory deletion via MCP."""
 
     def test_directory_delete_empty(self, mcp_session):
@@ -282,6 +288,7 @@ class TestDirectoryDelete:
 # ---------------------------------------------------------------------------
 
 class TestFileCreate:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.write]
     """Test file creation via MCP."""
 
     def test_file_create_empty(
@@ -357,6 +364,7 @@ class TestFileCreate:
 
 
 class TestFileRead:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.read]
     """Test file reading via MCP."""
 
     def test_file_read_contents(
@@ -411,6 +419,7 @@ class TestFileRead:
 
 
 class TestFileAttributes:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.read]
     """Test file attribute retrieval via MCP."""
 
     def test_file_attributes(
@@ -433,6 +442,7 @@ class TestFileAttributes:
 
 
 class TestFileCopy:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.write]
     """Test file copy via MCP."""
 
     def test_file_copy(
@@ -469,6 +479,7 @@ class TestFileCopy:
 
 
 class TestFileMove:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.write]
     """Test file move/rename via MCP."""
 
     def test_file_move(
@@ -503,6 +514,7 @@ class TestFileMove:
 
 
 class TestFileDelete:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.write]
     """Test file deletion via MCP."""
 
     def test_file_delete(self, mcp_session, filemgmt_test_dir):

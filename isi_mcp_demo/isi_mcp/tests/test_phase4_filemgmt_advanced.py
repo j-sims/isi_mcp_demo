@@ -37,6 +37,7 @@ def _unique_name(prefix="test"):
 # ---------------------------------------------------------------------------
 
 class TestACLGet:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.read]
     """Test ACL retrieval via MCP."""
 
     def test_acl_get_ifs_data(self, mcp_session):
@@ -60,6 +61,7 @@ class TestACLGet:
 
 
 class TestACLSet:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.write]
     """Test ACL modification via MCP."""
 
     def test_acl_set_mode(self, mcp_session, filemgmt_test_dir):
@@ -122,6 +124,7 @@ class TestACLSet:
 # ---------------------------------------------------------------------------
 
 class TestMetadataGet:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.read]
     """Test metadata retrieval via MCP."""
 
     def test_metadata_get_directory(self, mcp_session, filemgmt_test_dir):
@@ -154,6 +157,7 @@ class TestMetadataGet:
 
 
 class TestMetadataSet:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.write]
     """Test metadata modification via MCP."""
 
     def test_metadata_set_directory(self, mcp_session, filemgmt_test_dir):
@@ -205,6 +209,7 @@ class TestMetadataSet:
 # ---------------------------------------------------------------------------
 
 class TestAccessPointList:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.read]
     """Test access point listing via MCP."""
 
     def test_access_point_list(self, mcp_session):
@@ -217,6 +222,7 @@ class TestAccessPointList:
 
 
 class TestAccessPointLifecycle:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.write]
     """Test access point create + delete lifecycle via MCP."""
 
     def test_access_point_create_and_delete(
@@ -269,6 +275,7 @@ class TestAccessPointLifecycle:
 # ---------------------------------------------------------------------------
 
 class TestWORMGet:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.read]
     """Test WORM property retrieval via MCP.
 
     WORM set requires a SmartLock-enabled directory, which may not exist on
@@ -306,6 +313,7 @@ class TestWORMGet:
 # ---------------------------------------------------------------------------
 
 class TestDirectoryQuery:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.read]
     """Test directory query (attribute-based search) via MCP."""
 
     def test_directory_query_basic(

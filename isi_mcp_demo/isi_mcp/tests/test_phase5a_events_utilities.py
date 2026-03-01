@@ -21,6 +21,7 @@ from tests.test_utils import (
 # ---------------------------------------------------------------------------
 
 class TestEventsTools:
+    pytestmark = [pytest.mark.func_events, pytest.mark.group_events, pytest.mark.read]
     """Test event querying operations."""
 
     def test_event_get_returns_dict(self, mcp_session):

@@ -20,6 +20,7 @@ from tests.test_utils import (
 # ---------------------------------------------------------------------------
 
 class TestHardwareTools:
+    pytestmark = [pytest.mark.func_hardware, pytest.mark.group_hardware, pytest.mark.read]
     """Test hardware inventory MCP tools."""
 
     def test_mcp_hardware_fcports(self, mcp_session):
@@ -41,6 +42,7 @@ class TestHardwareTools:
 # ---------------------------------------------------------------------------
 
 class TestJobTools:
+    pytestmark = [pytest.mark.func_jobs, pytest.mark.group_jobs, pytest.mark.read]
     """Test Job Engine MCP tools."""
 
     def test_mcp_job_list(self, mcp_session):
@@ -96,6 +98,7 @@ class TestJobTools:
 # ---------------------------------------------------------------------------
 
 class TestPerformanceTools:
+    pytestmark = [pytest.mark.func_performance, pytest.mark.group_performance, pytest.mark.read]
     """Test performance monitoring MCP tools."""
 
     def test_mcp_performance_datasets(self, mcp_session):
@@ -121,6 +124,7 @@ class TestPerformanceTools:
 # ---------------------------------------------------------------------------
 
 class TestHardeningTools:
+    pytestmark = [pytest.mark.func_hardening, pytest.mark.group_hardening, pytest.mark.read]
     """Test security hardening MCP tools."""
 
     def test_mcp_hardening_state(self, mcp_session):
@@ -140,6 +144,7 @@ class TestHardeningTools:
 # ---------------------------------------------------------------------------
 
 class TestSupportAssistTools:
+    pytestmark = [pytest.mark.func_supportassist, pytest.mark.group_supportassist, pytest.mark.read]
     """Test SupportAssist MCP tools."""
 
     def test_mcp_supportassist_status(self, mcp_session):
@@ -164,6 +169,7 @@ class TestSupportAssistTools:
 # ---------------------------------------------------------------------------
 
 class TestConnectivityTools:
+    pytestmark = [pytest.mark.func_connectivity, pytest.mark.group_connectivity, pytest.mark.read]
     """Test connectivity diagnostics MCP tools."""
 
     def test_mcp_connectivity_status(self, mcp_session):
@@ -188,6 +194,7 @@ class TestConnectivityTools:
 # ---------------------------------------------------------------------------
 
 class TestDebugStatsTools:
+    pytestmark = [pytest.mark.func_debug, pytest.mark.group_debug, pytest.mark.read]
     """Test API debug statistics MCP tool."""
 
     def test_mcp_debug_stats(self, mcp_session):
@@ -201,6 +208,7 @@ class TestDebugStatsTools:
 # ---------------------------------------------------------------------------
 
 class TestFSATools:
+    pytestmark = [pytest.mark.func_fsa, pytest.mark.group_fsa, pytest.mark.read]
     """Test File System Analytics MCP tools."""
 
     def test_mcp_fsa_results(self, mcp_session):
@@ -220,6 +228,7 @@ class TestFSATools:
 # ---------------------------------------------------------------------------
 
 class TestLocalInfoTools:
+    pytestmark = [pytest.mark.func_local_info, pytest.mark.group_local_info, pytest.mark.read]
     """Test local node information MCP tools."""
 
     def test_mcp_cluster_time(self, mcp_session):
@@ -244,6 +253,7 @@ class TestLocalInfoTools:
 # ---------------------------------------------------------------------------
 
 class TestApiSessionsTools:
+    pytestmark = [pytest.mark.func_api_sessions, pytest.mark.group_api_sessions, pytest.mark.read]
     """Test Platform API session MCP tools."""
 
     def test_mcp_session_settings(self, mcp_session):
@@ -263,6 +273,7 @@ class TestApiSessionsTools:
 # ---------------------------------------------------------------------------
 
 class TestGroupnetsSummaryTools:
+    pytestmark = [pytest.mark.func_groupnets_summary, pytest.mark.group_groupnets_summary, pytest.mark.read]
     """Test groupnet summary MCP tool."""
 
     def test_mcp_groupnets_summary(self, mcp_session):
@@ -276,6 +287,7 @@ class TestGroupnetsSummaryTools:
 # ---------------------------------------------------------------------------
 
 class TestLFNTools:
+    pytestmark = [pytest.mark.func_lfn, pytest.mark.group_lfn, pytest.mark.read]
     """Test Long File Name MCP tools."""
 
     def test_mcp_lfn_domains(self, mcp_session):
@@ -290,6 +302,7 @@ class TestLFNTools:
 # ---------------------------------------------------------------------------
 
 class TestMetadataIQTools:
+    pytestmark = [pytest.mark.func_metadataiq, pytest.mark.group_metadataiq, pytest.mark.read]
     """Test MetadataIQ MCP tools."""
 
     def test_mcp_metadataiq_settings(self, mcp_session):
@@ -308,6 +321,7 @@ class TestMetadataIQTools:
 # ---------------------------------------------------------------------------
 
 class TestMPATools:
+    pytestmark = [pytest.mark.func_mpa, pytest.mark.group_mpa, pytest.mark.read]
     """Test Multi-Party Authorization MCP tools."""
 
     def test_mcp_mpa_settings(self, mcp_session):

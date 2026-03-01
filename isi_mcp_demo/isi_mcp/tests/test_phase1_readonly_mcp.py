@@ -26,6 +26,7 @@ from tests.test_utils import (
 # ---------------------------------------------------------------------------
 
 class TestConfigTools:
+    pytestmark = [pytest.mark.func_capacity, pytest.mark.group_capacity, pytest.mark.read]
     """Test cluster configuration retrieval."""
 
     def test_mcp_config(self, mcp_session):
@@ -61,6 +62,7 @@ class TestConfigTools:
 
 
 class TestCapacityTools:
+    pytestmark = [pytest.mark.func_capacity, pytest.mark.group_capacity, pytest.mark.read]
     """Test storage capacity retrieval."""
 
     def test_mcp_capacity(self, mcp_session):
@@ -101,6 +103,7 @@ class TestCapacityTools:
 # ---------------------------------------------------------------------------
 
 class TestSnapshotReadTools:
+    pytestmark = [pytest.mark.func_snapshots, pytest.mark.group_snapshots, pytest.mark.read]
     """Test snapshot listing and filtering operations."""
 
     def test_mcp_snapshot_get(self, mcp_session):
@@ -163,6 +166,7 @@ class TestSnapshotReadTools:
 # ---------------------------------------------------------------------------
 
 class TestFileMgmtReadTools:
+    pytestmark = [pytest.mark.func_filemgmt, pytest.mark.group_filemgmt, pytest.mark.read]
     """Test filesystem navigation and attribute retrieval."""
 
     def test_mcp_directory_list(self, mcp_session):
@@ -238,6 +242,7 @@ class TestFileMgmtReadTools:
 # ---------------------------------------------------------------------------
 
 class TestDatamoverReadTools:
+    pytestmark = [pytest.mark.func_datamover, pytest.mark.group_datamover, pytest.mark.read]
     """Test DataMover policy and account querying."""
 
     def test_mcp_datamover_policy_get(self, mcp_session):
@@ -289,6 +294,7 @@ class TestDatamoverReadTools:
 # ---------------------------------------------------------------------------
 
 class TestFilePoolReadTools:
+    pytestmark = [pytest.mark.func_filepool, pytest.mark.group_filepool, pytest.mark.read]
     """Test FilePool policy querying."""
 
     def test_mcp_filepool_policy_get(self, mcp_session):
@@ -318,6 +324,7 @@ class TestFilePoolReadTools:
 # ---------------------------------------------------------------------------
 
 class TestNFSGlobalSettingsTools:
+    pytestmark = [pytest.mark.func_nfs, pytest.mark.group_nfs, pytest.mark.read]
     """Test NFS global settings retrieval."""
 
     def test_mcp_nfs_global_settings_get(self, mcp_session):
@@ -333,6 +340,7 @@ class TestNFSGlobalSettingsTools:
 
 
 class TestSMBGlobalSettingsTools:
+    pytestmark = [pytest.mark.func_smb, pytest.mark.group_smb, pytest.mark.read]
     """Test SMB global settings retrieval."""
 
     def test_mcp_smb_global_settings_get(self, mcp_session):
@@ -352,6 +360,7 @@ class TestSMBGlobalSettingsTools:
 # ---------------------------------------------------------------------------
 
 class TestManagementTools:
+    pytestmark = [pytest.mark.func_none, pytest.mark.group_management, pytest.mark.read]
     """Test tool management operations."""
 
     def test_mcp_tools_list(self, mcp_session):

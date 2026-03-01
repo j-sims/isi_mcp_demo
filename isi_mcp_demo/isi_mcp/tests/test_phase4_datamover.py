@@ -58,6 +58,7 @@ def _skip_if_create_fails(result, operation):
 # ---------------------------------------------------------------------------
 
 class TestDataMoverPolicyRead:
+    pytestmark = [pytest.mark.func_datamover, pytest.mark.group_datamover, pytest.mark.read]
     """Test DataMover policy read operations via MCP."""
 
     def test_datamover_policy_get(self, mcp_session):
@@ -103,6 +104,7 @@ class TestDataMoverPolicyRead:
 # ---------------------------------------------------------------------------
 
 class TestDataMoverAccountRead:
+    pytestmark = [pytest.mark.func_datamover, pytest.mark.group_datamover, pytest.mark.read]
     """Test DataMover account read operations via MCP."""
 
     def test_datamover_account_get(self, mcp_session):
@@ -142,6 +144,7 @@ class TestDataMoverAccountRead:
 # ---------------------------------------------------------------------------
 
 class TestDataMoverBasePolicyRead:
+    pytestmark = [pytest.mark.func_datamover, pytest.mark.group_datamover, pytest.mark.read]
     """Test DataMover base policy read operations via MCP."""
 
     def test_datamover_base_policy_get(self, mcp_session):
@@ -181,6 +184,7 @@ class TestDataMoverBasePolicyRead:
 # ---------------------------------------------------------------------------
 
 class TestDataMoverPolicyLifecycle:
+    pytestmark = [pytest.mark.func_datamover, pytest.mark.group_datamover, pytest.mark.write]
     """Test DataMover policy create + delete lifecycle via MCP."""
 
     def test_datamover_policy_create_and_delete(
@@ -272,6 +276,7 @@ class TestDataMoverPolicyLifecycle:
 # ---------------------------------------------------------------------------
 
 class TestDataMoverAccountLifecycle:
+    pytestmark = [pytest.mark.func_datamover, pytest.mark.group_datamover, pytest.mark.write]
     """Test DataMover account create + delete lifecycle via MCP."""
 
     def test_datamover_account_create_and_delete(
@@ -331,6 +336,7 @@ class TestDataMoverAccountLifecycle:
 # ---------------------------------------------------------------------------
 
 class TestDataMoverBasePolicyLifecycle:
+    pytestmark = [pytest.mark.func_datamover, pytest.mark.group_datamover, pytest.mark.write]
     """Test DataMover base policy create + delete lifecycle via MCP."""
 
     def test_datamover_base_policy_create_and_delete(
@@ -431,6 +437,7 @@ class TestDataMoverBasePolicyLifecycle:
 # ---------------------------------------------------------------------------
 
 class TestDataMoverPolicyLastJob:
+    pytestmark = [pytest.mark.func_datamover, pytest.mark.group_datamover, pytest.mark.read]
     """Test DataMover policy last job retrieval via MCP."""
 
     def test_datamover_policy_last_job_nonexistent(self, mcp_session):

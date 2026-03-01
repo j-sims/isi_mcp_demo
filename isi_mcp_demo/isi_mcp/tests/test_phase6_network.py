@@ -26,6 +26,7 @@ from tests.test_utils import (
 # ---------------------------------------------------------------------------
 
 class TestNetworkGroupnets:
+    pytestmark = [pytest.mark.func_networking, pytest.mark.group_networking, pytest.mark.read]
     """Test groupnet listing."""
 
     def test_groupnets_get_returns_list(self, mcp_session):
@@ -55,6 +56,7 @@ class TestNetworkGroupnets:
 # ---------------------------------------------------------------------------
 
 class TestNetworkSubnets:
+    pytestmark = [pytest.mark.func_networking, pytest.mark.group_networking, pytest.mark.read]
     """Test subnet listing and filtering."""
 
     def test_subnets_get_returns_list(self, mcp_session):
@@ -109,6 +111,7 @@ class TestNetworkSubnets:
 # ---------------------------------------------------------------------------
 
 class TestNetworkPools:
+    pytestmark = [pytest.mark.func_networking, pytest.mark.group_networking, pytest.mark.read]
     """Test pool listing, IP ranges, and SmartConnect configuration."""
 
     def test_pools_get_returns_list(self, mcp_session):
@@ -156,6 +159,7 @@ class TestNetworkPools:
 # ---------------------------------------------------------------------------
 
 class TestNetworkInterfaces:
+    pytestmark = [pytest.mark.func_networking, pytest.mark.group_networking, pytest.mark.read]
     """Test network interface listing."""
 
     def test_interfaces_get_returns_list(self, mcp_session):
@@ -190,6 +194,7 @@ class TestNetworkInterfaces:
 # ---------------------------------------------------------------------------
 
 class TestNetworkExternal:
+    pytestmark = [pytest.mark.func_networking, pytest.mark.group_networking, pytest.mark.read]
     """Test global external network settings."""
 
     def test_external_get_returns_dict(self, mcp_session):
@@ -217,6 +222,7 @@ class TestNetworkExternal:
 # ---------------------------------------------------------------------------
 
 class TestNetworkDNS:
+    pytestmark = [pytest.mark.func_networking, pytest.mark.group_networking, pytest.mark.read]
     """Test DNS cache configuration."""
 
     def test_dns_get_returns_dict(self, mcp_session):
@@ -244,6 +250,7 @@ class TestNetworkDNS:
 # ---------------------------------------------------------------------------
 
 class TestZones:
+    pytestmark = [pytest.mark.func_networking, pytest.mark.group_networking, pytest.mark.read]
     """Test access zone listing."""
 
     def test_zones_get_returns_list(self, mcp_session):
@@ -284,6 +291,7 @@ class TestZones:
 # ---------------------------------------------------------------------------
 
 class TestNetworkMap:
+    pytestmark = [pytest.mark.func_networking, pytest.mark.group_networking, pytest.mark.read]
     """Test the composite network topology map."""
 
     def test_network_map_returns_dict_with_groupnets(self, mcp_session):
@@ -350,6 +358,7 @@ class TestNetworkMap:
 # ---------------------------------------------------------------------------
 
 class TestNetworkToolsRegistration:
+    pytestmark = [pytest.mark.func_none, pytest.mark.group_management, pytest.mark.read]
     """Verify all networking tools are registered in the MCP server."""
 
     def test_networking_tools_exist(self, mcp_session):

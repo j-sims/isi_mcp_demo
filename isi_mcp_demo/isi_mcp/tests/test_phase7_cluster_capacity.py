@@ -29,6 +29,7 @@ from tests.test_utils import (
 # ===========================================================================
 
 class TestClusterNodesDirect:
+    pytestmark = [pytest.mark.func_cluster_nodes, pytest.mark.group_cluster_nodes, pytest.mark.read]
     """Direct module tests for ClusterNodes."""
 
     def test_cluster_nodes_get_returns_dict(self, test_cluster_direct):
@@ -103,6 +104,7 @@ class TestClusterNodesDirect:
 
 
 class TestStoragepoolNodetypesDirect:
+    pytestmark = [pytest.mark.func_storagepool_nodetypes, pytest.mark.group_storagepool_nodetypes, pytest.mark.read]
     """Direct module tests for StoragepoolNodetypes."""
 
     def test_nodetypes_get_returns_dict(self, test_cluster_direct):
@@ -150,6 +152,7 @@ class TestStoragepoolNodetypesDirect:
 
 
 class TestLicenseDirect:
+    pytestmark = [pytest.mark.func_licensing, pytest.mark.group_licensing, pytest.mark.read]
     """Direct module tests for License."""
 
     def test_license_get_returns_dict(self, test_cluster_direct):
@@ -209,6 +212,7 @@ class TestLicenseDirect:
 
 
 class TestZonesSummaryDirect:
+    pytestmark = [pytest.mark.func_zones_summary, pytest.mark.group_zones_summary, pytest.mark.read]
     """Direct module tests for ZonesSummary."""
 
     def test_zones_summary_get_returns_dict(self, test_cluster_direct):
@@ -261,6 +265,7 @@ class TestZonesSummaryDirect:
 # ===========================================================================
 
 class TestClusterNodesMCP:
+    pytestmark = [pytest.mark.func_cluster_nodes, pytest.mark.group_cluster_nodes, pytest.mark.read]
     """MCP tool tests for cluster nodes."""
 
     def test_cluster_nodes_get_returns_dict(self, mcp_session):
@@ -325,6 +330,7 @@ class TestClusterNodesMCP:
 
 
 class TestStoragepoolNodetypesMCP:
+    pytestmark = [pytest.mark.func_storagepool_nodetypes, pytest.mark.group_storagepool_nodetypes, pytest.mark.read]
     """MCP tool tests for storage pool node types."""
 
     def test_nodetypes_get_returns_dict(self, mcp_session):
@@ -365,6 +371,7 @@ class TestStoragepoolNodetypesMCP:
 
 
 class TestLicenseMCP:
+    pytestmark = [pytest.mark.func_licensing, pytest.mark.group_licensing, pytest.mark.read]
     """MCP tool tests for license information."""
 
     def test_license_get_returns_dict(self, mcp_session):
@@ -422,6 +429,7 @@ class TestLicenseMCP:
 
 
 class TestZonesSummaryMCP:
+    pytestmark = [pytest.mark.func_zones_summary, pytest.mark.group_zones_summary, pytest.mark.read]
     """MCP tool tests for zones summary."""
 
     def test_zones_summary_get_returns_dict(self, mcp_session):
@@ -475,6 +483,7 @@ class TestZonesSummaryMCP:
 # ---------------------------------------------------------------------------
 
 class TestClusterCapacityToolsRegistration:
+    pytestmark = [pytest.mark.func_none, pytest.mark.group_management, pytest.mark.read]
     """Verify all 8 new tools are registered in the MCP server."""
 
     def test_cluster_capacity_tools_exist(self, mcp_session):

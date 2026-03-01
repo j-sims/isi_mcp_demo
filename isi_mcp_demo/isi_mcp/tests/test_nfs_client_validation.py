@@ -2,6 +2,9 @@
 import pytest
 from unittest.mock import Mock
 
+pytestmark = [pytest.mark.func_nfs, pytest.mark.group_nfs, pytest.mark.read]
+
+
 # Prevent AnsibleRunner import (not needed for unit tests)
 import sys
 sys.modules['modules.ansible.runner'] = Mock()

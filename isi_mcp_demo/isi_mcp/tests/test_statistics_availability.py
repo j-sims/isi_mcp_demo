@@ -2,6 +2,9 @@
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 
+pytestmark = [pytest.mark.func_statistics, pytest.mark.group_statistics, pytest.mark.read]
+
+
 from modules.onefs.v9_12_0.statistics import Statistics
 from isilon_sdk.v9_12_0.rest import ApiException
 

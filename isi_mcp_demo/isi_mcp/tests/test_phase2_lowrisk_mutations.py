@@ -47,6 +47,7 @@ def _unique_name(prefix="test"):
 # ---------------------------------------------------------------------------
 
 class TestSnapshotAliases:
+    pytestmark = [pytest.mark.func_snapshots, pytest.mark.group_snapshots, pytest.mark.write]
     """
     Test snapshot alias create/get operations.
 
@@ -172,6 +173,7 @@ class TestSnapshotAliases:
 # ---------------------------------------------------------------------------
 
 class TestSnapshotCreateDelete:
+    pytestmark = [pytest.mark.func_snapshots, pytest.mark.group_snapshots, pytest.mark.write]
     """
     Test snapshot lifecycle: create via Ansible, verify, delete via Ansible.
 
@@ -265,6 +267,7 @@ class TestSnapshotCreateDelete:
 # ---------------------------------------------------------------------------
 
 class TestNFSGlobalSettings:
+    pytestmark = [pytest.mark.func_nfs, pytest.mark.group_nfs, pytest.mark.write]
     """
     Test NFS global settings update with state restore.
 
@@ -335,6 +338,7 @@ class TestNFSGlobalSettings:
 # ---------------------------------------------------------------------------
 
 class TestSMBGlobalSettings:
+    pytestmark = [pytest.mark.func_smb, pytest.mark.group_smb, pytest.mark.write]
     """
     Test SMB global settings update with state restore.
 

@@ -9,6 +9,8 @@ Run from the isi_mcp/ directory:
     pytest tests/test_modules.py -v
 """
 
+import pytest
+
 from modules.onefs.v9_12_0.cluster import Cluster
 from modules.onefs.v9_12_0.verify import Verify
 from modules.onefs.v9_12_0.capacity import Capacity
@@ -26,6 +28,7 @@ from modules.ansible.runner import AnsibleRunner
 # ---------------------------------------------------------------------------
 
 class TestCluster:
+    pytestmark = [pytest.mark.func_verify, pytest.mark.group_verify, pytest.mark.read]
 
     def test_cluster_connection(self, cluster):
         """Cluster() should create a usable api_client."""
@@ -38,6 +41,7 @@ class TestCluster:
 # ---------------------------------------------------------------------------
 
 class TestVerify:
+    pytestmark = [pytest.mark.func_verify, pytest.mark.group_verify, pytest.mark.read]
 
     def test_cluster_verify(self, cluster):
         """Verify.verify() returns {status: bool, message: str}."""
@@ -51,6 +55,7 @@ class TestVerify:
 
 
 class TestCapacity:
+    pytestmark = [pytest.mark.func_capacity, pytest.mark.group_capacity, pytest.mark.read]
 
     def test_capacity_get(self, cluster):
         """Capacity.get() returns a dict with expected stat keys."""
@@ -71,6 +76,7 @@ class TestCapacity:
 # ---------------------------------------------------------------------------
 
 class TestQuotas:
+    pytestmark = [pytest.mark.func_quotas, pytest.mark.group_quotas, pytest.mark.read]
 
     def test_quotas_get(self, cluster):
         """Quotas.get() returns {items: list, resume: ...}."""
@@ -83,6 +89,7 @@ class TestQuotas:
 
 
 class TestSmb:
+    pytestmark = [pytest.mark.func_smb, pytest.mark.group_smb, pytest.mark.read]
 
     def test_smb_get(self, cluster):
         """Smb.get() returns {items: list, resume: ...}."""
@@ -95,6 +102,7 @@ class TestSmb:
 
 
 class TestSnapshots:
+    pytestmark = [pytest.mark.func_snapshots, pytest.mark.group_snapshots, pytest.mark.read]
 
     def test_snapshots_get(self, cluster):
         """Snapshots.get() returns {items: list, resume: ...}."""
@@ -107,6 +115,7 @@ class TestSnapshots:
 
 
 class TestSyncIQ:
+    pytestmark = [pytest.mark.func_synciq, pytest.mark.group_synciq, pytest.mark.read]
 
     def test_synciq_get(self, cluster):
         """SyncIQ.get() returns {items: list}."""
@@ -118,6 +127,7 @@ class TestSyncIQ:
 
 
 class TestNfs:
+    pytestmark = [pytest.mark.func_nfs, pytest.mark.group_nfs, pytest.mark.read]
 
     def test_nfs_get(self, cluster):
         """Nfs.get() returns {items: list, resume: ...}."""
@@ -130,6 +140,7 @@ class TestNfs:
 
 
 class TestS3:
+    pytestmark = [pytest.mark.func_s3, pytest.mark.group_s3, pytest.mark.read]
 
     def test_s3_get(self, cluster):
         """S3.get() returns {items: list, resume: ...}."""
@@ -146,6 +157,7 @@ class TestS3:
 # ---------------------------------------------------------------------------
 
 class TestAnsibleRunner:
+    pytestmark = [pytest.mark.func_smb, pytest.mark.read]
 
     def test_runner_initialization(self, cluster):
         """AnsibleRunner should initialize with valid cluster."""

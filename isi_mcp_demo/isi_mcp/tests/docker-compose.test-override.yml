@@ -1,0 +1,6 @@
+services:
+  isi_mcp:
+    ports:
+      - "8000:8000"
+    volumes:
+      - /tmp/isi_mcp_demo_tests_01032026_1224:/app/playbooks

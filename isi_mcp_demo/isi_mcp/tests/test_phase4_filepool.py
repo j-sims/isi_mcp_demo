@@ -44,6 +44,7 @@ _MINIMAL_PATTERN = json.dumps({
 # ---------------------------------------------------------------------------
 
 class TestFilePoolPolicyRead:
+    pytestmark = [pytest.mark.func_filepool, pytest.mark.group_filepool, pytest.mark.read]
     """Test FilePool policy read operations via MCP."""
 
     def test_filepool_policy_get(self, mcp_session):
@@ -86,6 +87,7 @@ class TestFilePoolPolicyRead:
 # ---------------------------------------------------------------------------
 
 class TestFilePoolPolicyLifecycle:
+    pytestmark = [pytest.mark.func_filepool, pytest.mark.group_filepool, pytest.mark.write]
     """Test FilePool policy create + update + remove lifecycle via MCP."""
 
     def test_filepool_policy_create_and_remove(
