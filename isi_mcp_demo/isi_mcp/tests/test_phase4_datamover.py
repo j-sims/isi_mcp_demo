@@ -184,16 +184,41 @@ class TestDataMoverPolicyLifecycle:
     """Test DataMover policy create + delete lifecycle via MCP."""
 
     def test_datamover_policy_create_and_delete(
-        self, mcp_session, created_datamover_policies
+        self, mcp_session, created_datamover_policies, created_datamover_base_policies
     ):
         """Create a DataMover policy, verify it, then delete it."""
         policy_name = _unique_name("dmpol")
         created_datamover_policies.append(policy_name)
 
-        # Create
+        # First, ensure we have a base policy to reference
+        # Try to get existing base policies
+        base_policy_result = mcp_session("powerscale_datamover_base_policy_get", {
+            "limit": 1,
+        })
+        _skip_if_datamover_unavailable(base_policy_result)
+
+        base_policies = base_policy_result.get("items", [])
+        if not base_policies:
+            # No base policies exist, create one
+            bp_name = _unique_name("dmbp_for_policy")
+            created_datamover_base_policies.append(bp_name)
+            bp_result = mcp_session("powerscale_datamover_base_policy_create", {
+                "name": bp_name,
+            })
+            _skip_if_create_fails(bp_result, "base_policy")
+            if bp_result.get("success"):
+                base_policies = [{"id": bp_result.get("id", bp_name)}]
+            else:
+                pytest.skip("Cannot create base policy for policy test")
+
+        # Use the first available base policy
+        base_policy_id = base_policies[0].get("id")
+
+        # Create policy with a base_policy_id
         try:
             result = mcp_session("powerscale_datamover_policy_create", {
                 "name": policy_name,
+                "base_policy_id": base_policy_id,
             })
         except AssertionError as e:
             _skip_if_datamover_unavailable({"error": str(e)})
@@ -309,16 +334,59 @@ class TestDataMoverBasePolicyLifecycle:
     """Test DataMover base policy create + delete lifecycle via MCP."""
 
     def test_datamover_base_policy_create_and_delete(
-        self, mcp_session, created_datamover_base_policies
+        self, mcp_session, created_datamover_base_policies, created_datamover_accounts
     ):
         """Create a DataMover base policy, verify it, then delete it."""
         bp_name = _unique_name("dmbp")
         created_datamover_base_policies.append(bp_name)
 
+        # First, ensure we have accounts to reference
+        # Try to get existing accounts
+        acct_result = mcp_session("powerscale_datamover_account_get", {
+            "limit": 1,
+        })
+        _skip_if_datamover_unavailable(acct_result)
+
+        accounts = acct_result.get("items", [])
+        if not accounts or len(accounts) < 2:
+            # Create source account
+            src_name = _unique_name("dmacct_src")
+            created_datamover_accounts.append(src_name)
+            src_result = mcp_session("powerscale_datamover_account_create", {
+                "name": src_name,
+                "account_type": "local",
+                "uri": "/ifs/data",
+            })
+            _skip_if_create_fails(src_result, "account")
+            if not src_result.get("success"):
+                pytest.skip("Cannot create source account for base policy test")
+            accounts.append({"id": src_result.get("id", src_name)})
+
+            # Create target account (different path)
+            tgt_name = _unique_name("dmacct_tgt")
+            created_datamover_accounts.append(tgt_name)
+            tgt_result = mcp_session("powerscale_datamover_account_create", {
+                "name": tgt_name,
+                "account_type": "local",
+                "uri": "/ifs/archive",
+            })
+            _skip_if_create_fails(tgt_result, "account")
+            if not tgt_result.get("success"):
+                pytest.skip("Cannot create target account for base policy test")
+            accounts.append({"id": tgt_result.get("id", tgt_name)})
+
+        # Use first two accounts
+        source_account_id = accounts[0].get("id")
+        target_account_id = accounts[1].get("id")
+
         # Create
         try:
             result = mcp_session("powerscale_datamover_base_policy_create", {
                 "name": bp_name,
+                "source_account_id": source_account_id,
+                "target_account_id": target_account_id,
+                "source_base_path": "/ifs/data",
+                "target_base_path": "/ifs/archive",
             })
         except AssertionError as e:
             _skip_if_datamover_unavailable({"error": str(e)})
