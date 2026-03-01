@@ -28,7 +28,7 @@ from modules.network.utils import pingable
 # ---------------------------------------------------------------------------
 TEST_CLUSTER_HOST = os.getenv("TEST_CLUSTER_HOST", "")
 TEST_CLUSTER_PORT = os.getenv("TEST_CLUSTER_PORT", "8080")
-TEST_CLUSTER_USERNAME = os.getenv("TEST_CLUSTER_USERNAME", "")
+TEST_CLUSTER_USERNAME = os.getenv("TEST_CLUSTER_USER", "")
 TEST_CLUSTER_PASSWORD = os.getenv("TEST_CLUSTER_PASSWORD", "")
 TEST_CLUSTER_VERIFY_SSL = os.getenv("TEST_CLUSTER_VERIFY_SSL", "false").lower() == "true"
 
