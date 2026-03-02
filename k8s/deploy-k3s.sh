@@ -1,0 +1,277 @@
+#!/usr/bin/env bash
+#
+# deploy-k3s.sh — Build and deploy the isi-mcp-server to k3s.
+#
+# Prerequisites:
+#   - k3s installed and running
+#   - kubectl installed and available in PATH
+#   - Docker installed and available in PATH (for building images)
+#   - vault/vault.yml exists (run ./setup.sh first to create it)
+#   - VAULT_PASSWORD env var set, or pass --vault-password flag
+#
+# Usage:
+#   export VAULT_PASSWORD='your-vault-password'
+#   ./k8s/deploy-k3s.sh
+#
+#   # Or pass vault password inline:
+#   ./k8s/deploy-k3s.sh --vault-password 'your-vault-password'
+#
+#   # Teardown:
+#   ./k8s/deploy-k3s.sh --teardown
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+IMAGE_NAME="isi-mcp-server"
+# Use VERSION file for reproducible image tags; fall back to git SHA, then "latest"
+VERSION_FILE="${PROJECT_ROOT}/VERSION"
+if [ -f "$VERSION_FILE" ]; then
+  IMAGE_TAG="$(tr -d '[:space:]' < "$VERSION_FILE")"
+elif command -v git &>/dev/null && git -C "$PROJECT_ROOT" rev-parse HEAD &>/dev/null; then
+  IMAGE_TAG="$(git -C "$PROJECT_ROOT" rev-parse --short HEAD)"
+else
+  IMAGE_TAG="latest"
+fi
+NAMESPACE="isi-mcp"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+info()  { echo -e "${CYAN}[INFO]${NC}  $*"; }
+ok()    { echo -e "${GREEN}[OK]${NC}    $*"; }
+warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
+fail()  { echo -e "${RED}[FAIL]${NC}  $*"; exit 1; }
+
+# ---------------------------------------------------------------------------
+# Parse arguments
+# ---------------------------------------------------------------------------
+TEARDOWN=false
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --vault-password)
+      VAULT_PASSWORD="$2"
+      shift 2
+      ;;
+    --teardown)
+      TEARDOWN=true
+      shift
+      ;;
+    -h|--help)
+      cat << 'HELP'
+Usage: ./k8s/deploy-k3s.sh [OPTIONS]
+
+Deploy isi-mcp-server to a k3s cluster.
+
+Options:
+  --vault-password PASS  Ansible vault password (or set VAULT_PASSWORD env var)
+  --teardown             Delete all isi-mcp resources from k3s
+  -h, --help             Show this help message
+
+Examples:
+  # Full deploy
+  export VAULT_PASSWORD='secret'
+  ./k8s/deploy-k3s.sh
+
+  # Deploy with vault password inline
+  ./k8s/deploy-k3s.sh --vault-password 'secret'
+
+  # Teardown
+  ./k8s/deploy-k3s.sh --teardown
+HELP
+      exit 0
+      ;;
+    *)
+      fail "Unknown argument: $1 (use -h for help)"
+      ;;
+  esac
+done
+
+# ---------------------------------------------------------------------------
+# Teardown
+# ---------------------------------------------------------------------------
+if [ "$TEARDOWN" = true ]; then
+  info "Tearing down isi-mcp deployment..."
+  kubectl delete namespace "$NAMESPACE" --ignore-not-found=true
+  ok "Namespace '$NAMESPACE' deleted."
+  exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# Validate prerequisites
+# ---------------------------------------------------------------------------
+info "Checking prerequisites..."
+
+command -v kubectl  &>/dev/null || fail "kubectl not found in PATH"
+command -v docker   &>/dev/null || fail "docker not found in PATH"
+
+# Check k3s is running by verifying kubectl can access the cluster
+kubectl cluster-info &>/dev/null || fail "k3s cluster is not accessible. Verify k3s is running and kubeconfig is configured."
+
+VAULT_FILE="${PROJECT_ROOT}/vault/vault.yml"
+[ -f "$VAULT_FILE" ] || fail "vault/vault.yml not found. Run ./setup.sh first to create it."
+
+VAULT_PASSWORD="${VAULT_PASSWORD:-}"
+[ -n "$VAULT_PASSWORD" ] || fail "VAULT_PASSWORD is not set. Export it or use --vault-password."
+
+ok "All prerequisites satisfied."
+
+# ---------------------------------------------------------------------------
+# Build Docker image
+# ---------------------------------------------------------------------------
+info "Building Docker image '${IMAGE_NAME}:${IMAGE_TAG}'..."
+docker build \
+  -t "${IMAGE_NAME}:${IMAGE_TAG}" \
+  -t "${IMAGE_NAME}:latest" \
+  "${PROJECT_ROOT}/isi_mcp_demo/isi_mcp/"
+ok "Image built: ${IMAGE_NAME}:${IMAGE_TAG} (also tagged as latest)"
+
+# ---------------------------------------------------------------------------
+# Load image into k3s
+# ---------------------------------------------------------------------------
+info "Loading Docker image into k3s..."
+# Import both versioned and latest tags — deployment.yaml references :latest
+docker save "${IMAGE_NAME}:${IMAGE_TAG}" "${IMAGE_NAME}:latest" | sudo k3s ctr images import -
+ok "Image loaded into k3s (${IMAGE_NAME}:${IMAGE_TAG} and ${IMAGE_NAME}:latest)."
+
+# ---------------------------------------------------------------------------
+# Create namespace first (needed before secrets)
+# ---------------------------------------------------------------------------
+info "Applying namespace..."
+kubectl apply -f "${SCRIPT_DIR}/namespace.yaml"
+
+# ---------------------------------------------------------------------------
+# Create / update Kubernetes secrets
+# ---------------------------------------------------------------------------
+info "Creating/updating secret 'isi-mcp-credentials' (vault password)..."
+kubectl create secret generic isi-mcp-credentials \
+  --namespace="$NAMESPACE" \
+  --from-literal=vault-password="$VAULT_PASSWORD" \
+  --dry-run=client -o yaml | kubectl apply -f -
+ok "Secret 'isi-mcp-credentials' ready."
+
+info "Creating/updating secret 'isi-mcp-vault' (encrypted vault file)..."
+kubectl create secret generic isi-mcp-vault \
+  --namespace="$NAMESPACE" \
+  --from-file=vault.yml="${VAULT_FILE}" \
+  --dry-run=client -o yaml | kubectl apply -f -
+ok "Secret 'isi-mcp-vault' ready."
+
+info "Creating/updating configmap 'isi-mcp-version' (VERSION file)..."
+kubectl create configmap isi-mcp-version \
+  --namespace="$NAMESPACE" \
+  --from-file=VERSION="${VERSION_FILE}" \
+  --dry-run=client -o yaml | kubectl apply -f -
+ok "ConfigMap 'isi-mcp-version' ready."
+
+# Generate TLS certs if they don't exist
+CERT_DIR="${PROJECT_ROOT}/nginx/certs"
+CERT_SCRIPT="${PROJECT_ROOT}/nginx/generate-certs.sh"
+if [ -x "$CERT_SCRIPT" ]; then
+  info "Checking TLS certificates..."
+  "$CERT_SCRIPT"
+fi
+
+if [ -f "${CERT_DIR}/server.crt" ] && [ -f "${CERT_DIR}/server.key" ]; then
+  info "Creating/updating secret 'isi-mcp-tls' (TLS certificate)..."
+  kubectl create secret tls isi-mcp-tls \
+    --namespace="$NAMESPACE" \
+    --cert="${CERT_DIR}/server.crt" \
+    --key="${CERT_DIR}/server.key" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  ok "Secret 'isi-mcp-tls' ready."
+else
+  warn "TLS certificates not found in nginx/certs/ — nginx pod will fail."
+  warn "Run ./nginx/generate-certs.sh to generate self-signed certs."
+fi
+
+# ---------------------------------------------------------------------------
+# Apply remaining Kubernetes manifests
+# ---------------------------------------------------------------------------
+info "Applying Kubernetes manifests (image tag: ${IMAGE_TAG})..."
+kubectl apply -k "${SCRIPT_DIR}/"
+ok "Manifests applied."
+
+# ---------------------------------------------------------------------------
+# Wait for rollout
+# ---------------------------------------------------------------------------
+info "Waiting for deployment rollout (timeout: 5m)..."
+kubectl rollout status deployment/isi-mcp \
+  --namespace="$NAMESPACE" \
+  --timeout=300s
+ok "Deployment is ready."
+
+# ---------------------------------------------------------------------------
+# Verify server is responding
+# ---------------------------------------------------------------------------
+info "Waiting for nginx deployment rollout..."
+kubectl rollout status deployment/isi-mcp-nginx \
+  --namespace="$NAMESPACE" \
+  --timeout=120s
+ok "Nginx deployment is ready."
+
+info "Verifying MCP server is responding via port-forward..."
+
+# Port-forward the backend service directly (avoids TLS complexity in health check)
+kubectl port-forward \
+  --namespace="$NAMESPACE" \
+  svc/isi-mcp-backend 18000:8000 &>/dev/null &
+PF_PID=$!
+
+# Give it a moment to establish
+sleep 3
+
+RESPONSE=$(curl -sf \
+  -X POST http://localhost:18000/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"deploy-check","version":"1.0"}}}' \
+  2>/dev/null || echo "FAILED")
+
+kill $PF_PID 2>/dev/null || true
+
+if echo "$RESPONSE" | grep -q '"result"'; then
+  ok "MCP server is responding correctly."
+else
+  warn "Could not verify MCP response (server may still be starting). Check logs:"
+  echo "  kubectl logs -n $NAMESPACE deployment/isi-mcp --tail=20"
+fi
+
+# ---------------------------------------------------------------------------
+# Print summary
+# ---------------------------------------------------------------------------
+echo ""
+echo -e "${GREEN}=============================="
+echo -e " Deployment Complete"
+echo -e "==============================${NC}"
+echo ""
+echo "Namespace : $NAMESPACE"
+echo "Image     : ${IMAGE_NAME}:${IMAGE_TAG}"
+echo ""
+echo "Useful commands:"
+echo "  # Watch pod status"
+echo "  kubectl get pods -n $NAMESPACE -w"
+echo ""
+echo "  # View server logs"
+echo "  kubectl logs -n $NAMESPACE deployment/isi-mcp -f"
+echo ""
+echo "  # Port-forward nginx for HTTPS access"
+echo "  kubectl port-forward -n $NAMESPACE svc/isi-mcp-nginx 443:443"
+echo "  # Then connect MCP client to https://localhost/mcp"
+echo ""
+echo "  # Port-forward backend directly (no TLS)"
+echo "  kubectl port-forward -n $NAMESPACE svc/isi-mcp-backend 8000:8000"
+echo "  # Then connect MCP client to http://localhost:8000/mcp"
+echo ""
+echo "  # Run K8s tests"
+echo "  isi_mcp_demo/isi_mcp/tests/runtests-k8s.sh"
+echo ""
+echo "  # Teardown"
+echo "  ./k8s/deploy-k3s.sh --teardown"
+echo ""

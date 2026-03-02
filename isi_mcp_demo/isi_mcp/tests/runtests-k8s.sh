@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# runtests-k8s.sh — Run the K8s/minikube deployment test suite.
+# runtests-k8s.sh — Run the Kubernetes deployment test suite.
 #
-# Verifies that the isi-mcp-server is correctly deployed on minikube:
+# Verifies that the isi-mcp-server is correctly deployed on Kubernetes:
 #   - K8s resources exist (Deployment, Service, ConfigMap, Secrets)
 #   - Pod is running and healthy
 #   - MCP server responds via port-forward (backend direct)
@@ -12,9 +12,9 @@
 #   - System works correctly when scaled to multiple replicas
 #
 # Prerequisites:
-#   minikube running with isi-mcp deployed:
+#   k3s running with isi-mcp deployed:
 #     export VAULT_PASSWORD='your-password'
-#     ./k8s/deploy-minikube.sh
+#     ./k8s/deploy-k3s.sh
 #
 # Usage:
 #   ./runtests-k8s.sh
@@ -64,7 +64,7 @@ show_help() {
     cat << 'HELP'
 Usage: ./runtests-k8s.sh [OPTIONS]
 
-Run the K8s/minikube test suite against the deployed isi-mcp-server.
+Run the Kubernetes test suite against the deployed isi-mcp-server.
 Tests include: K8s infrastructure, MCP protocol (direct backend), nginx HTTPS
 proxy, and scaling/load-distribution across multiple replicas.
 
@@ -253,24 +253,23 @@ trap _cleanup EXIT
 info "Checking prerequisites..."
 
 command -v kubectl   &>/dev/null || fail "kubectl not found in PATH"
-command -v minikube  &>/dev/null || fail "minikube not found in PATH"
 command -v python3   &>/dev/null || fail "python3 not found in PATH"
 
-# Check minikube is running
-minikube status 2>/dev/null | grep -q "Running" || \
-  fail "minikube is not running. Deploy first: ${ROOT_DIR}/k8s/deploy-minikube.sh"
+# Check k3s cluster is accessible
+kubectl cluster-info &>/dev/null || \
+  fail "Kubernetes cluster is not accessible. Ensure k3s is running: ${ROOT_DIR}/k8s/deploy-k3s.sh"
 
 # Check namespace exists
 kubectl get namespace "$NAMESPACE" &>/dev/null || \
-  fail "Namespace '$NAMESPACE' not found. Deploy first: ${ROOT_DIR}/k8s/deploy-minikube.sh"
+  fail "Namespace '$NAMESPACE' not found. Deploy first: ${ROOT_DIR}/k8s/deploy-k3s.sh"
 
 # Check backend deployment exists
 kubectl get deployment isi-mcp -n "$NAMESPACE" &>/dev/null || \
-  fail "Deployment 'isi-mcp' not found. Deploy first: ${ROOT_DIR}/k8s/deploy-minikube.sh"
+  fail "Deployment 'isi-mcp' not found. Deploy first: ${ROOT_DIR}/k8s/deploy-k3s.sh"
 
 # Check nginx deployment exists
 kubectl get deployment isi-mcp-nginx -n "$NAMESPACE" &>/dev/null || \
-  fail "Deployment 'isi-mcp-nginx' not found. Deploy first: ${ROOT_DIR}/k8s/deploy-minikube.sh"
+  fail "Deployment 'isi-mcp-nginx' not found. Deploy first: ${ROOT_DIR}/k8s/deploy-k3s.sh"
 
 ok "Prerequisites satisfied."
 
@@ -399,15 +398,16 @@ MCP_BASE_URL="http://localhost:${MCP_PORT}"
 NGINX_BASE_URL="https://localhost:${NGINX_PORT}"
 K8S_NAMESPACE="$NAMESPACE"
 
-EXTRA_ENV_ARGS=()
+# Build environment variables for pytest (not docker -e flags)
+PYTEST_ENV=()
 if [ -n "$CLUSTER_HOST" ]; then
-  EXTRA_ENV_ARGS+=(-e "TEST_CLUSTER_HOST=${CLUSTER_HOST}")
+  PYTEST_ENV+=("TEST_CLUSTER_HOST=${CLUSTER_HOST}")
 fi
 if [ -n "$CLUSTER_USER" ]; then
-  EXTRA_ENV_ARGS+=(-e "TEST_CLUSTER_USERNAME=${CLUSTER_USER}")
+  PYTEST_ENV+=("TEST_CLUSTER_USERNAME=${CLUSTER_USER}")
 fi
 if [ -n "$CLUSTER_PASS" ]; then
-  EXTRA_ENV_ARGS+=(-e "TEST_CLUSTER_PASSWORD=${CLUSTER_PASS}")
+  PYTEST_ENV+=("TEST_CLUSTER_PASSWORD=${CLUSTER_PASS}")
 fi
 
 # Change to the isi_mcp dir so conftest.py imports work
@@ -416,7 +416,7 @@ cd "${SCRIPT_DIR}/.."
 # Validate filter before running (if filters are applied)
 if [[ ${#MARKER_PARTS[@]} -gt 0 ]]; then
     validate_filter_matches_tests \
-        "tests/test_k8s_minikube.py" \
+        "tests/test_k8s.py" \
         "tests/test_nginx_proxy.py" \
         "tests/test_scaling.py"
 fi
@@ -433,13 +433,12 @@ info "=========================================="
 echo ""
 
 info "Running K8s infrastructure and protocol tests..."
-MCP_BASE_URL="$MCP_BASE_URL" \
-K8S_NAMESPACE="$K8S_NAMESPACE" \
-"${VENV_DIR}/bin/pytest" \
-  tests/test_k8s_minikube.py \
+env MCP_BASE_URL="$MCP_BASE_URL" K8S_NAMESPACE="$K8S_NAMESPACE" \
+  "${PYTEST_ENV[@]}" \
+  "${VENV_DIR}/bin/pytest" \
+  tests/test_k8s.py \
   -v \
   --tb=short \
-  "${EXTRA_ENV_ARGS[@]}" \
   "${PYTEST_MARKER_ARGS[@]}" \
   || RESULT=$?
 

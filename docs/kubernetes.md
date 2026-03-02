@@ -1,7 +1,7 @@
 # Kubernetes Deployment Guide
 
 This guide covers deploying the PowerScale MCP Server (`isi-mcp-server`) on Kubernetes,
-with detailed instructions for local development using **minikube**.
+with detailed instructions for local development using **k3s** and production deployments.
 
 ---
 
@@ -51,14 +51,14 @@ emptyDir /app/playbooks  →  Ansible playbook audit trail (ephemeral)
 
 ## Prerequisites
 
-- [minikube](https://minikube.sigs.k8s.io/docs/start/) v1.30+
+- [k3s](https://docs.k3s.io/quick-start) v1.28+ (or any Kubernetes cluster: minikube, EKS, AKS, etc.)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/) v1.28+
-- [Docker](https://docs.docker.com/get-docker/) (minikube driver)
+- [Docker](https://docs.docker.com/get-docker/) (for building images)
 - Vault credentials set up: run `./setup.sh` from the project root first
 
 ---
 
-## Quick Start — minikube
+## Quick Start — k3s
 
 ### 1. Create the vault
 
@@ -74,16 +74,17 @@ This creates `vault/vault.yml` (Ansible-vault encrypted) and prompts for a vault
 
 ```bash
 export VAULT_PASSWORD='your-vault-password'
-./k8s/deploy-minikube.sh
+./k8s/deploy-k3s.sh
 ```
 
 The script:
-1. Starts minikube (Docker driver)
-2. Builds the Docker image **inside** minikube's Docker daemon (no registry needed)
-3. Creates K8s Secrets for the vault password and encrypted vault file
-4. Applies namespace, ConfigMap, Deployment, and Service
-5. Waits for the Deployment rollout to complete
-6. Verifies the MCP server is responding
+1. Verifies k3s cluster is accessible via kubectl
+2. Builds the Docker image locally
+3. Loads the image into k3s using `k3s ctr images import`
+4. Creates K8s Secrets for the vault password and encrypted vault file
+5. Applies namespace, ConfigMap, Deployment, and Service
+6. Waits for the Deployment rollout to complete
+7. Verifies the MCP server is responding
 
 ### 3. Connect
 
@@ -136,7 +137,7 @@ mkdir -p vault
 cp /tmp/vault-placeholder.yml vault/vault.yml
 
 export VAULT_PASSWORD='mypassword'
-./k8s/deploy-minikube.sh
+./k8s/deploy-k3s.sh
 ```
 
 ---
@@ -144,11 +145,11 @@ export VAULT_PASSWORD='mypassword'
 ## Teardown
 
 ```bash
-./k8s/deploy-minikube.sh --teardown
+./k8s/deploy-k3s.sh --teardown
 ```
 
-This deletes the `isi-mcp` namespace (and all resources in it) from minikube.
-It does not stop minikube itself. To stop minikube: `minikube stop`.
+This deletes the `isi-mcp` namespace (and all resources in it) from the Kubernetes cluster.
+It does not stop the cluster itself.
 
 ---
 
@@ -274,6 +275,8 @@ When running multiple replicas:
 - Cluster selection changes propagate similarly via `cluster_state.json`
 - Playbook filenames include the pod hostname to prevent audit trail collisions
 - For durable shared state across pods, use a `ReadWriteMany` PVC for the config volume
+- **Session affinity**: Not required. The server runs in `stateless_http=True` mode — each POST to `/mcp` creates a fresh, independent session pre-set to the `Initialized` state, so any replica can handle any request without prior `initialize` handshake
+- **Rate limiting**: nginx allows bursts of 100 requests at a sustained rate of 10 req/s per client IP, sized to handle concurrent test load and normal MCP client usage
 
 ### 7. Playbook audit trail persistence (optional)
 

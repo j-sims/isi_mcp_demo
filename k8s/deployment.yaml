@@ -91,6 +91,10 @@ spec:
             - name: vault
               mountPath: /app/vault
               readOnly: true
+            - name: version
+              mountPath: /app/VERSION
+              subPath: VERSION
+              readOnly: true
             - name: playbooks
               mountPath: /app/playbooks
 
@@ -135,6 +139,11 @@ spec:
         - name: vault
           secret:
             secretName: isi-mcp-vault
+
+        # ConfigMap containing VERSION file
+        - name: version
+          configMap:
+            name: isi-mcp-version
 
         # EmptyDir for rendered Ansible playbooks (audit trail, ephemeral)
         - name: playbooks

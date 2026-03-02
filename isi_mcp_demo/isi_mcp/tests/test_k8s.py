@@ -1,19 +1,19 @@
 """
-K8s / minikube deployment tests.
+Kubernetes deployment tests.
 
-These tests verify the MCP server running inside minikube is correctly
+These tests verify the MCP server running in Kubernetes is correctly
 deployed and functioning.  They connect via `kubectl port-forward` and
 exercise the JSON-RPC MCP protocol.
 
 Prerequisites:
-    minikube running with the isi-mcp deployment:
-        ./k8s/deploy-minikube.sh
+    Kubernetes cluster (k3s, minikube, etc.) with the isi-mcp deployment:
+        ./k8s/deploy-k3s.sh
 
 Run via the dedicated runner (sets up port-forward automatically):
     ./runtests-k8s.sh
 
 Or manually (with port-forward already running on port 8000):
-    MCP_BASE_URL=http://localhost:8000 pytest tests/test_k8s_minikube.py -v
+    MCP_BASE_URL=http://localhost:8000 pytest tests/test_k8s.py -v
 
 Environment variables:
     MCP_BASE_URL  - MCP server base URL (default: http://localhost:8000)
@@ -243,9 +243,9 @@ class TestK8sInfrastructure:
         )
 
     def test_service_exists(self):
-        """The isi-mcp Service must exist and expose port 8000."""
+        """The isi-mcp-backend Service must exist and expose port 8000."""
         result = _kubectl(
-            "get", "service", "isi-mcp",
+            "get", "service", "isi-mcp-backend",
             "-o", "jsonpath={.spec.ports[0].port}",
         )
         assert result.returncode == 0, f"Service missing: {result.stderr}"

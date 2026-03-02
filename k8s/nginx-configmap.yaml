@@ -38,7 +38,7 @@ data:
         error_log  /var/log/nginx/mcp_error.log warn;
 
         location /mcp {
-            limit_req zone=mcp_limit burst=20 nodelay;
+            limit_req zone=mcp_limit burst=100 nodelay;
             proxy_pass http://mcp_backend;
             proxy_http_version 1.1;
             proxy_buffering off;
@@ -54,7 +54,7 @@ data:
         }
 
         location /sse {
-            limit_req zone=mcp_limit burst=20 nodelay;
+            limit_req zone=mcp_limit burst=100 nodelay;
             proxy_pass http://mcp_backend;
             proxy_http_version 1.1;
             proxy_buffering off;
