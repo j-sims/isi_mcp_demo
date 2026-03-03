@@ -4,40 +4,48 @@ The PowerScale MCP server is accessed via an nginx reverse proxy at `https://loc
 
 ## Trusting the Server Certificate
 
-The server uses a self-signed TLS certificate by default. MCP clients will refuse to connect until the certificate is trusted on the client machine. This is a one-time setup step.
+The server uses a local CA to sign its TLS certificate. MCP clients will refuse to connect until the CA certificate is trusted on the client machine. This is a one-time setup step.
 
-**Step 1: Copy the certificate from the server host**
+`generate-certs.sh` (run by `setup.sh`) creates two files in `nginx/certs/`:
+- `ca.crt` — the local CA certificate (what clients must trust)
+- `server.crt` — the server certificate signed by that CA (used by nginx only)
+
+**Step 1: Copy the CA certificate from the server host**
 
 ```bash
-scp user@mcp-server:/path/to/isi_mcp_demo/nginx/certs/server.crt ~/.certs/mcp-server.crt
+scp user@mcp-server:/path/to/isi_mcp_demo/nginx/certs/ca.crt ~/.certs/powerscale-mcp-ca.crt
 ```
 
-The certificate lives at `nginx/certs/server.crt` in the project directory on the server host (it is generated on the host by `setup.sh`, not inside the container).
+If running locally, the CA certificate is at `nginx/certs/ca.crt` in the project directory.
 
-**Step 2: Trust the certificate — choose one option**
+**Step 2: Trust the CA certificate — choose one option**
 
 **Option A — Per-session environment variable (Claude Code / Node.js clients):**
 
 ```bash
-export NODE_EXTRA_CA_CERTS=~/.certs/mcp-server.crt
+export NODE_EXTRA_CA_CERTS=~/.certs/powerscale-mcp-ca.crt
 ```
 
-Add this to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.) to make it permanent.
+Add this to your shell profile (`~/.bashrc`, `~/.profile`, etc.) and relaunch VSCode/Claude Code from that shell to make it permanent.
+
+> **Important**: `NODE_EXTRA_CA_CERTS` must point to `ca.crt` (the CA), not `server.crt`. Node.js rejects server certificates that are self-signed at depth zero, even if explicitly trusted.
 
 **Option B — System-wide trust (Linux):**
 
 ```bash
-sudo cp ~/.certs/mcp-server.crt /usr/local/share/ca-certificates/mcp-server.crt
+sudo cp ~/.certs/powerscale-mcp-ca.crt /usr/local/share/ca-certificates/powerscale-mcp-ca.crt
 sudo update-ca-certificates
 ```
 
 **Option B — System-wide trust (macOS):**
 
 ```bash
-sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/.certs/mcp-server.crt
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/.certs/powerscale-mcp-ca.crt
 ```
 
-> **Production**: Replace the self-signed certificate with one signed by a trusted CA (e.g., Let's Encrypt or your company CA) and clients will trust it automatically — no manual steps required.
+> **Production**: Replace the self-signed CA with certificates from a trusted CA (e.g., Let's Encrypt or your company CA) and clients will trust it automatically — no manual steps required.
+
+> **Port conflict**: If running k3s or other services that bind port 443 via iptables (e.g., Traefik), they will intercept connections before nginx receives them. Stop those services before starting this stack, or change the nginx port mapping in `docker-compose.yml`.
 
 ## Claude Desktop
 

@@ -35,9 +35,10 @@ All mutating operations (create, delete, modify, set) include safety prompts in 
 
 The server ships with an nginx reverse proxy that terminates TLS for all client connections:
 
-- Self-signed certificates are generated automatically by `./setup.sh` and `./nginx/generate-certs.sh`
+- `./setup.sh` and `./nginx/generate-certs.sh` generate a **local CA** (`ca.crt`) and a **server certificate** (`server.crt`) signed by that CA
 - Certificates are stored in `nginx/certs/` (gitignored — never committed)
-- For production, replace with certificates from your CA
+- Clients must trust `ca.crt` (not `server.crt`) — see [Client Integration](clients.md) for instructions. Node.js-based clients (Claude Code, VSCode extensions) require `NODE_EXTRA_CA_CERTS` pointing to `ca.crt`
+- For production, replace with certificates from your CA — clients will trust them automatically
 - nginx enforces TLS 1.2+ with strong cipher suites
 - HTTP requests are automatically redirected to HTTPS (301)
 
