@@ -96,14 +96,3 @@ Write/mutating operations use Ansible playbooks via the `dellemc.powerscale` col
    - AnsibleRunner for mutating operations
 8. Result is returned as JSON-serializable data
 9. MCP server sends result back through nginx to LLM client
-
-## Horizontal Scaling
-
-The server runs in **stateless HTTP mode** (`stateless_http=True`), allowing multiple instances behind nginx without session affinity:
-
-- **Tool state**: Each instance periodically re-reads `tools.json` from disk (5-second TTL cache). A toggle on one instance writes to the shared file; others pick it up within the TTL.
-- **Cluster selection**: The selected cluster is persisted to `config/cluster_state.json` with the same TTL-based refresh pattern.
-- **File locking**: Both `tools.json` and `cluster_state.json` use `fcntl.flock` to prevent concurrent write corruption.
-- **Playbook audit trail**: Filenames include the container hostname to prevent collisions across instances.
-- **Docker Compose**: Use `docker-compose up --scale isi_mcp=N` — all instances share the bind-mounted `config/` directory.
-- **Kubernetes**: Use HPA or set `replicas: N` — instances share a PVC for config persistence.

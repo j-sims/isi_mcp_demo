@@ -7608,7 +7608,7 @@ async def _call_tool_with_timeout(key: str, arguments: dict, **kwargs):
 mcp._tool_manager.call_tool = _call_tool_with_timeout
 
 
-app = mcp.http_app(stateless_http=True)
+app = mcp.http_app()
 app.state.json_response = True
 
 

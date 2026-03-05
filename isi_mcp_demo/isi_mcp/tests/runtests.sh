@@ -559,8 +559,7 @@ EOF
             "${TESTS_DIR}/test_phase6_network.py" \
             "${TESTS_DIR}/test_phase7_cluster_capacity.py" \
             "${TESTS_DIR}/test_phase8_readonly_mcp.py" \
-            "${TESTS_DIR}/test_nginx_proxy.py" \
-            "${TESTS_DIR}/test_scaling.py"; then
+            "${TESTS_DIR}/test_nginx_proxy.py"; then
             exit 1
         fi
     fi
@@ -613,82 +612,6 @@ EOF
         fail "Part 3 failed"
     fi
 
-    # -----------------------------------------------------------------------
-    # 7. Run Part 4 — Scaling tests (3 MCP instances, load distribution)
-    # -----------------------------------------------------------------------
-    echo ""
-    info "=========================================="
-    info "  Part 4 — Scaling tests (3 instances)"
-    info "=========================================="
-    echo ""
-
-    info "Scaling MCP server to 3 instances..."
-    docker compose -f "${ROOT_DIR}/docker-compose.yml" -f "${OVERRIDE_FILE}" \
-        up --scale isi_mcp=3 -d 2>/dev/null \
-        || docker-compose -f "${ROOT_DIR}/docker-compose.yml" -f "${OVERRIDE_FILE}" \
-        up --scale isi_mcp=3 -d
-
-    # Wait for all 3 instances to become healthy
-    info "Waiting for all 3 instances to be ready..."
-    MAX_WAIT=30
-    WAITED=0
-    until [[ ${WAITED} -ge ${MAX_WAIT} ]] || \
-        curl -sf -X POST https://localhost/mcp \
-            --insecure \
-            -H "Content-Type: application/json" \
-            -H "Accept: application/json, text/event-stream" \
-            -d '{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"healthcheck","version":"1.0.0"}}}' \
-            > /dev/null 2>&1; do
-        sleep 1
-        WAITED=$((WAITED + 1))
-    done
-
-    if [[ ${WAITED} -ge ${MAX_WAIT} ]]; then
-        fail "MCP server (scaled) did not become ready within ${MAX_WAIT}s"
-        exit 1
-    fi
-    ok "All instances ready (waited ${WAITED}s)"
-
-    # Verify 3 containers are running
-    RUNNING=$(docker compose -f "${ROOT_DIR}/docker-compose.yml" -f "${OVERRIDE_FILE}" \
-        ps --status running --format json 2>/dev/null \
-        | python3 -c "
-import json, sys
-lines = [l.strip() for l in sys.stdin if l.strip()]
-count = 0
-for line in lines:
-    try:
-        entry = json.loads(line)
-        svc = entry.get('Service', entry.get('service', ''))
-        if svc == 'isi_mcp':
-            count += 1
-    except Exception:
-        pass
-print(count)
-" 2>/dev/null || echo "0")
-    info "Running isi_mcp containers: ${RUNNING}"
-
-    if MCP_NGINX_URL="https://localhost" \
-       EXPECTED_INSTANCE_COUNT=3 \
-       TEST_CONTEXT=docker \
-       COMPOSE_FILE="${ROOT_DIR}/docker-compose.yml" \
-       COMPOSE_OVERRIDE="${OVERRIDE_FILE}" \
-       python -m pytest \
-        "${TESTS_DIR}/test_scaling.py" \
-        "${PYTEST_MARKER_ARGS[@]}" \
-        -v; then
-        ok "Part 4 passed"
-    else
-        fail "Part 4 failed"
-    fi
-
-    # Scale back to 1 instance for clean teardown
-    info "Scaling MCP server back to 1 instance..."
-    docker compose -f "${ROOT_DIR}/docker-compose.yml" -f "${OVERRIDE_FILE}" \
-        up --scale isi_mcp=1 -d 2>/dev/null \
-        || docker-compose -f "${ROOT_DIR}/docker-compose.yml" -f "${OVERRIDE_FILE}" \
-        up --scale isi_mcp=1 -d
-    ok "Scaled back to 1 instance"
 fi
 
 # ---------------------------------------------------------------------------

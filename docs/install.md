@@ -71,15 +71,6 @@ docker-compose up
 
 Press `Ctrl+C` to stop.
 
-**Scaling to multiple instances:**
-
-```bash
-export VAULT_PASSWORD=$(read -s -p 'Enter your password: ' pwd && echo $pwd)
-docker-compose up -d --scale isi_mcp=3
-```
-
-Nginx load-balances across all instances using Docker DNS round-robin. The MCP server runs in stateless HTTP mode, so no sticky sessions are required.
-
 **Viewing logs:**
 
 ```bash
