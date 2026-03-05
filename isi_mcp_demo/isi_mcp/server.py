@@ -1,3 +1,4 @@
+import asyncio
 import fcntl
 import json
 import logging
@@ -62,6 +63,23 @@ mcp = FastMCP(
         "This server provides tools for managing a PowerScale (Isilon) cluster."
     ),
 )
+
+# ---------------------------------------------------------------------------
+# Tool timeout — hard wall-clock deadline for every MCP tool call
+# ---------------------------------------------------------------------------
+#
+# TOOL_TIMEOUT controls the maximum seconds a single tool call may run.
+# It should be >= API_TIMEOUT (the per-HTTP-request timeout on the SDK client)
+# so that multiple sequential SDK calls within one tool are all covered.
+#
+# Two-layer defence:
+#   1. cluster.py injects _request_timeout=API_TIMEOUT on every SDK call
+#      (handles slow cluster responses at the HTTP level).
+#   2. tool_timeout() wraps the entire tool in asyncio.wait_for so a stuck
+#      thread (e.g. firewall silently drops packets) is still killed promptly.
+
+TOOL_TIMEOUT = int(os.environ.get("TOOL_TIMEOUT", 60))
+
 
 # ---------------------------------------------------------------------------
 # Tool config — loaded from config/tools.json at startup
@@ -7564,6 +7582,30 @@ def powerscale_groupnets_summary_get() -> dict:
 
 
 _apply_startup_config()
+
+# Apply a hard wall-clock deadline to every tool call.  This is a second
+# layer of defence on top of the HTTP-level _request_timeout set in cluster.py.
+# If the SDK timeout doesn't fire (e.g. firewall silently drops packets),
+# this asyncio.wait_for will still return an error to the client promptly.
+# Note: the underlying thread cannot be forcibly killed, but it will be
+# cleaned up once Layer 1 (urllib3 timeout) eventually fires.
+_orig_call_tool = mcp._tool_manager.call_tool
+
+
+async def _call_tool_with_timeout(key: str, arguments: dict, **kwargs):
+    try:
+        return await asyncio.wait_for(
+            _orig_call_tool(key=key, arguments=arguments, **kwargs),
+            timeout=TOOL_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        raise TimeoutError(
+            f"Tool '{key}' exceeded the {TOOL_TIMEOUT}s timeout. "
+            "The cluster may be slow or unreachable."
+        )
+
+
+mcp._tool_manager.call_tool = _call_tool_with_timeout
 
 
 app = mcp.http_app(stateless_http=True)

@@ -61,6 +61,21 @@ class Cluster:
 
         self.api_client = isi_sdk.ApiClient(cfg)
 
+        # Inject a default HTTP timeout on every SDK call so tools never hang
+        # indefinitely waiting for a slow or unresponsive cluster.
+        # Override per-call by passing _request_timeout explicitly (existing calls
+        # that already pass timeout= on statistics endpoints are unaffected because
+        # those use the statistics_api timeout kwarg, not _request_timeout).
+        _api_timeout = int(os.environ.get("API_TIMEOUT", 30))
+        _orig_call_api = self.api_client.call_api
+
+        def _call_api_with_timeout(*args, **kwargs):
+            if "_request_timeout" not in kwargs:
+                kwargs["_request_timeout"] = _api_timeout
+            return _orig_call_api(*args, **kwargs)
+
+        self.api_client.call_api = _call_api_with_timeout
+
     @classmethod
     def from_vault(cls, debug_env_var: str = "DEBUG"):
         """Create a Cluster from the currently-selected vault credentials.
