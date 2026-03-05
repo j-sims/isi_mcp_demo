@@ -16,6 +16,12 @@ class AnsibleRunner:
 
     Accepts a Cluster instance for PowerScale connection credentials and
     provides a pipeline to render templates, save playbooks, and execute them.
+
+    When the IAC_MODE environment variable is set to a truthy value (e.g. "true",
+    "1", "yes"), playbooks are rendered and written to the playbooks directory but
+    ansible-runner is NOT invoked. The caller receives an IaC-mode response
+    indicating the playbook path and instructing the operator to execute it through
+    their external IaC workflow (Git, CI/CD, change-approval, etc.).
     """
 
     def __init__(self, cluster, templates_dir=None, playbooks_dir=None):
@@ -172,12 +178,33 @@ class AnsibleRunner:
         """
         Full pipeline: render template, then execute the resulting playbook.
 
+        When IAC_MODE is enabled the playbook is rendered and written to the
+        playbooks directory, but ansible-runner is NOT invoked. A structured
+        IaC-mode response is returned instead so the caller can inform the user
+        that the playbook must be executed through the external IaC workflow.
+
         Args:
             template_name: The .yml.j2 template filename
             variables: Resource-specific variables
 
         Returns:
-            dict with execution results (same shape as run_playbook output)
+            dict with execution results (same shape as run_playbook output),
+            or an IaC-mode dict when IAC_MODE is set.
         """
         playbook_path = self.render_playbook(template_name, variables)
+
+        iac_mode_raw = os.environ.get("IAC_MODE", "").strip().lower()
+        if iac_mode_raw in ("1", "true", "yes"):
+            return {
+                "success": True,
+                "iac_mode": True,
+                "playbook_path": str(playbook_path),
+                "message": (
+                    "IAC_MODE is enabled. The Ansible playbook has been generated and written "
+                    f"to '{playbook_path}'. Execution is managed externally — commit the "
+                    "playbook to your IaC repository and run it through your approval and "
+                    "deployment workflow."
+                ),
+            }
+
         return self.run_playbook(playbook_path)

@@ -18,6 +18,7 @@ services:
     environment:
       - DEBUG=${DEBUG:-}
       - ENABLE_ALL_TOOLS=${ENABLE_ALL_TOOLS:-}
+      - IAC_MODE=${IAC_MODE:-}
       - VAULT_FILE=/app/vault/vault.yml
       - VAULT_PASSWORD=${VAULT_PASSWORD:-}
     volumes:

@@ -1,4 +1,6 @@
 # PowerScale MCP Server
+This MCP demo is an excercise in the proof of the possible. Use at your own risk and report issues on github.
+
 
 An MCP (Model Context Protocol) server for Dell PowerScale (Isilon) storage cluster automation. It exposes cluster management capabilities as MCP tools that any LLM client can use to query, configure, and manage one or more PowerScale clusters through natural language.
 

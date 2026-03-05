@@ -49,6 +49,8 @@ The setup script also generates self-signed TLS certificates (in `nginx/certs/`)
 
 **Optionally set debug mode** by exporting `DEBUG=1` before running setup.
 
+**Optionally enable IaC mode** by exporting `IAC_MODE=true` before running setup (see [IaC Workflow Integration](#iac-workflow-integration) below).
+
 ## Running the Server
 
 After initial setup, you can start, stop, and restart the server as needed. The stack includes an nginx reverse proxy that provides TLS termination, rate limiting, and security headers.
@@ -167,3 +169,63 @@ Then restart the server with the new vault password:
 export VAULT_PASSWORD=$(read -s -p 'Enter your password: ' pwd && echo $pwd)
 docker-compose restart
 ```
+
+## IaC Workflow Integration
+
+### IAC_MODE Environment Variable
+
+By default, the MCP server executes Ansible playbooks immediately when a write tool is called. For environments that require change control, peer review, or automated testing before changes reach a production cluster, set `IAC_MODE=true`.
+
+When `IAC_MODE` is enabled:
+- Write tools **render** the Ansible playbook and write it to the `playbooks/` directory.
+- The playbook is **not executed**. Ansible is never invoked.
+- The MCP tool returns a response telling the user that the playbook has been generated and must be run through the external IaC workflow.
+
+The `playbooks/` directory is already bind-mounted to the host (`./playbooks` in `docker-compose.yml`), so generated playbooks are immediately accessible outside the container.
+
+**Starting the server in IaC mode:**
+
+```bash
+export VAULT_PASSWORD=$(read -s -p 'Enter your password: ' pwd && echo $pwd)
+export IAC_MODE=true
+docker-compose up -d
+```
+
+Or set it permanently in a `.env` file at the repository root:
+
+```bash
+echo "IAC_MODE=true" >> .env
+```
+
+> **Security note**: Rendered playbooks contain connection parameters (host, port, SSL setting) but never credentials. API credentials are injected by `ansible-runner` at execution time via `extravars` and never written to disk.
+
+### Integrating with a Git-based IaC Workflow
+
+The high-level pattern is:
+
+1. An LLM client calls a write tool via the MCP server (e.g., create an SMB share).
+2. The MCP server generates the Ansible playbook in `./playbooks/` and returns the file path to the LLM.
+3. An external process monitors `./playbooks/` (via a file-watcher, cron job, or webhook trigger), picks up the new file, and opens a pull request in your IaC Git repository.
+4. Automated tests (syntax check, dry-run, policy lint) run in CI against the PR.
+5. A human reviewer approves the PR.
+6. The merge pipeline executes the playbook against the cluster using `ansible-runner` or `ansible-playbook` with the appropriate vault credentials.
+
+**Example directory layout for the IaC repository:**
+
+```
+infra-iac/
+├── playbooks/          ← rendered playbooks from the MCP server (bind mount or rsync target)
+├── tests/
+│   └── syntax_check.sh ← runs ansible-playbook --syntax-check on new playbooks
+├── .github/
+│   └── workflows/
+│       └── playbook-pr.yml  ← CI: lint → dry-run → approval gate → apply
+└── README.md
+```
+
+**Key considerations:**
+
+- Keep `IAC_MODE=true` on any MCP server instance that touches production clusters without direct execution authority.
+- Use `IAC_MODE=false` (the default) for development or staging clusters where the LLM can apply changes immediately.
+- The `playbooks/` directory should be excluded from the MCP server's own Git repository (it already is via `.gitignore`) and tracked separately in your IaC repo.
+- Playbook filenames include a timestamp and unique ID (`{operation}_{YYYYMMDD_HHMMSS}_{host}_{id}.yml`), making it straightforward to trace a playbook back to the LLM session that created it.
