@@ -39,6 +39,10 @@ class Events:
             dict with 'items' (list of eventgroup dicts) and 'resume' token.
         """
         event_api = isi_sdk.EventApi(self.cluster.api_client)
+        severity_filter = None
+        if severity is not None:
+            severity_filter = {s.strip().lower() for s in severity.split(",")}
+
         try:
             if resume:
                 # When resume provided, only pass resume — API rejects other params
@@ -49,8 +53,9 @@ class Events:
                     kwargs["begin"] = begin
                 if end is not None:
                     kwargs["end"] = end
-                if severity is not None:
-                    kwargs["severity"] = [s.strip() for s in severity.split(",")]
+                # NOTE: Do NOT pass severity to the SDK — it serializes lists as CSV
+                # (e.g. ["critical","warning"] → "severity=critical,warning") which the
+                # API rejects. Filter by severity client-side instead.
                 if resolved is not None:
                     kwargs["resolved"] = str(resolved).lower()
                 if ignore is not None:
@@ -69,6 +74,8 @@ class Events:
             return {"items": [], "resume": None, "error": str(e)}
 
         items = [eg.to_dict() for eg in result.eventgroups] if result.eventgroups else []
+        if severity_filter:
+            items = [i for i in items if str(i.get("severity", "")).lower() in severity_filter]
         return {
             "items": items,
             "resume": getattr(result, "resume", None),
