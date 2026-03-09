@@ -9,13 +9,14 @@
 
 ## Write Tools Disabled by Default
 
-The server ships in **read-only mode** — all 51 write tools are disabled at startup. This safe-by-default posture means:
+The server ships in **read-only mode** — all 55 domain write tools are disabled at startup. This safe-by-default posture means:
 
 - A newly deployed server can only query cluster state, not modify it
 - Write capabilities must be explicitly enabled using `powerscale_tools_toggle` before the LLM can make changes
 - Enabled state persists in `config/tools.json`; re-disable write tools after a task is complete if desired
+- Four **management write tools** (`powerscale_tools_toggle`, `powerscale_cluster_select`, `powerscale_cluster_add`, `powerscale_cluster_remove`) are always enabled for cluster and tool control
 
-To enable all write tools: `powerscale_tools_toggle(names=["write"], action="enable")`
+To enable all domain write tools: `powerscale_tools_toggle(names=["write"], action="enable")`
 
 To return to read-only mode: `powerscale_tools_toggle(names=["write"], action="disable")`
 

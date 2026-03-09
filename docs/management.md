@@ -55,13 +55,15 @@ All other PowerScale tools automatically operate against the currently selected 
 
 ## Dynamic Tool Management
 
-Each MCP tool has a **mode** (`read` or `write`) and an **enabled** flag. The server ships in read-only mode — all 51 write tools are disabled by default and must be explicitly enabled.
+Each MCP tool has a **mode** (`read` or `write`) and an **enabled** flag. The server ships in read-only mode — all 55 domain write tools are disabled by default and must be explicitly enabled.
 
 Tool state is persisted in `config/tools.json` across container restarts.
 
+**Important**: The 4 management write tools (`powerscale_tools_toggle`, `powerscale_cluster_select`, `powerscale_cluster_add`, `powerscale_cluster_remove`) cannot be disabled and are always available, regardless of their `enabled` flag in `config/tools.json`.
+
 ### Inspecting Tool State
 
-Three always-available listing tools show the current state of all 126 tools:
+Three always-available listing tools show the current state of all 212 tools:
 
 - `powerscale_tools_list` — flat alphabetical list with name, group, mode, and enabled status for every tool
 - `powerscale_tools_list_by_group` — tools grouped by functional area

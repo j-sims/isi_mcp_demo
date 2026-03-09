@@ -1,6 +1,8 @@
 # Capabilities and Functionality
 
-The server provides comprehensive cluster management through 126 MCP tools organized into 22 groups. The server starts in **read-only mode** — all 51 write tools are disabled by default and must be explicitly enabled before the LLM can make changes to the cluster.
+The server provides comprehensive cluster management through 212 MCP tools organized into 41 groups. The server starts in **read-only mode** — all 55 domain write tools are disabled by default and must be explicitly enabled before the LLM can make changes to the cluster. Four management tools for cluster and tool control are always enabled.
+
+For the complete feature list including Phase 8 analytics and diagnostics modules, see **[Features & Tools](features.md)**.
 
 See **[Features & Tools](features.md)** for the complete list of tool groups and detailed tool descriptions.
 

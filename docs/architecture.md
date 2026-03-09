@@ -29,6 +29,10 @@ FastMCP Server (server.py) — stateless HTTP mode
     |       |--- Users, Groups, Events, Statistics
     |       |--- Network (groupnets, subnets, pools, interfaces, DNS, zones)
     |       |--- ClusterNodes, StoragepoolNodetypes, License, ZonesSummary
+    |       |--- Phase 8: Hardware, Jobs, Performance, Hardening, SupportAssist
+    |       |           Connectivity, DebugStats, FSA, SyncReports, SnapshotChangelists
+    |       |           QuotaReports, IdResolution, LFN, MetadataIQ, MPA, LocalInfo
+    |       |           ApiSessions, GroupnetsSummary
     |
     |--- Ansible Automation (modules/ansible/)
     |       |--- AnsibleRunner (template rendering + execution)
@@ -67,6 +71,26 @@ Located in `modules/onefs/v9_12_0/`, these modules provide business logic for cl
 - **StoragepoolNodetypes**: Storage pool node type listings (read-only via StoragepoolApi)
 - **License**: Feature license status and expiry for all installed OneFS licenses (read-only via LicenseApi)
 - **ZonesSummary**: Lightweight access zone count and path summary (read-only via ZonesSummaryApi)
+
+**Phase 8 Analytics & Diagnostics Modules** (18 read-only modules):
+- **Hardware**: FC ports and tape/changer device inventory
+- **Jobs**: Job engine with running/recent jobs, types, policies, events, reports, and statistics
+- **Performance**: Performance datasets, metrics catalog, and settings
+- **Hardening**: Security hardening profiles, state, and compliance reports
+- **SupportAssist**: SupportAssist settings, status, license, tasks, and terms
+- **Connectivity**: Connectivity settings, status, license, tasks, and terms
+- **DebugStats**: API call statistics per resource
+- **FSA**: File System Analytics result sets, indexes, and settings
+- **SyncReports**: SyncIQ report subreports and metadata
+- **SnapshotChangelists**: Snapshot changelist entries and LINs
+- **QuotaReports**: Quota report metadata
+- **IdResolution**: UID/GID/SID to name mappings per zone
+- **LFN**: Long file name configuration domains
+- **MetadataIQ**: MetadataIQ settings, status, and certificate
+- **MPA**: Multi-Party Authorization with approvers, requests, settings, lifecycle, and trust anchors
+- **LocalInfo**: Local node time, network interfaces, and firmware status
+- **ApiSessions**: Platform API session settings and invalidations
+- **GroupnetsSummary**: GroupNet summary information
 
 ### Vault Management
 The VaultManager singleton decrypts and caches cluster credentials from an Ansible Vault encrypted file. It supports multiple named clusters, with the first cluster becoming the default. Two MCP management tools allow runtime cluster switching.
