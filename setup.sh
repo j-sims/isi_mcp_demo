@@ -101,6 +101,11 @@ SKIP_SETUP=false
 
 mkdir -p "$VAULT_DIR"
 
+# Pre-create playbooks dir as the current user so Docker doesn't create it as root.
+# The container runs as mcp (UID 1000); the host user running setup.sh must also be
+# UID 1000 (or the directory must be group/world writable) for writes to succeed.
+mkdir -p "${SCRIPT_DIR}/playbooks"
+
 if [[ -f "$VAULT_FILE" ]]; then
     FIRST_LINE="$(head -c 14 "$VAULT_FILE")"
     if [[ "$FIRST_LINE" == '$ANSIBLE_VAULT' ]]; then
