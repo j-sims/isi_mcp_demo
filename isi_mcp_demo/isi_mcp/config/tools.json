@@ -560,49 +560,49 @@
   "powerscale_stats_cpu": {
     "tool_group": "statistics",
     "tool_mode": "read",
-    "enabled": false,
+    "enabled": true,
     "function": "statistics"
   },
   "powerscale_stats_network": {
     "tool_group": "statistics",
     "tool_mode": "read",
-    "enabled": false,
+    "enabled": true,
     "function": "statistics"
   },
   "powerscale_stats_disk": {
     "tool_group": "statistics",
     "tool_mode": "read",
-    "enabled": false,
+    "enabled": true,
     "function": "statistics"
   },
   "powerscale_stats_ifs": {
     "tool_group": "statistics",
     "tool_mode": "read",
-    "enabled": false,
+    "enabled": true,
     "function": "statistics"
   },
   "powerscale_stats_node": {
     "tool_group": "statistics",
     "tool_mode": "read",
-    "enabled": false,
+    "enabled": true,
     "function": "statistics"
   },
   "powerscale_stats_protocol": {
     "tool_group": "statistics",
     "tool_mode": "read",
-    "enabled": false,
+    "enabled": true,
     "function": "statistics"
   },
   "powerscale_stats_clients": {
     "tool_group": "statistics",
     "tool_mode": "read",
-    "enabled": false,
+    "enabled": true,
     "function": "statistics"
   },
   "powerscale_stats_get": {
     "tool_group": "statistics",
     "tool_mode": "read",
-    "enabled": false,
+    "enabled": true,
     "function": "statistics"
   },
   "powerscale_stats_keys": {

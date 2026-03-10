@@ -5084,17 +5084,20 @@ def powerscale_event_get_by_id(event_id: str) -> Dict[str, Any]:
 @mcp.tool()
 def powerscale_stats_cpu() -> Dict[str, Any]:
     """
-    Return 30-second averaged cluster CPU utilization metrics.
+    Return a single instantaneous cluster CPU utilization sample.
 
-    This tool samples CPU statistics 6 times over 30 seconds and returns the
-    averaged values. Inform the user that results will take approximately
-    30 seconds to collect before responding.
+    Each call returns one snapshot from the PowerScale statistics endpoint,
+    which refreshes approximately every 5 seconds. To collect trend data,
+    call this tool multiple times and wait at least 5 seconds between calls.
+    Always check that _sample_time has changed between calls to confirm
+    you received a new sample (not a cached repeat).
 
     Response fields (all values are percentages, 0–100):
-    - cluster.cpu.sys.avg:  Average CPU time spent in kernel/system mode
-    - cluster.cpu.user.avg: Average CPU time spent in user-space processes
-    - cluster.cpu.idle.avg: Average CPU idle time (higher is better)
-    - cluster.cpu.intr.avg: Average CPU time handling hardware interrupts
+    - cluster.cpu.sys.avg:  CPU time spent in kernel/system mode
+    - cluster.cpu.user.avg: CPU time spent in user-space processes
+    - cluster.cpu.idle.avg: CPU idle time (higher is better)
+    - cluster.cpu.intr.avg: CPU time handling hardware interrupts
+    - _sample_time:         Unix timestamp of when this sample was taken
 
     Tip: A healthy cluster typically has idle > 50%. Values of sys+user > 80%
     combined may indicate CPU pressure. High intr can suggest network or disk
@@ -5118,11 +5121,13 @@ def powerscale_stats_cpu() -> Dict[str, Any]:
 @mcp.tool()
 def powerscale_stats_network() -> Dict[str, Any]:
     """
-    Return 30-second averaged cluster external network traffic metrics.
+    Return a single instantaneous cluster external network traffic sample.
 
-    This tool samples network statistics 6 times over 30 seconds and returns
-    the averaged values. Inform the user that results will take approximately
-    30 seconds to collect before responding.
+    Each call returns one snapshot from the PowerScale statistics endpoint,
+    which refreshes approximately every 5 seconds. To collect trend data,
+    call this tool multiple times and wait at least 5 seconds between calls.
+    Always check that _sample_time has changed between calls to confirm
+    you received a new sample (not a cached repeat).
 
     Response fields:
     - cluster.net.ext.bytes.in.rate:    Inbound bytes per second (from clients)
@@ -5131,6 +5136,7 @@ def powerscale_stats_network() -> Dict[str, Any]:
     - cluster.net.ext.packets.out.rate: Outbound packets per second
     - cluster.net.ext.errors.in.rate:   Inbound network errors per second
     - cluster.net.ext.errors.out.rate:  Outbound network errors per second
+    - _sample_time:                     Unix timestamp of when this sample was taken
 
     Tip: Use bytes_to_human tool to convert byte rates to human-readable
     formats (MiB/s, GiB/s). Non-zero error rates may indicate cabling,
@@ -5154,11 +5160,13 @@ def powerscale_stats_network() -> Dict[str, Any]:
 @mcp.tool()
 def powerscale_stats_disk() -> Dict[str, Any]:
     """
-    Return 30-second averaged cluster disk I/O metrics.
+    Return a single instantaneous cluster disk I/O sample.
 
-    This tool samples disk statistics 6 times over 30 seconds and returns
-    the averaged values. Inform the user that results will take approximately
-    30 seconds to collect before responding.
+    Each call returns one snapshot from the PowerScale statistics endpoint,
+    which refreshes approximately every 5 seconds. To collect trend data,
+    call this tool multiple times and wait at least 5 seconds between calls.
+    Always check that _sample_time has changed between calls to confirm
+    you received a new sample (not a cached repeat).
 
     Response fields:
     - cluster.disk.bytes.in.rate:  Bytes written to disk per second
@@ -5166,6 +5174,7 @@ def powerscale_stats_disk() -> Dict[str, Any]:
     - cluster.disk.xfers.in.rate:  Write I/O operations per second (IOPS)
     - cluster.disk.xfers.out.rate: Read I/O operations per second (IOPS)
     - cluster.disk.xfers.rate:     Total I/O operations per second (IOPS)
+    - _sample_time:                Unix timestamp of when this sample was taken
 
     Tip: Use bytes_to_human tool to convert byte rates to human-readable
     formats. High disk I/O with low cache hit rates may indicate the workload
@@ -5189,17 +5198,20 @@ def powerscale_stats_disk() -> Dict[str, Any]:
 @mcp.tool()
 def powerscale_stats_ifs() -> Dict[str, Any]:
     """
-    Return 30-second averaged OneFS filesystem I/O rates.
+    Return a single instantaneous OneFS filesystem I/O sample.
 
-    This tool samples IFS-level statistics 6 times over 30 seconds and returns
-    the averaged values. Inform the user that results will take approximately
-    30 seconds to collect before responding.
+    Each call returns one snapshot from the PowerScale statistics endpoint,
+    which refreshes approximately every 5 seconds. To collect trend data,
+    call this tool multiple times and wait at least 5 seconds between calls.
+    Always check that _sample_time has changed between calls to confirm
+    you received a new sample (not a cached repeat).
 
     Response fields:
     - ifs.bytes.in.rate:  Bytes written to the filesystem per second
     - ifs.bytes.out.rate: Bytes read from the filesystem per second
     - ifs.ops.in.rate:    Write operations per second at the filesystem layer
     - ifs.ops.out.rate:   Read operations per second at the filesystem layer
+    - _sample_time:       Unix timestamp of when this sample was taken
 
     Note: IFS rates reflect activity at the OneFS filesystem layer, which
     includes cache effects. Disk rates (powerscale_stats_disk) reflect
@@ -5223,14 +5235,16 @@ def powerscale_stats_ifs() -> Dict[str, Any]:
 @mcp.tool()
 def powerscale_stats_node() -> Dict[str, Any]:
     """
-    Return 30-second averaged per-node performance metrics.
+    Return a single instantaneous per-node performance sample.
 
-    This tool samples node statistics 6 times over 30 seconds and returns
-    the averaged values per node. Inform the user that results will take
-    approximately 30 seconds to collect before responding.
+    Each call returns one snapshot from the PowerScale statistics endpoint,
+    which refreshes approximately every 5 seconds. To collect trend data,
+    call this tool multiple times and wait at least 5 seconds between calls.
+    Always check that _sample_time has changed between calls to confirm
+    you received a new sample (not a cached repeat).
 
-    Response is a dict keyed by "node_<devid>" (e.g. "node_1", "node_2").
-    Each node entry contains:
+    Response is a dict keyed by "node_<devid>" (e.g. "node_1", "node_2"),
+    with a top-level "_sample_time" Unix timestamp. Each node entry contains:
     - node.cpu.throttling: CPU throttling percentage (>0 indicates thermal
                            or power-related throttling)
     - node.load.1min:      1-minute CPU load average
@@ -5269,11 +5283,13 @@ def powerscale_stats_node() -> Dict[str, Any]:
 @mcp.tool()
 def powerscale_stats_protocol() -> Dict[str, Any]:
     """
-    Return 30-second averaged per-protocol operation rates.
+    Return a single instantaneous per-protocol operation rate sample.
 
-    This tool samples protocol statistics 6 times over 30 seconds and returns
-    the averaged values. Inform the user that results will take approximately
-    30 seconds to collect before responding.
+    Each call returns one snapshot from the PowerScale statistics endpoint,
+    which refreshes approximately every 5 seconds. To collect trend data,
+    call this tool multiple times and wait at least 5 seconds between calls.
+    Always check that _sample_time has changed between calls to confirm
+    you received a new sample (not a cached repeat).
 
     Response fields (all values are operations per second):
     - cluster.protostats.nfs:   NFSv3 operation rate
@@ -5283,6 +5299,7 @@ def powerscale_stats_protocol() -> Dict[str, Any]:
     - cluster.protostats.http:  HTTP/S3 operation rate
     - cluster.protostats.ftp:   FTP operation rate
     - cluster.protostats.hdfs:  HDFS operation rate
+    - _sample_time:             Unix timestamp of when this sample was taken
 
     Note: These are current operation rates (ops/sec), not cumulative totals.
     A value of 0 means no active I/O for that protocol.
@@ -5305,11 +5322,13 @@ def powerscale_stats_protocol() -> Dict[str, Any]:
 @mcp.tool()
 def powerscale_stats_clients() -> Dict[str, Any]:
     """
-    Return 30-second averaged client connection counts by protocol.
+    Return a single instantaneous client connection count sample.
 
-    This tool samples client statistics 6 times over 30 seconds and returns
-    the averaged values. Inform the user that results will take approximately
-    30 seconds to collect before responding.
+    Each call returns one snapshot from the PowerScale statistics endpoint,
+    which refreshes approximately every 5 seconds. To collect trend data,
+    call this tool multiple times and wait at least 5 seconds between calls.
+    Always check that _sample_time has changed between calls to confirm
+    you received a new sample (not a cached repeat).
 
     Response fields (cluster-aggregate counts across all nodes):
     Active clients (currently performing I/O):
@@ -5325,6 +5344,7 @@ def powerscale_stats_clients() -> Dict[str, Any]:
     - node.clientstats.connected.nfs:  Connected NFS clients
     - node.clientstats.connected.cifs: Connected CIFS clients
     - node.clientstats.connected.http: Connected HTTP clients
+    - _sample_time:                    Unix timestamp of when this sample was taken
 
     Tip: The difference between connected and active counts shows idle
     connections. Large numbers of connected but inactive clients can
@@ -5351,12 +5371,14 @@ def powerscale_stats_get(
     show_nodes: bool = False,
 ) -> Dict[str, Any]:
     """
-    Retrieve 30-second averaged statistics for arbitrary user-specified stat keys.
+    Retrieve a single instantaneous statistics sample for arbitrary user-specified stat keys.
 
     This is a power-user tool for querying any statistics keys by name.
-    Results are averaged over 6 samples taken at 5-second intervals (30 seconds
-    total). Inform the user that results will take approximately 30 seconds
-    to collect before responding.
+    Each call returns one snapshot from the PowerScale statistics endpoint,
+    which refreshes approximately every 5 seconds. To collect trend data,
+    call this tool multiple times and wait at least 5 seconds between calls.
+    Always check that _sample_time has changed between calls to confirm
+    you received a new sample (not a cached repeat).
 
     Arguments:
     - keys: List of statistics key strings to retrieve. Use powerscale_stats_keys
@@ -5368,6 +5390,7 @@ def powerscale_stats_get(
     - show_nodes: If True, results are grouped by node device ID
                   ({"node_1": {key: value}, "node_2": {...}}). If False
                   (default), cluster-aggregate values are returned.
+    The response always includes "_sample_time" (Unix timestamp).
 
     Use this tool when the user wants to:
     - Query a specific statistic not covered by other powerscale_stats_* tools
