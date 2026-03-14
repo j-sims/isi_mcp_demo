@@ -1314,6 +1314,8 @@ def powerscale_smb_sessions_get(
         smb = Smb(cluster)
 
         page = smb.get_sessions(limit=limit, lnn=lnn, lnn_skip=lnn_skip, resume=resume)
+        if "error" in page:
+            return page
 
         return {
             "nodes": page.get("nodes", []),
@@ -1429,6 +1431,8 @@ def powerscale_smb_openfiles_get(
         smb = Smb(cluster)
 
         page = smb.get_openfiles(limit=limit, resume=resume, sort=sort, dir=dir)
+        if "error" in page:
+            return page
 
         return {
             "items": page.get("items", []),
