@@ -12,7 +12,8 @@ RUN set -eux; \
         iputils-ping \
         sshpass \
         openssh-client \
-        curl; \
+        curl \
+        gosu; \
     rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -46,15 +47,21 @@ RUN mkdir -p playbooks .ansible/tmp && chown -R mcp:mcp /app
 # Set HOME so Ansible finds ~/.ansible/tmp as writable
 ENV HOME=/app
 
-USER mcp
-
 # Install the Dell PowerScale Ansible collection as mcp user
 # This ensures the collection is installed to /app/.ansible/collections (readable by mcp)
+USER mcp
 RUN ansible-galaxy collection install dellemc.powerscale
+
+# Drop back to root so the entrypoint can fix bind-mount ownership at runtime,
+# then gosu drops privileges to mcp before exec'ing the server process.
+USER root
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD curl -sf http://localhost:8000/health || exit 1
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
