@@ -71,7 +71,7 @@ class Cluster:
 
         def _call_api_with_timeout(*args, **kwargs):
             if "_request_timeout" not in kwargs:
-                kwargs["_request_timeout"] = _api_timeout
+                kwargs["_request_timeout"] = (_api_timeout, _api_timeout)
             return _orig_call_api(*args, **kwargs)
 
         self.api_client.call_api = _call_api_with_timeout

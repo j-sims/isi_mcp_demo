@@ -7613,19 +7613,49 @@ _apply_startup_config()
 # Note: the underlying thread cannot be forcibly killed, but it will be
 # cleaned up once Layer 1 (urllib3 timeout) eventually fires.
 _orig_call_tool = mcp._tool_manager.call_tool
+_thread_capacity_configured = False
 
 
 async def _call_tool_with_timeout(key: str, arguments: dict, **kwargs):
+    global _thread_capacity_configured
+    if not _thread_capacity_configured:
+        import anyio
+        limiter = anyio.to_thread.current_default_thread_limiter()
+        target = int(os.environ.get("TOOL_THREADS", 200))
+        limiter.total_tokens = target
+        _thread_capacity_configured = True
+        logger.info("anyio thread capacity set to %d", target)
+
+    loop = asyncio.get_running_loop()
+    inner_task = loop.create_task(
+        _orig_call_tool(key=key, arguments=arguments, **kwargs)
+    )
+
+    def _drain_result(task):
+        # Prevent "Future exception was never retrieved" warnings for background tasks
+        # that completed after we stopped waiting for them.
+        if not task.cancelled():
+            try:
+                task.exception()
+            except Exception:
+                pass
+
     try:
-        return await asyncio.wait_for(
-            _orig_call_tool(key=key, arguments=arguments, **kwargs),
-            timeout=TOOL_TIMEOUT,
-        )
+        return await asyncio.wait_for(asyncio.shield(inner_task), timeout=TOOL_TIMEOUT)
     except asyncio.TimeoutError:
+        # Return error to client immediately without cancelling inner_task.
+        # Do NOT cancel inner_task — that would block on anyio's run_sync cleanup,
+        # holding anyio capacity until the underlying thread finishes.
+        # Let it drain naturally once the API_TIMEOUT (urllib3 socket timeout) fires.
+        inner_task.add_done_callback(_drain_result)
         raise TimeoutError(
             f"Tool '{key}' exceeded the {TOOL_TIMEOUT}s timeout. "
             "The cluster may be slow or unreachable."
         )
+    except asyncio.CancelledError:
+        # Client disconnected; let inner_task drain in the background.
+        inner_task.add_done_callback(_drain_result)
+        raise
 
 
 mcp._tool_manager.call_tool = _call_tool_with_timeout
