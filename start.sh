@@ -33,10 +33,11 @@ for arg in "$@"; do
 done
 
 # ---------------------------------------------------------------------------
-# Detect whether authentication is enabled in docker-compose.yml
+# Detect whether authentication is enabled in config/isi_mcp.env
 # ---------------------------------------------------------------------------
+APP_CONFIG="${SCRIPT_DIR}/config/isi_mcp.env"
 COMPOSE_PROFILES=""
-if grep -qE '^\s*-\s*AUTH_ENABLED=true' "$COMPOSE_FILE"; then
+if grep -qE '^AUTH_ENABLED=true' "$APP_CONFIG" 2>/dev/null; then
     AUTH_ENABLED=true
 else
     AUTH_ENABLED=false
@@ -50,16 +51,34 @@ VAULT_PASSWORD=$(read -rs -p 'Vault password: ' pwd && echo "$pwd")
 echo
 
 # ---------------------------------------------------------------------------
-# Prompt for Keycloak passwords if authentication is enabled
+# Determine if Keycloak needs initialization
 # ---------------------------------------------------------------------------
+KEYCLOAK_DB_VOLUME="isi_mcp_demo_keycloak-db-data"
+KEYCLOAK_DB_EXISTS=$(docker volume ls 2>/dev/null | grep -q "$KEYCLOAK_DB_VOLUME" && echo true || echo false)
+
+# Keycloak needs initialization if: (1) volume doesn't exist, OR (2) --reboot is set
+KEYCLOAK_NEEDS_INIT=false
 if [[ "$AUTH_ENABLED" == true ]]; then
+    if [[ "$KEYCLOAK_DB_EXISTS" == false ]] || [[ "$REBOOT" == true ]]; then
+        KEYCLOAK_NEEDS_INIT=true
+    fi
+    COMPOSE_PROFILES="--profile auth"
+fi
+
+# ---------------------------------------------------------------------------
+# Prompt for Keycloak passwords only if needed
+# ---------------------------------------------------------------------------
+if [[ "$KEYCLOAK_NEEDS_INIT" == true ]]; then
     export KEYCLOAK_DB_PASSWORD
     KEYCLOAK_DB_PASSWORD=$(read -rs -p 'Keycloak DB password: ' pwd && echo "$pwd")
     echo
     export KEYCLOAK_ADMIN_PASSWORD
     KEYCLOAK_ADMIN_PASSWORD=$(read -rs -p 'Keycloak admin password: ' pwd && echo "$pwd")
     echo
-    COMPOSE_PROFILES="--profile auth"
+else
+    # Set empty defaults to avoid docker-compose errors
+    export KEYCLOAK_DB_PASSWORD=""
+    export KEYCLOAK_ADMIN_PASSWORD=""
 fi
 
 # ---------------------------------------------------------------------------

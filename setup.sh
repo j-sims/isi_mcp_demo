@@ -93,11 +93,13 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ---------------------------------------------------------------------------
-# Check for existing encrypted vault — ask before prompting for new credentials
+# Check for existing setup (vault.yml and/or keycloak-db-data volume)
+# Ask before prompting for new credentials
 # ---------------------------------------------------------------------------
 VAULT_DIR="${SCRIPT_DIR}/vault"
 VAULT_FILE="${VAULT_DIR}/vault.yml"
 SKIP_SETUP=false
+KEYCLOAK_DB_VOLUME="isi_mcp_demo_keycloak-db-data"
 
 mkdir -p "$VAULT_DIR"
 
@@ -106,17 +108,54 @@ mkdir -p "$VAULT_DIR"
 # UID 1000 (or the directory must be group/world writable) for writes to succeed.
 mkdir -p "${SCRIPT_DIR}/playbooks"
 
+# Check for existing vault and keycloak volume
+VAULT_EXISTS=false
+KEYCLOAK_VOLUME_EXISTS=false
+
 if [[ -f "$VAULT_FILE" ]]; then
     FIRST_LINE="$(head -c 14 "$VAULT_FILE")"
     if [[ "$FIRST_LINE" == '$ANSIBLE_VAULT' ]]; then
-        warn "vault.yml already exists and is encrypted."
-        read -rp "Keep existing vault.yml and skip credential setup? [Y/n]: " KEEP_VAULT
-        if [[ "$KEEP_VAULT" != "n" && "$KEEP_VAULT" != "N" ]]; then
-            ok "Keeping existing vault.yml — skipping credential setup."
-            SKIP_SETUP=true
-        fi
+        VAULT_EXISTS=true
+    fi
+fi
+
+if docker volume ls 2>/dev/null | grep -q "$KEYCLOAK_DB_VOLUME"; then
+    KEYCLOAK_VOLUME_EXISTS=true
+fi
+
+# If either exists, prompt user
+if [[ "$VAULT_EXISTS" == true ]] || [[ "$KEYCLOAK_VOLUME_EXISTS" == true ]]; then
+    EXISTING_STATE=""
+    [[ "$VAULT_EXISTS" == true ]] && EXISTING_STATE="${EXISTING_STATE}  • vault.yml (encrypted credentials)\n"
+    [[ "$KEYCLOAK_VOLUME_EXISTS" == true ]] && EXISTING_STATE="${EXISTING_STATE}  • keycloak-db-data (database volume)\n"
+
+    warn "Existing setup detected:\n${EXISTING_STATE}"
+    read -rp "Keep existing setup and skip credential setup? [Y/n]: " KEEP_SETUP
+
+    if [[ "$KEEP_SETUP" != "n" && "$KEEP_SETUP" != "N" ]]; then
+        ok "Keeping existing setup — skipping credential setup."
+        SKIP_SETUP=true
     else
-        warn "vault.yml exists but is not encrypted — it will be overwritten and encrypted."
+        # User wants to overwrite — delete existing setup
+        info "Removing existing setup..."
+
+        # Delete vault file if it exists
+        if [[ "$VAULT_EXISTS" == true ]]; then
+            rm -f "$VAULT_FILE"
+            ok "Removed vault.yml"
+        fi
+
+        # Stop containers and remove volume
+        if [[ "$KEYCLOAK_VOLUME_EXISTS" == true ]]; then
+            info "Stopping containers..."
+            $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" down 2>/dev/null || true
+
+            info "Removing keycloak database volume..."
+            docker volume rm "$KEYCLOAK_DB_VOLUME" 2>/dev/null || warn "Could not remove volume (may be in use)"
+            ok "Removed keycloak-db-data"
+        fi
+
+        ok "Existing setup cleared — proceeding with fresh installation"
     fi
 fi
 
@@ -174,13 +213,14 @@ if [[ -z "$VAULT_PASS" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Check docker-compose.yml to see if authentication is enabled.
-# AUTH_ENABLED=true is a static config value set directly in docker-compose.yml.
+# Check config/isi_mcp.env to see if authentication is enabled.
+# Set AUTH_ENABLED=true there to enable OAuth via Keycloak.
 # If enabled, prompt for Keycloak passwords (never stored in files).
 # ---------------------------------------------------------------------------
+APP_CONFIG="${SCRIPT_DIR}/config/isi_mcp.env"
 COMPOSE_PROFILES=""
-if grep -qE '^\s*-\s*AUTH_ENABLED=true' "${SCRIPT_DIR}/docker-compose.yml"; then
-    info "Authentication is enabled in docker-compose.yml. Keycloak credentials required."
+if grep -qE '^AUTH_ENABLED=true' "$APP_CONFIG" 2>/dev/null; then
+    info "Authentication is enabled in config/isi_mcp.env. Keycloak credentials required."
     if [[ -z "${KEYCLOAK_DB_PASSWORD:-}" ]]; then
         read -rsp "Keycloak database password (KEYCLOAK_DB_PASSWORD): " KEYCLOAK_DB_PASSWORD
         echo

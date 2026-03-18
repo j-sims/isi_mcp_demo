@@ -35,8 +35,9 @@ done
 # ---------------------------------------------------------------------------
 # Detect whether the auth profile is active (so Keycloak services are stopped)
 # ---------------------------------------------------------------------------
+APP_CONFIG="${SCRIPT_DIR}/config/isi_mcp.env"
 COMPOSE_PROFILES=""
-if grep -qE '^\s*-\s*AUTH_ENABLED=true' "$COMPOSE_FILE"; then
+if grep -qE '^AUTH_ENABLED=true' "$APP_CONFIG" 2>/dev/null; then
     COMPOSE_PROFILES="--profile auth"
 fi
 
