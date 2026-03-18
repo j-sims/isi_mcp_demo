@@ -118,19 +118,17 @@ MCP_PUBLIC_URL=https://powerscale-mcp.example.com
 
 ## TLS Certificates
 
-The setup script generates self-signed certificates automatically. To regenerate:
+The setup script generates self-signed certificates automatically on first run. The `start.sh` script also checks for missing certificates and auto-generates them if needed.
 
-```bash
-rm -rf nginx/certs/
-./nginx/generate-certs.sh
-docker-compose restart nginx
-```
+For full details on all certificate options — including auto-generated development certificates, bring-your-own CA-signed certificates, certificate rotation, and client trust configuration — see **[TLS Certificate Guide](tls.md)**.
 
-For production, replace `nginx/certs/server.crt` and `nginx/certs/server.key` with certificates from your CA. The certificate files are gitignored.
+**Quick reference:**
 
-### Client Certificate Trust
-
-MCP clients connecting to the server must trust the self-signed certificate. The certificate is generated on the **server host** (not inside the container) at `nginx/certs/server.crt`. See **[Client Integration](clients.md)** for step-by-step instructions to copy and trust the certificate on client machines.
+| Task | Command |
+|---|---|
+| Regenerate dev certs (e.g. after hostname change) | `nginx/generate-certs.sh --force && docker-compose restart nginx` |
+| Install a CA-signed cert | Copy `server.crt` and `server.key` into `nginx/certs/`, then `docker-compose restart nginx` |
+| Trust CA in Node.js / Claude Code | `export NODE_EXTRA_CA_CERTS=/path/to/nginx/certs/ca.crt` |
 
 ## Endpoints
 

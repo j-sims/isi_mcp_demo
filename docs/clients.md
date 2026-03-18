@@ -43,7 +43,7 @@ sudo update-ca-certificates
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/.certs/powerscale-mcp-ca.crt
 ```
 
-> **Production**: Replace the self-signed CA with certificates from a trusted CA (e.g., Let's Encrypt or your company CA) and clients will trust it automatically — no manual steps required.
+> **Production**: Replace the self-signed CA with certificates from a trusted CA (e.g., your company CA or a public CA) and clients will trust it automatically — no manual steps required.
 
 > **Port conflict**: If running k3s or other services that bind port 443 via iptables (e.g., Traefik), they will intercept connections before nginx receives them. Stop those services before starting this stack, or change the nginx port mapping in `docker-compose.yml`.
 

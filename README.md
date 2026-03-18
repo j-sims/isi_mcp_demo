@@ -17,6 +17,7 @@ The server ships in **read-only mode by default** — all write tools are disabl
 - **[Architecture](docs/architecture.md)** — System design, data flow, and component overview
 - **[Client Integration](docs/clients.md)** — Connecting Claude Desktop, Claude Code, Cursor, and other LLM clients
 - **[Security](docs/security.md)** — Credential management, SSL/TLS, and production best practices
+- **[TLS Certificates](docs/tls.md)** — Auto-generated dev certs, bring-your-own CA-signed certs, rotation, and client trust
 - **[Kubernetes Deployment](docs/kubernetes.md)** — Deploying on Kubernetes (k3s, minikube, EKS, etc.)
 
 ## Quick Start

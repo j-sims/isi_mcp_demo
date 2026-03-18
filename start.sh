@@ -33,6 +33,22 @@ for arg in "$@"; do
 done
 
 # ---------------------------------------------------------------------------
+# Ensure TLS certificates exist before starting nginx
+# ---------------------------------------------------------------------------
+CERT_SCRIPT="${SCRIPT_DIR}/nginx/generate-certs.sh"
+CERT_DIR="${SCRIPT_DIR}/nginx/certs"
+if [ ! -f "${CERT_DIR}/server.crt" ] || [ ! -f "${CERT_DIR}/server.key" ]; then
+    if [[ -x "$CERT_SCRIPT" ]]; then
+        echo "TLS certificates not found — generating..."
+        "$CERT_SCRIPT"
+    else
+        echo "ERROR: nginx/generate-certs.sh not found and TLS certs are missing."
+        echo "Run nginx/generate-certs.sh manually or place cert files in nginx/certs/."
+        exit 1
+    fi
+fi
+
+# ---------------------------------------------------------------------------
 # Detect whether authentication is enabled in config/isi_mcp.env
 # ---------------------------------------------------------------------------
 APP_CONFIG="${SCRIPT_DIR}/config/isi_mcp.env"

@@ -13,10 +13,27 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CERT_DIR="${SCRIPT_DIR}/certs"
+FORCE=false
 
-if [ -f "${CERT_DIR}/server.crt" ] && [ -f "${CERT_DIR}/server.key" ]; then
+for arg in "$@"; do
+    case "$arg" in
+        --force) FORCE=true ;;
+        -h|--help)
+            echo "Usage: $0 [--force]"
+            echo "  --force   Overwrite existing certificates (default: skip if present)"
+            exit 0
+            ;;
+        *)
+            echo "Unknown argument: $arg"
+            echo "Usage: $0 [--force]"
+            exit 1
+            ;;
+    esac
+done
+
+if [[ "$FORCE" == false ]] && [ -f "${CERT_DIR}/server.crt" ] && [ -f "${CERT_DIR}/server.key" ]; then
     echo "Certificates already exist in ${CERT_DIR}. Skipping generation."
-    echo "Delete them and re-run to regenerate."
+    echo "Use --force to overwrite existing certificates."
     exit 0
 fi
 

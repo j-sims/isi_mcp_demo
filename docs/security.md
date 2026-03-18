@@ -42,6 +42,7 @@ The server ships with an nginx reverse proxy that terminates TLS for all client 
 - For production, replace with certificates from your CA — clients will trust them automatically
 - nginx enforces TLS 1.2+ with strong cipher suites
 - HTTP requests are automatically redirected to HTTPS (301)
+- For step-by-step procedures (regeneration, bring-your-own cert, rotation, client trust setup), see **[TLS Certificate Guide](tls.md)**
 
 ### Security Headers
 
