@@ -141,7 +141,7 @@ The tool list returned to a client is also filtered to only include tools the ca
 In production environments:
 
 - Replace self-signed certificates with CA-signed certificates
-- Enable `AUTH_ENABLED=true` to require authenticated access (see above)
+- Enable `AUTH_ENABLED=true` in `config/isi_mcp.env` to require authenticated access (see above)
 - Restrict access to trusted networks via firewall rules even when auth is enabled
 - Use the rate limiting configuration to prevent abuse
 - Monitor nginx access logs for suspicious activity
@@ -155,7 +155,7 @@ In production environments:
 
 ## Recommended Practices
 
-1. **Enable authentication** (`AUTH_ENABLED=true`) for any deployment accessible beyond localhost or a trusted private network
+1. **Enable authentication** (set `AUTH_ENABLED=true` in `config/isi_mcp.env`) for any deployment accessible beyond localhost or a trusted private network
 2. **Keep write tools disabled** until needed — enable for the task, then disable again to minimize risk
 3. **Rotate vault passwords regularly** using the vault rekey command
 4. **Use strong vault passwords** with sufficient entropy

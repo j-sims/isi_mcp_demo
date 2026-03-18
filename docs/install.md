@@ -53,7 +53,7 @@ The setup script also generates self-signed TLS certificates (in `nginx/certs/`)
 
 ## Running the Server
 
-After initial setup, use `start.sh` and `stop.sh` to manage the server. These scripts read `docker-compose.yml` to detect whether authentication is enabled, prompt for the required passwords, and handle the `--profile auth` flag automatically.
+After initial setup, use `start.sh` and `stop.sh` to manage the server. These scripts read `config/isi_mcp.env` to detect whether authentication is enabled, prompt for the required passwords, and handle the `--profile auth` flag automatically.
 
 **Starting the server:**
 
@@ -91,6 +91,29 @@ Stops existing containers, then starts fresh. Volumes (Keycloak database, playbo
 docker-compose logs -f isi_mcp
 docker-compose logs -f nginx
 docker-compose logs -f keycloak
+```
+
+## Configuration Files
+
+Non-secret configuration is stored as flat `KEY=VALUE` files in the top-level `config/` directory. These files are committed to the repository and loaded by Docker Compose at startup via `env_file:`.
+
+| File | Service | Purpose |
+|---|---|---|
+| `config/isi_mcp.env` | isi_mcp | App settings: `VAULT_FILE`, `AUTH_ENABLED`, `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `MCP_PUBLIC_URL` |
+| `config/keycloak.env` | keycloak | Non-secret Keycloak settings: DB connection, hostname, HTTP port, admin username |
+| `config/keycloak-db.env` | keycloak-db | Non-secret Postgres settings: `POSTGRES_DB`, `POSTGRES_USER` |
+
+**Secrets** (`VAULT_PASSWORD`, `KEYCLOAK_DB_PASSWORD`, `KEYCLOAK_ADMIN_PASSWORD`) are never stored in files — they are passed as environment variables at startup and held in memory only.
+
+**Host-level toggles** (`DEBUG`, `ENABLE_ALL_TOOLS`, `IAC_MODE`) remain in the `environment:` section of `docker-compose.yml` because they are typically passed from the host shell rather than set persistently.
+
+To change a setting, edit the appropriate `.env` file and restart. For example, to set the public URL for a production host:
+
+```bash
+# Edit config/isi_mcp.env
+MCP_PUBLIC_URL=https://powerscale-mcp.example.com
+
+./start.sh
 ```
 
 ## TLS Certificates
@@ -176,12 +199,12 @@ For a full explanation of the authentication architecture and security model, se
 - Docker Compose (same as the base install)
 - The Keycloak container and its PostgreSQL database are included in `docker-compose.yml` under the `auth` profile — no extra software required
 
-### Step 1: Enable Auth in docker-compose.yml
+### Step 1: Enable Auth in config/isi_mcp.env
 
-Open `docker-compose.yml` and change the `AUTH_ENABLED` line in the `isi_mcp` service:
+Open `config/isi_mcp.env` and change the `AUTH_ENABLED` line:
 
-```yaml
-- AUTH_ENABLED=true  # was: false
+```
+AUTH_ENABLED=true
 ```
 
 That's the only file change needed. Passwords are never stored in files.
@@ -192,11 +215,11 @@ That's the only file change needed. Passwords are never stored in files.
 ./setup.sh
 ```
 
-`setup.sh` reads `docker-compose.yml`, detects `AUTH_ENABLED=true`, and prompts for the two Keycloak passwords in addition to the usual cluster credentials and vault password:
+`setup.sh` reads `config/isi_mcp.env`, detects `AUTH_ENABLED=true`, and prompts for the two Keycloak passwords in addition to the usual cluster credentials and vault password:
 
 ```
 Vault encryption password (for vault.yml): ••••••••
-Authentication is enabled in docker-compose.yml. Keycloak credentials required.
+Authentication is enabled in config/isi_mcp.env. Keycloak credentials required.
 Keycloak database password (KEYCLOAK_DB_PASSWORD): ••••••••
 Keycloak admin password (KEYCLOAK_ADMIN_PASSWORD): ••••••••
 ```
@@ -209,7 +232,7 @@ All passwords are handled in memory only — nothing is written to disk. `setup.
 ./start.sh
 ```
 
-`start.sh` detects `AUTH_ENABLED=true` in `docker-compose.yml` and prompts for all three passwords automatically.
+`start.sh` detects `AUTH_ENABLED=true` in `config/isi_mcp.env` and prompts for all three passwords automatically.
 
 > **Tip**: A password manager or secrets manager (e.g., `pass`, Vault, AWS Secrets Manager) can pre-export the password variables before calling `start.sh` to avoid typing them each time.
 
@@ -320,13 +343,13 @@ Configure `.mcp.json`:
 
 ### Disabling Authentication
 
-Change `AUTH_ENABLED` back to `false` in `docker-compose.yml`, then restart:
+Change `AUTH_ENABLED` back to `false` in `config/isi_mcp.env`, then restart:
 
 ```bash
 ./start.sh --reboot
 ```
 
-`start.sh` will no longer detect auth, so it prompts only for the vault password and starts without the `auth` profile — Keycloak and its database will not start.
+`start.sh` will no longer detect auth in `config/isi_mcp.env`, so it prompts only for the vault password and starts without the `auth` profile — Keycloak and its database will not start.
 
 ---
 
