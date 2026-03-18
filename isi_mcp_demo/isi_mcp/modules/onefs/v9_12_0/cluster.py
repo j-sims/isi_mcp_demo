@@ -63,7 +63,15 @@ class Cluster:
             cfg.username = self.username
         if self.password:
             cfg.password = self.password
-        cfg.verify_ssl = self.verify_ssl
+        # verify_ssl must be a bool; ca_bundle path goes in ssl_ca_cert.
+        # Disable hostname checking because cluster certs often lack IP SANs
+        # but the cert chain is still verified against the extracted CA bundle.
+        if isinstance(self.verify_ssl, str):
+            cfg.verify_ssl = True
+            cfg.ssl_ca_cert = self.verify_ssl
+            cfg.assert_hostname = False
+        else:
+            cfg.verify_ssl = self.verify_ssl
 
         self.api_client = isi_sdk.ApiClient(cfg)
 
