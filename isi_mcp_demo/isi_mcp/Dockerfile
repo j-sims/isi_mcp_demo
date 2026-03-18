@@ -40,7 +40,6 @@ RUN groupadd -g 1000 mcp && useradd -u 1000 -g mcp -d /app -s /bin/bash mcp
 COPY server.py .
 COPY modules modules
 COPY Templates Templates
-COPY tests tests
 COPY config config
 
 # Create writable directories: playbooks (audit trail) + .ansible (Ansible temp files)

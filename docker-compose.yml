@@ -38,7 +38,7 @@ services:
     env_file:
       - config/keycloak-db.env
     environment:
-      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
     volumes:
       - keycloak-db-data:/var/lib/postgresql/data
     networks:
@@ -52,8 +52,8 @@ services:
     env_file:
       - config/keycloak.env
     environment:
-      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
     volumes:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     depends_on:
