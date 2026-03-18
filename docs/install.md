@@ -53,42 +53,44 @@ The setup script also generates self-signed TLS certificates (in `nginx/certs/`)
 
 ## Running the Server
 
-After initial setup, you can start, stop, and restart the server as needed. The stack includes an nginx reverse proxy that provides TLS termination, rate limiting, and security headers.
+After initial setup, use `start.sh` and `stop.sh` to manage the server. These scripts read `docker-compose.yml` to detect whether authentication is enabled, prompt for the required passwords, and handle the `--profile auth` flag automatically.
 
-**Starting the server in the background:**
-
-```bash
-export VAULT_PASSWORD=$(read -s -p 'Enter your password: ' pwd && echo $pwd)
-docker-compose up -d
-```
-
-**Starting the server in the foreground (for debugging):**
+**Starting the server:**
 
 ```bash
-export VAULT_PASSWORD=$(read -s -p 'Enter your password: ' pwd && echo $pwd)
-docker-compose up
+./start.sh
 ```
 
-Press `Ctrl+C` to stop.
+Prompts for the vault password (and Keycloak passwords if `AUTH_ENABLED=true`) then starts all services in the background.
+
+**Stopping the server:**
+
+```bash
+./stop.sh
+```
+
+**Tearing down and restarting (e.g. after a config change):**
+
+```bash
+./start.sh --reboot
+```
+
+Stops existing containers, then starts fresh. Volumes (Keycloak database, playbooks) are preserved.
+
+**Removing all data (volumes included):**
+
+```bash
+./stop.sh --clean
+```
+
+> **Warning**: `--clean` deletes the Keycloak database volume. All users, clients, and realm configuration will be lost and re-imported from `keycloak/realm-export.json` on next start.
 
 **Viewing logs:**
 
 ```bash
 docker-compose logs -f isi_mcp
 docker-compose logs -f nginx
-```
-
-**Restarting the server:**
-
-```bash
-export VAULT_PASSWORD=$(read -s -p 'Enter your password: ' pwd && echo $pwd)
-docker-compose restart
-```
-
-**Stopping the server:**
-
-```bash
-docker-compose down
+docker-compose logs -f keycloak
 ```
 
 ## TLS Certificates
@@ -114,6 +116,8 @@ MCP clients connecting to the server must trust the self-signed certificate. The
 | `https://localhost/mcp` | Streamable HTTP | Primary MCP endpoint (via nginx) |
 | `https://localhost/sse` | SSE | Legacy SSE endpoint (via nginx) |
 | `https://localhost/health` | HTTP GET | Health check (returns JSON) |
+| `https://localhost/version` | HTTP GET | Server version (returns JSON) |
+| `https://localhost/auth/` | HTTP | Keycloak IdP (OAuth flows, JWKS, admin console — when auth is enabled) |
 
 ## Managing Vault Credentials
 
@@ -160,6 +164,171 @@ Then restart the server with the new vault password:
 export VAULT_PASSWORD=$(read -s -p 'Enter your password: ' pwd && echo $pwd)
 docker-compose restart
 ```
+
+## Enabling Authentication (Optional)
+
+By default the server runs without client authentication. The steps below add OAuth 2.1 / OIDC authentication backed by **Keycloak**, a self-hosted identity provider. Once enabled, every MCP client must authenticate before invoking any tool. MCP-spec-compliant clients (Claude Code, Cursor) handle the OAuth flow automatically via browser login — no manual token management is needed.
+
+For a full explanation of the authentication architecture and security model, see [Security — Client Authentication](security.md#client-authentication-oauth-21--oidc).
+
+### Prerequisites
+
+- Docker Compose (same as the base install)
+- The Keycloak container and its PostgreSQL database are included in `docker-compose.yml` under the `auth` profile — no extra software required
+
+### Step 1: Enable Auth in docker-compose.yml
+
+Open `docker-compose.yml` and change the `AUTH_ENABLED` line in the `isi_mcp` service:
+
+```yaml
+- AUTH_ENABLED=true  # was: false
+```
+
+That's the only file change needed. Passwords are never stored in files.
+
+### Step 2: Run Setup
+
+```bash
+./setup.sh
+```
+
+`setup.sh` reads `docker-compose.yml`, detects `AUTH_ENABLED=true`, and prompts for the two Keycloak passwords in addition to the usual cluster credentials and vault password:
+
+```
+Vault encryption password (for vault.yml): ••••••••
+Authentication is enabled in docker-compose.yml. Keycloak credentials required.
+Keycloak database password (KEYCLOAK_DB_PASSWORD): ••••••••
+Keycloak admin password (KEYCLOAK_ADMIN_PASSWORD): ••••••••
+```
+
+All passwords are handled in memory only — nothing is written to disk. `setup.sh` automatically adds `--profile auth` to start the Keycloak services.
+
+**Subsequent starts** (vault already exists):
+
+```bash
+./start.sh
+```
+
+`start.sh` detects `AUTH_ENABLED=true` in `docker-compose.yml` and prompts for all three passwords automatically.
+
+> **Tip**: A password manager or secrets manager (e.g., `pass`, Vault, AWS Secrets Manager) can pre-export the password variables before calling `start.sh` to avoid typing them each time.
+
+On first start, Keycloak initialises its database and imports the pre-configured `powerscale` realm from `keycloak/realm-export.json` (this takes ~30–60 seconds).
+
+### Step 3: Verify Keycloak Is Ready
+
+```bash
+# Check all services are healthy
+docker-compose ps
+
+# Confirm Keycloak OIDC discovery endpoint is responding
+curl -sk https://localhost/auth/realms/powerscale/.well-known/openid-configuration | jq .issuer
+# Expected: "http://keycloak:8080/realms/powerscale"
+
+# Confirm MCP server advertises the auth server (RFC 9728)
+curl -sk https://localhost/mcp/.well-known/oauth-protected-resource | jq .
+# Expected: { "resource": "...", "authorization_servers": [...] }
+
+# Confirm unauthenticated requests are rejected
+curl -sk -o /dev/null -w "%{http_code}" -X POST https://localhost/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+# Expected: 401
+
+# Confirm health check remains unauthenticated
+curl -sk https://localhost/health
+# Expected: {"status":"ok","tools_loaded":...}
+```
+
+### Step 4: Add Users
+
+Create at least one user before configuring MCP clients — you'll need credentials to log in when the browser authentication prompt appears.
+
+#### Local Users
+
+In the Keycloak admin console (https://localhost/auth/admin/):
+
+1. Select the **powerscale** realm
+2. Go to **Users → Add user** → fill in username → **Save**
+3. Go to the **Credentials** tab → **Set password** → disable "Temporary"
+4. Go to the **Role mapping** tab → Assign exactly **one** of:
+   - `mcp-read` — read-only access (health, capacity, quota queries, etc.)
+   - `mcp-write` — read + write access to all domain tools (quota set, SMB/NFS create, etc.)
+   - `mcp-admin` — full access including management tools (`powerscale_tools_toggle`, cluster add/remove, etc.)
+   > Keycloak composite roles automatically expand in the JWT: assigning `mcp-admin` grants `mcp-write` and `mcp-read` as well.
+
+#### Active Directory / LDAP
+
+1. Admin console → **User Federation → Add LDAP provider**
+2. Set **Connection URL** (`ldap://dc.example.com:389` or `ldaps://...636`)
+3. Set **Bind DN** and **Bind Credential** (service account), then click **Test connection** and **Test authentication**
+4. Set **Users DN** to the OU containing your users (e.g. `OU=Users,DC=example,DC=com`)
+5. Set **Username LDAP attribute** to `sAMAccountName`
+6. **Save**, then click **Synchronize all users**
+7. Assign roles to synced users or map AD groups to roles via a group-ldap-mapper
+
+For LDAPS with a private CA, mount the AD CA cert into the Keycloak container and build a Java truststore — see `AUTH_PLAN.md` → Step 6 for commands.
+
+#### Third-Party SSO (Google, Azure AD, Okta, etc.)
+
+Admin console → **Identity Providers → Add provider → OpenID Connect v1.0** → enter the provider's discovery URL, client ID, and client secret.
+
+### Step 5: Configure MCP Clients
+
+#### Claude Code (automatic OAuth flow — recommended)
+
+Claude Code discovers the auth server automatically. When you first invoke the server, it opens a browser window to the Keycloak login page — log in with the username and password you created in Step 4.
+
+```bash
+# Register the server — auth is auto-discovered
+claude mcp add --transport http powerscale https://localhost/mcp
+
+# Trigger any MCP call (e.g. open /mcp in Claude Code).
+# Claude Code detects the 401, opens a browser login window to Keycloak.
+# Log in with the user you created in Step 4.
+# Tokens are stored and refreshed automatically.
+```
+
+#### Service Accounts / CI-CD (Client Credentials grant)
+
+Use the `powerscale-m2m` confidential client. Copy the client secret from the Keycloak admin console (https://localhost/auth/admin/ → Clients → powerscale-m2m → Credentials), then:
+
+```bash
+TOKEN=$(curl -sk -X POST \
+  https://localhost/auth/realms/powerscale/protocol/openid-connect/token \
+  -d "grant_type=client_credentials" \
+  -d "client_id=powerscale-m2m" \
+  -d "client_secret=<secret>" \
+  | jq -r .access_token)
+```
+
+Configure `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "powerscale": {
+      "type": "http",
+      "url": "https://localhost/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MCP_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+### Disabling Authentication
+
+Change `AUTH_ENABLED` back to `false` in `docker-compose.yml`, then restart:
+
+```bash
+./start.sh --reboot
+```
+
+`start.sh` will no longer detect auth, so it prompts only for the vault password and starts without the `auth` profile — Keycloak and its database will not start.
+
+---
 
 ## IaC Workflow Integration
 

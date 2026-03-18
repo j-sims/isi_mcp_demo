@@ -12,6 +12,7 @@ services:
       - isi_mcp
     networks:
       - isi_mcp_net
+    restart: unless-stopped
 
   isi_mcp:
     build: isi_mcp_demo/isi_mcp/
@@ -21,6 +22,10 @@ services:
       - IAC_MODE=${IAC_MODE:-}
       - VAULT_FILE=/app/vault/vault.yml
       - VAULT_PASSWORD=${VAULT_PASSWORD:-}
+      - AUTH_ENABLED=false  # Change to "true" to enable OAuth authentication
+      - KEYCLOAK_URL=http://keycloak:8080/auth
+      - KEYCLOAK_REALM=powerscale
+      - MCP_PUBLIC_URL=${MCP_PUBLIC_URL:-https://localhost}
     volumes:
       - ./VERSION:/app/VERSION:ro
       - ./vault:/app/vault
@@ -28,7 +33,51 @@ services:
       - ./isi_mcp_demo/isi_mcp/config:/app/config
     networks:
       - isi_mcp_net
+    restart: unless-stopped
+
+  keycloak-db:
+    image: postgres:16-alpine
+    profiles: [auth]
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-}
+    volumes:
+      - keycloak-db-data:/var/lib/postgresql/data
+    networks:
+      - auth_net
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    profiles: [auth]
+    command: start --import-realm --hostname-strict=false --proxy-headers=xforwarded --http-enabled=true
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: keycloak-db
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-}
+      KC_HOSTNAME: localhost
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_HEALTH_ENABLED: "true"
+      KC_HTTP_PORT: 8080
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    depends_on:
+      - keycloak-db
+    networks:
+      - isi_mcp_net
+      - auth_net
+    restart: unless-stopped
 
 networks:
   isi_mcp_net:
     driver: bridge
+  auth_net:
+    driver: bridge
+
+volumes:
+  keycloak-db-data:

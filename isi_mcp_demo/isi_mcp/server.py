@@ -8,6 +8,15 @@ import time
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 from fastmcp import FastMCP
+try:
+    from fastmcp.server.auth import RemoteAuthProvider
+    from fastmcp.server.auth.providers.jwt import JWTVerifier
+    from fastmcp.server.middleware import Middleware, MiddlewareContext
+    from fastmcp.server.dependencies import get_access_token
+    from fastmcp.exceptions import ToolError
+    _FASTMCP_AUTH_AVAILABLE = True
+except ImportError:
+    _FASTMCP_AUTH_AVAILABLE = False
 from modules.logging_config import configure_logging
 from modules.onefs.v9_12_0.cluster import Cluster
 from modules.onefs.v9_12_0.verify import Verify
@@ -57,11 +66,40 @@ configure_logging()
 logger = logging.getLogger(__name__)
 
 
+# --- Authentication (optional — disabled when AUTH_ENABLED != "true") ---
+_auth_provider = None
+if os.environ.get("AUTH_ENABLED", "").lower() == "true":
+    if _FASTMCP_AUTH_AVAILABLE:
+        _keycloak_url = os.environ.get("KEYCLOAK_URL", "http://keycloak:8080")
+        _keycloak_realm = os.environ.get("KEYCLOAK_REALM", "powerscale")
+        _public_url = os.environ.get("MCP_PUBLIC_URL", "https://localhost")
+        # Internal URL used only for container-to-container JWKS fetching
+        _internal_issuer = f"{_keycloak_url}/realms/{_keycloak_realm}"
+        # Public URL is what Keycloak stamps in JWT iss claims (via X-Forwarded-* from nginx)
+        # and what MCP clients need to reach for the OAuth flow
+        _public_issuer = f"{_public_url}/auth/realms/{_keycloak_realm}"
+
+        _auth_provider = RemoteAuthProvider(
+            token_verifier=JWTVerifier(
+                jwks_uri=f"{_internal_issuer}/protocol/openid-connect/certs",
+                issuer=_public_issuer,
+                # No audience check — tokens are issued to dynamically registered clients
+                # (via DCR) with varying client IDs. The issuer check is sufficient to
+                # ensure tokens come from this Keycloak realm.
+            ),
+            authorization_servers=[_public_issuer],
+            base_url=_public_url,
+        )
+        logger.info("FastMCP auth enabled (Keycloak realm: %s)", _keycloak_realm)
+    else:
+        logger.warning("AUTH_ENABLED=true but fastmcp auth modules not available — running without auth")
+
 mcp = FastMCP(
     "powerscale",
     instructions=(
         "This server provides tools for managing a PowerScale (Isilon) cluster."
     ),
+    auth=_auth_provider,  # None = no auth (backwards compatible)
 )
 
 # ---------------------------------------------------------------------------
@@ -145,6 +183,64 @@ for _grp, _tools in TOOL_GROUPS.items():
 
 # Stash for disabled tools so they can be re-enabled at runtime
 _disabled_tools: Dict[str, Any] = {}  # tool_name -> Tool object
+
+# ---------------------------------------------------------------------------
+# Role-based access control middleware (Phase 2)
+# ---------------------------------------------------------------------------
+#
+# Keycloak composite roles expand in the JWT claims:
+#   mcp-admin token  → realm_access.roles contains ["mcp-admin", "mcp-write", "mcp-read"]
+#   mcp-write token  → realm_access.roles contains ["mcp-write", "mcp-read"]
+#   mcp-read token   → realm_access.roles contains ["mcp-read"]
+#
+# Role requirements by tool type:
+#   management tools → mcp-admin
+#   write tools      → mcp-write  (mcp-admin also satisfies this via composite)
+#   read tools       → mcp-read   (any role satisfies this)
+#
+# When AUTH_ENABLED != "true" the middleware is not added and every call
+# passes through with no role check (backwards-compatible).
+
+_AUTH_ENABLED = os.environ.get("AUTH_ENABLED", "").lower() == "true"
+
+if _FASTMCP_AUTH_AVAILABLE:
+    class RoleEnforcementMiddleware(Middleware):
+        """Enforce Keycloak realm roles on tool calls and tool listing."""
+
+        def _get_user_roles(self) -> set:
+            """Extract realm roles from the current request's JWT claims."""
+            token = get_access_token()
+            if token is None:
+                return set()
+            return set(token.claims.get("realm_access", {}).get("roles", []))
+
+        def _required_role(self, tool_name: str) -> str:
+            """Return the minimum Keycloak role required for this tool."""
+            if tool_name in MANAGEMENT_TOOLS:
+                return "mcp-admin"
+            if _TOOL_TO_MODE.get(tool_name) == "write":
+                return "mcp-write"
+            return "mcp-read"
+
+        async def on_call_tool(self, context, call_next):
+            tool_name = context.message.name
+            required = self._required_role(tool_name)
+            user_roles = self._get_user_roles()
+            if required not in user_roles:
+                raise ToolError(
+                    f"Access denied: '{tool_name}' requires the '{required}' role. "
+                    f"Your roles: {sorted(user_roles) or ['none']}"
+                )
+            return await call_next(context)
+
+        async def on_list_tools(self, context, call_next):
+            tools = await call_next(context)
+            user_roles = self._get_user_roles()
+            return [t for t in tools if self._required_role(t.name) in user_roles]
+
+    if _AUTH_ENABLED and _auth_provider is not None:
+        mcp.add_middleware(RoleEnforcementMiddleware())
+        logger.info("Role enforcement middleware enabled (mcp-read/write/admin)")
 
 
 def _resolve_names_to_tools(names: List[str]) -> List[str]:

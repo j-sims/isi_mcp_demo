@@ -174,6 +174,35 @@ if [[ -z "$VAULT_PASS" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Check docker-compose.yml to see if authentication is enabled.
+# AUTH_ENABLED=true is a static config value set directly in docker-compose.yml.
+# If enabled, prompt for Keycloak passwords (never stored in files).
+# ---------------------------------------------------------------------------
+COMPOSE_PROFILES=""
+if grep -qE '^\s*-\s*AUTH_ENABLED=true' "${SCRIPT_DIR}/docker-compose.yml"; then
+    info "Authentication is enabled in docker-compose.yml. Keycloak credentials required."
+    if [[ -z "${KEYCLOAK_DB_PASSWORD:-}" ]]; then
+        read -rsp "Keycloak database password (KEYCLOAK_DB_PASSWORD): " KEYCLOAK_DB_PASSWORD
+        echo
+        export KEYCLOAK_DB_PASSWORD
+    fi
+    if [[ -z "$KEYCLOAK_DB_PASSWORD" ]]; then
+        fail "KEYCLOAK_DB_PASSWORD is required when AUTH_ENABLED=true."
+        exit 1
+    fi
+    if [[ -z "${KEYCLOAK_ADMIN_PASSWORD:-}" ]]; then
+        read -rsp "Keycloak admin password (KEYCLOAK_ADMIN_PASSWORD): " KEYCLOAK_ADMIN_PASSWORD
+        echo
+        export KEYCLOAK_ADMIN_PASSWORD
+    fi
+    if [[ -z "$KEYCLOAK_ADMIN_PASSWORD" ]]; then
+        fail "KEYCLOAK_ADMIN_PASSWORD is required when AUTH_ENABLED=true."
+        exit 1
+    fi
+    COMPOSE_PROFILES="--profile auth"
+fi
+
+# ---------------------------------------------------------------------------
 # Normalize host — ensure https:// prefix
 # ---------------------------------------------------------------------------
 if [[ "$CLUSTER_HOST" =~ ^https?:// ]]; then
@@ -272,7 +301,11 @@ warn "Note: Self-signed certs require clients to accept untrusted certificates."
 echo ""
 info "To restart the server later (requires vault password):"
 echo "  export VAULT_PASSWORD=\$(read -s -p 'Enter your password: ' pwd && echo \$pwd)"
-echo "  $COMPOSE_CMD -f ${SCRIPT_DIR}/docker-compose.yml up -d"
+if [[ -n "$COMPOSE_PROFILES" ]]; then
+echo "  export KEYCLOAK_DB_PASSWORD=\$(read -s -p 'Keycloak DB password: ' pwd && echo \$pwd)"
+echo "  export KEYCLOAK_ADMIN_PASSWORD=\$(read -s -p 'Keycloak admin password: ' pwd && echo \$pwd)"
+fi
+echo "  $COMPOSE_CMD -f ${SCRIPT_DIR}/docker-compose.yml $COMPOSE_PROFILES up -d"
 echo ""
 info "To add or edit clusters later:"
 echo "  $COMPOSE_CMD -f ${SCRIPT_DIR}/docker-compose.yml exec isi_mcp ansible-vault edit /app/vault/vault.yml"
@@ -300,13 +333,13 @@ echo ""
 # the old container before 'up' avoids the recreate path entirely.
 # ---------------------------------------------------------------------------
 info "Stopping any existing container..."
-$COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" down 2>/dev/null || true
+$COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" $COMPOSE_PROFILES down 2>/dev/null || true
 
 if [[ "$NODETACH" == true ]]; then
     info "Starting MCP server in background..."
-    VAULT_PASSWORD="$VAULT_PASS" $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" up -d
+    VAULT_PASSWORD="$VAULT_PASS" $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" $COMPOSE_PROFILES up -d
     ok "Server started. View logs: $COMPOSE_CMD -f ${SCRIPT_DIR}/docker-compose.yml logs -f"
 else
     info "Starting MCP server (Ctrl+C to stop)..."
-    VAULT_PASSWORD="$VAULT_PASS" $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" up
+    VAULT_PASSWORD="$VAULT_PASS" $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" $COMPOSE_PROFILES up
 fi

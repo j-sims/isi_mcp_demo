@@ -1,0 +1,130 @@
+{
+  "id": "powerscale",
+  "realm": "powerscale",
+  "displayName": "PowerScale MCP",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 900,
+  "refreshTokenMaxReuse": 0,
+  "ssoSessionIdleTimeout": 28800,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "realm": [
+      {
+        "name": "mcp-read",
+        "description": "Read-only access to MCP tools",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-write",
+        "description": "Write access to MCP tools (includes mcp-read)",
+        "composite": true,
+        "composites": {
+          "realm": ["mcp-read"]
+        },
+        "clientRole": false
+      },
+      {
+        "name": "mcp-admin",
+        "description": "Administrative access to MCP tools (includes mcp-write)",
+        "composite": true,
+        "composites": {
+          "realm": ["mcp-write"]
+        },
+        "clientRole": false
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "powerscale-mcp",
+      "name": "PowerScale MCP (Interactive)",
+      "description": "Public client for interactive MCP clients (Claude Code, Cursor, etc.) using Authorization Code + PKCE",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "implicitFlowEnabled": false,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "http://localhost:*",
+        "https://localhost:*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "access.token.lifespan": "900",
+        "client.session.idle.timeout": "28800"
+      },
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "powerscale-m2m",
+      "name": "PowerScale MCP (Machine-to-Machine)",
+      "description": "Confidential client for service accounts and CI/CD using Client Credentials grant",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "implicitFlowEnabled": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "900"
+      },
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "roles"
+      ]
+    }
+  ],
+  "browserSecurityHeaders": {
+    "contentSecurityPolicyReportOnly": "",
+    "xContentTypeOptions": "nosniff",
+    "xRobotsTag": "none",
+    "xFrameOptions": "SAMEORIGIN",
+    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+    "xXSSProtection": "1; mode=block",
+    "strictTransportSecurity": "max-age=31536000; includeSubDomains"
+  },
+  "components": {
+    "org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy": [
+      {
+        "name": "Trusted Hosts",
+        "providerId": "trusted-hosts",
+        "subType": "anonymous",
+        "subComponents": {},
+        "config": {
+          "trusted-hosts": ["localhost", "127.0.0.1"],
+          "host-sending-registration-request-must-match": ["false"],
+          "client-uris-must-match": ["true"]
+        }
+      }
+    ]
+  },
+  "smtpServer": {},
+  "eventsEnabled": false,
+  "adminEventsEnabled": false,
+  "adminEventsDetailsEnabled": false,
+  "internationalizationEnabled": false,
+  "defaultLocale": "en"
+}
