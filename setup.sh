@@ -93,6 +93,25 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ---------------------------------------------------------------------------
+# Check prerequisites (docker and docker-compose required for setup)
+# ---------------------------------------------------------------------------
+if ! command -v docker &>/dev/null; then
+    fail "Docker is not installed."
+    fail "Install Docker: https://docs.docker.com/get-docker/"
+    exit 1
+fi
+
+if docker compose version &>/dev/null 2>&1; then
+    COMPOSE_CMD="docker compose"
+elif command -v docker-compose &>/dev/null; then
+    COMPOSE_CMD="docker-compose"
+else
+    fail "docker-compose is not available."
+    fail "Install Docker Compose: https://docs.docker.com/compose/install/"
+    exit 1
+fi
+
+# ---------------------------------------------------------------------------
 # Check for existing setup (vault.yml and/or keycloak-db-data volume)
 # Ask before prompting for new credentials
 # ---------------------------------------------------------------------------
@@ -157,25 +176,6 @@ if [[ "$VAULT_EXISTS" == true ]] || [[ "$KEYCLOAK_VOLUME_EXISTS" == true ]]; the
 
         ok "Existing setup cleared — proceeding with fresh installation"
     fi
-fi
-
-# ---------------------------------------------------------------------------
-# Check prerequisites
-# ---------------------------------------------------------------------------
-if ! command -v docker &>/dev/null; then
-    fail "Docker is not installed."
-    fail "Install Docker: https://docs.docker.com/get-docker/"
-    exit 1
-fi
-
-if docker compose version &>/dev/null 2>&1; then
-    COMPOSE_CMD="docker compose"
-elif command -v docker-compose &>/dev/null; then
-    COMPOSE_CMD="docker-compose"
-else
-    fail "docker-compose is not available."
-    fail "Install Docker Compose: https://docs.docker.com/compose/install/"
-    exit 1
 fi
 
 # ---------------------------------------------------------------------------
