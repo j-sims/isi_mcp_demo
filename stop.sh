@@ -45,9 +45,11 @@ fi
 # Stop services
 # ---------------------------------------------------------------------------
 if [[ "$CLEAN" == true ]]; then
-    echo "Stopping services, removing volumes and the vault..."
+    echo "Stopping services, removing volumes, certs, and vault..."
     docker-compose -f "$COMPOSE_FILE" $COMPOSE_PROFILES down -v && \
-    rm vault/vault.yml && \
+    rm -rf "${SCRIPT_DIR}/vault" && \
+    rm -rf "${SCRIPT_DIR}/nginx/certs" && \
+    rm -f "${SCRIPT_DIR}/playbooks"/*.yml 2>/dev/null || true && \
     echo done
 else
     echo "Stopping services..."

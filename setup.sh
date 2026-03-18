@@ -165,11 +165,23 @@ if [[ "$VAULT_EXISTS" == true ]] || [[ "$KEYCLOAK_VOLUME_EXISTS" == true ]]; the
         # User wants to overwrite — delete existing setup
         info "Removing existing setup..."
 
-        # Delete vault file if it exists
+        # Delete vault directory if it exists (removes vault.yml + any *.pem files)
         if [[ "$VAULT_EXISTS" == true ]]; then
-            rm -f "$VAULT_FILE"
-            ok "Removed vault.yml"
+            rm -rf "$VAULT_DIR"
+            ok "Removed vault directory"
         fi
+
+        # Remove cluster cert PEM files (in case vault was deleted separately)
+        rm -f "${VAULT_DIR}"/*.pem 2>/dev/null || true
+
+        # Remove TLS certs so setup.sh generates fresh ones
+        if [[ -d "${SCRIPT_DIR}/nginx/certs" ]]; then
+            rm -rf "${SCRIPT_DIR}/nginx/certs"
+            ok "Removed nginx/certs (will regenerate)"
+        fi
+
+        # Remove rendered playbooks from prior run
+        rm -f "${SCRIPT_DIR}/playbooks"/*.yml 2>/dev/null || true
 
         # Stop containers and remove volume
         if [[ "$KEYCLOAK_VOLUME_EXISTS" == true ]]; then
