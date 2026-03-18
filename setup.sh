@@ -255,7 +255,8 @@ fi
 # Write plaintext vault.yml (will be encrypted in the next step)
 # ---------------------------------------------------------------------------
 if [[ "$SKIP_SETUP" == false ]]; then
-    cat > "$VAULT_FILE" << VAULT_EOF
+    {
+        cat << VAULT_EOF
 clusters:
   ${CLUSTER_NAME}:
     host: "${VAULT_HOST}"
@@ -264,6 +265,15 @@ clusters:
     password: ${CLUSTER_PASS}
     verify_ssl: false
 VAULT_EOF
+        if [[ -n "${KEYCLOAK_DB_PASSWORD:-}" ]]; then
+            cat << KEYCLOAK_EOF
+
+keycloak:
+  db_password: ${KEYCLOAK_DB_PASSWORD}
+  admin_password: ${KEYCLOAK_ADMIN_PASSWORD}
+KEYCLOAK_EOF
+        fi
+    } > "$VAULT_FILE"
     chmod 600 "$VAULT_FILE"
     ok "Created vault.yml (plaintext — will encrypt next)"
 fi

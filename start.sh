@@ -66,17 +66,53 @@ if [[ "$AUTH_ENABLED" == true ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Prompt for Keycloak passwords only if needed
+# Resolve Keycloak passwords (from vault, or prompt as fallback)
 # ---------------------------------------------------------------------------
-if [[ "$KEYCLOAK_NEEDS_INIT" == true ]]; then
+# Helper: decrypt vault and extract a top-level keycloak.<key> value.
+# Uses the already-built isi_mcp image so no host-side ansible is needed.
+_vault_get_keycloak() {
+    local key="$1"
+    docker-compose -f "$COMPOSE_FILE" run --rm --no-deps \
+        -e VAULT_PASSWORD \
+        isi_mcp python3 -c "
+import os, yaml
+from ansible.parsing.vault import VaultLib, VaultSecret
+pwd = os.environ.get('VAULT_PASSWORD', '').encode()
+vault = VaultLib([('default', VaultSecret(pwd))])
+try:
+    data = yaml.safe_load(vault.decrypt(open('/app/vault/vault.yml').read()))
+    print(data.get('keycloak', {}).get('$key', ''), end='')
+except Exception:
+    pass
+" 2>/dev/null
+}
+
+if [[ "$AUTH_ENABLED" == true ]]; then
+    # DB password is needed every startup (keycloak connects to postgres on boot).
     export KEYCLOAK_DB_PASSWORD
-    KEYCLOAK_DB_PASSWORD=$(read -rs -p 'Keycloak DB password: ' pwd && echo "$pwd")
-    echo
+    KEYCLOAK_DB_PASSWORD=$(_vault_get_keycloak "db_password")
+    if [[ -z "$KEYCLOAK_DB_PASSWORD" ]]; then
+        KEYCLOAK_DB_PASSWORD=$(read -rs -p 'Keycloak DB password: ' pwd && echo "$pwd")
+        echo
+    else
+        echo "Keycloak DB password: (loaded from vault)"
+    fi
+
+    # Admin bootstrap password only needed when initialising for the first time.
     export KEYCLOAK_ADMIN_PASSWORD
-    KEYCLOAK_ADMIN_PASSWORD=$(read -rs -p 'Keycloak admin password: ' pwd && echo "$pwd")
-    echo
+    if [[ "$KEYCLOAK_NEEDS_INIT" == true ]]; then
+        KEYCLOAK_ADMIN_PASSWORD=$(_vault_get_keycloak "admin_password")
+        if [[ -z "$KEYCLOAK_ADMIN_PASSWORD" ]]; then
+            KEYCLOAK_ADMIN_PASSWORD=$(read -rs -p 'Keycloak admin password: ' pwd && echo "$pwd")
+            echo
+        else
+            echo "Keycloak admin password: (loaded from vault)"
+        fi
+    else
+        KEYCLOAK_ADMIN_PASSWORD=""
+    fi
 else
-    # Set empty defaults to avoid docker-compose errors
+    # Set empty defaults to avoid docker-compose variable substitution errors
     export KEYCLOAK_DB_PASSWORD=""
     export KEYCLOAK_ADMIN_PASSWORD=""
 fi

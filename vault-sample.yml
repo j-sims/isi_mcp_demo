@@ -23,3 +23,9 @@ clusters:
     username: root
     password: changeme
     verify_ssl: false
+
+# Optional: Keycloak passwords (only needed when AUTH_ENABLED=true in config/isi_mcp.env).
+# When present, start.sh extracts these automatically so only the vault password is needed at startup.
+keycloak:
+  db_password: changeme
+  admin_password: changeme
