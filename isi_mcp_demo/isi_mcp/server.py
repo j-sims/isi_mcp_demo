@@ -206,7 +206,15 @@ _AUTH_ENABLED = os.environ.get("AUTH_ENABLED", "").lower() == "true"
 
 if _FASTMCP_AUTH_AVAILABLE:
     class RoleEnforcementMiddleware(Middleware):
-        """Enforce Keycloak realm roles on tool calls and tool listing."""
+        """Enforce Keycloak realm roles on tool calls and tool listing.
+
+        Two-dimensional authorization:
+          1. Mode check: mcp-read / mcp-write / mcp-admin (unchanged)
+          2. Group check: mcp-group-{name} roles restrict visibility to
+             specific tool groups. If a user has NO group roles, all groups
+             are accessible (backward compatibility). mcp-admin always
+             bypasses group filtering.
+        """
 
         def _get_user_roles(self) -> set:
             """Extract realm roles from the current request's JWT claims."""
@@ -223,25 +231,65 @@ if _FASTMCP_AUTH_AVAILABLE:
                 return "mcp-write"
             return "mcp-read"
 
+        def _allowed_groups(self, user_roles: set):
+            """Return set of group names from mcp-group-* roles, or None if
+            no group roles are present (= all groups allowed)."""
+            groups = set()
+            for role in user_roles:
+                if role.startswith("mcp-group-"):
+                    group_name = role[len("mcp-group-"):]
+                    if group_name in TOOL_GROUPS:
+                        groups.add(group_name)
+            return groups if groups else None
+
         async def on_call_tool(self, context, call_next):
             tool_name = context.message.name
             required = self._required_role(tool_name)
             user_roles = self._get_user_roles()
+
+            # Mode check
             if required not in user_roles:
                 raise ToolError(
                     f"Access denied: '{tool_name}' requires the '{required}' role. "
                     f"Your roles: {sorted(user_roles) or ['none']}"
                 )
+
+            # Group check — admins and management tools bypass
+            if "mcp-admin" not in user_roles and tool_name not in MANAGEMENT_TOOLS:
+                allowed = self._allowed_groups(user_roles)
+                if allowed is not None:
+                    tool_group = _TOOL_TO_GROUP.get(tool_name)
+                    if tool_group not in allowed:
+                        raise ToolError(
+                            f"Access denied: '{tool_name}' (group '{tool_group}') "
+                            f"is not in your allowed groups. "
+                            f"Your group roles: {sorted(f'mcp-group-{g}' for g in allowed)}"
+                        )
+
             return await call_next(context)
 
         async def on_list_tools(self, context, call_next):
             tools = await call_next(context)
             user_roles = self._get_user_roles()
-            return [t for t in tools if self._required_role(t.name) in user_roles]
+
+            # Mode filter
+            filtered = [t for t in tools if self._required_role(t.name) in user_roles]
+
+            # Group filter — admins see everything
+            if "mcp-admin" not in user_roles:
+                allowed = self._allowed_groups(user_roles)
+                if allowed is not None:
+                    filtered = [
+                        t for t in filtered
+                        if t.name in MANAGEMENT_TOOLS
+                        or _TOOL_TO_GROUP.get(t.name) in allowed
+                    ]
+
+            return filtered
 
     if _AUTH_ENABLED and _auth_provider is not None:
         mcp.add_middleware(RoleEnforcementMiddleware())
-        logger.info("Role enforcement middleware enabled (mcp-read/write/admin)")
+        logger.info("Role enforcement middleware enabled (mcp-read/write/admin + group RBAC)")
 
 
 def _resolve_names_to_tools(names: List[str]) -> List[str]:

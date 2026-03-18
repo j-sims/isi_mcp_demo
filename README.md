@@ -6,7 +6,10 @@ An MCP (Model Context Protocol) server for Dell PowerScale (Isilon) storage clus
 
 The server provides 212 tools across 41 groups, including cluster health checks, capacity analysis, node inventory, license status, quota management, snapshots, replication, file operations, SMB/NFS/S3 configuration, user and group management, events, live performance metrics, advanced analytics (FSA, MetadataIQ, MPA), multi-party authorization, job management, and network topology. All operations are audited through rendered Ansible playbooks saved for compliance tracking. Credentials are stored in an encrypted Ansible Vault with support for multiple clusters and runtime switching.
 
-The server ships in **read-only mode by default** — all write tools are disabled at startup and must be explicitly enabled using the `powerscale_tools_toggle` management tool. This safe-by-default posture prevents accidental modifications.
+Tool access can be controlled in two ways:
+
+- **Without authentication** (`AUTH_ENABLED=false`): Use `config/tools.json` and the `powerscale_tools_toggle` management tool to enable or disable tools by group, mode, or individual name. All 212 tools ship enabled by default; disable write tools or specific groups to restrict what the LLM can do.
+- **With authentication** (`AUTH_ENABLED=true`): **Keycloak RBAC** controls access with two dimensions — **mode roles** (`mcp-read`, `mcp-write`, `mcp-admin`) and **group roles** (`mcp-group-quotas`, `mcp-group-smb`, etc.) for fine-grained per-user access control. This is the recommended approach for multi-user or production deployments.
 
 ## Documentation
 

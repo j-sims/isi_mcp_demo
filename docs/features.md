@@ -5,8 +5,8 @@
 The PowerScale MCP server provides comprehensive automation and management capabilities for PowerScale clusters:
 
 - **Multi-cluster support** with runtime cluster switching
-- **212 MCP tools** organized into 41 groups (157 read + 55 write; 4 management-write always enabled)
-- **Read-only by default** — all 51 write tools are disabled at startup; enable as needed
+- **212 MCP tools** organized into 41 groups (157 read + 55 write), all enabled by default
+- **Two access control models**: tool toggle via `tools.json`/`powerscale_tools_toggle` (without auth), or Keycloak RBAC with mode + group roles (with auth)
 - **Dynamic tool management** to keep LLM context efficient
 - **Health checks** including quorum, service lights, critical events, network, and capacity
 - **Node inventory** with per-node hardware, drive, sensor, and state details
@@ -73,16 +73,16 @@ The PowerScale MCP server provides comprehensive automation and management capab
 | ApiSessions | 3 | 3 | 0 | Platform API session settings and invalidations |
 | GroupnetsSummary | 1 | 1 | 0 | GroupNet summary information |
 
-**Total: 212 tools across 41 groups (157 read + 55 write; 4 management-write always enabled)**
+**Total: 212 tools across 41 groups (157 read + 55 write), all enabled by default**
 
-**Default state**: The server starts in read-only mode. All 51 write tools (across domain groups) are disabled at startup, plus 4 management write tools are always enabled. Use `powerscale_tools_toggle` to enable domain write functionality as needed:
+**Access control**: Without auth, use `powerscale_tools_toggle` to disable tools by group or mode. With auth (`AUTH_ENABLED=true`), Keycloak RBAC controls per-user access via mode and group roles. Runtime toggle examples:
 
 ```
-# Enable all write tools
-powerscale_tools_toggle(names=["write"], action="enable")
+# Disable all write tools (restrict to read-only)
+powerscale_tools_toggle(names=["write"], action="disable")
 
-# Enable a specific group
-powerscale_tools_toggle(names=["quotas"], action="enable")
+# Disable a specific group
+powerscale_tools_toggle(names=["quotas"], action="disable")
 
 # Enable a single tool
 powerscale_tools_toggle(names=["powerscale_quota_set"], action="enable")

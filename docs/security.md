@@ -7,18 +7,26 @@
 - The vault password is never stored on disk — provide it only at runtime via the `VAULT_PASSWORD` environment variable
 - Credentials are decrypted in memory and cached by the VaultManager singleton for the duration of the server process
 
-## Write Tools Disabled by Default
+## Access Control
 
-The server ships in **read-only mode** — all 55 domain write tools are disabled at startup. This safe-by-default posture means:
+All 212 tools ship enabled by default. There are two approaches to controlling tool access:
 
-- A newly deployed server can only query cluster state, not modify it
-- Write capabilities must be explicitly enabled using `powerscale_tools_toggle` before the LLM can make changes
-- Enabled state persists in `config/tools.json`; re-disable write tools after a task is complete if desired
-- Four **management write tools** (`powerscale_tools_toggle`, `powerscale_cluster_select`, `powerscale_cluster_add`, `powerscale_cluster_remove`) are always enabled for cluster and tool control
+### Without Authentication (`AUTH_ENABLED=false`)
 
-To enable all domain write tools: `powerscale_tools_toggle(names=["write"], action="enable")`
+Use `config/tools.json` and the `powerscale_tools_toggle` management tool to enable or disable tools by group, mode, or individual name. This is suitable for single-user or trusted-network deployments. For example, disable all write tools to restrict the server to read-only operations, or disable specific groups to limit scope.
 
-To return to read-only mode: `powerscale_tools_toggle(names=["write"], action="disable")`
+### With Authentication (`AUTH_ENABLED=true`) — Recommended for Production
+
+**Keycloak RBAC** provides per-user access control with two dimensions:
+
+- **Mode roles**: `mcp-read` (read tools), `mcp-write` (write tools, includes read), `mcp-admin` (management tools, includes write)
+- **Group roles**: `mcp-group-{name}` roles restrict visibility to specific tool groups (e.g., `mcp-group-quotas`, `mcp-group-smb`). If a user has no group roles, all groups are accessible (backward compatible). `mcp-admin` always bypasses group filtering
+- Users only see and can call tools matching both their mode and group roles
+- 39 group roles are available (one per tool group, excluding `management`)
+
+Both mechanisms can be used together — tool toggle controls which tools are registered with the server, while RBAC controls which registered tools each authenticated user can see and call.
+
+Four **management write tools** (`powerscale_tools_toggle`, `powerscale_cluster_select`, `powerscale_cluster_add`, `powerscale_cluster_remove`) cannot be disabled and are always available
 
 ## Mutating Operations
 
@@ -188,7 +196,7 @@ In production environments:
 ## Recommended Practices
 
 1. **Enable authentication** (set `AUTH_ENABLED=true` in `config/isi_mcp.env`) for any deployment accessible beyond localhost or a trusted private network
-2. **Keep write tools disabled** until needed — enable for the task, then disable again to minimize risk
+2. **Assign least-privilege roles** — use group roles (e.g., `mcp-group-quotas`) to limit users to only the tool groups they need
 3. **Rotate vault passwords regularly** using the vault rekey command
 4. **Use strong vault passwords** with sufficient entropy
 5. **Restrict access to vault.yml** file permissions (read-only by server user)

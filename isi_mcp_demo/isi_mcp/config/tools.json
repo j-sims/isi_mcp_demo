@@ -44,31 +44,31 @@
   "powerscale_quota_set": {
     "tool_group": "quotas",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "quotas"
   },
   "powerscale_quota_increment": {
     "tool_group": "quotas",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "quotas"
   },
   "powerscale_quota_decrement": {
     "tool_group": "quotas",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "quotas"
   },
   "powerscale_quota_create": {
     "tool_group": "quotas",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "quotas"
   },
   "powerscale_quota_remove": {
     "tool_group": "quotas",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "quotas"
   },
   "powerscale_snapshot_get": {
@@ -98,31 +98,31 @@
   "powerscale_snapshot_schedule_create": {
     "tool_group": "snapshots",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "snapshots"
   },
   "powerscale_snapshot_schedule_remove": {
     "tool_group": "snapshots",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "snapshots"
   },
   "powerscale_snapshot_create": {
     "tool_group": "snapshots",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "snapshots"
   },
   "powerscale_snapshot_delete": {
     "tool_group": "snapshots",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "snapshots"
   },
   "powerscale_snapshot_alias_create": {
     "tool_group": "snapshots",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "snapshots"
   },
   "powerscale_synciq_get": {
@@ -134,13 +134,13 @@
   "powerscale_synciq_create": {
     "tool_group": "synciq",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "synciq"
   },
   "powerscale_synciq_remove": {
     "tool_group": "synciq",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "synciq"
   },
   "powerscale_datamover_policy_get": {
@@ -164,13 +164,13 @@
   "powerscale_datamover_policy_create": {
     "tool_group": "datamover",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "datamover"
   },
   "powerscale_datamover_policy_delete": {
     "tool_group": "datamover",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "datamover"
   },
   "powerscale_datamover_account_get": {
@@ -188,13 +188,13 @@
   "powerscale_datamover_account_create": {
     "tool_group": "datamover",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "datamover"
   },
   "powerscale_datamover_account_delete": {
     "tool_group": "datamover",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "datamover"
   },
   "powerscale_datamover_base_policy_get": {
@@ -212,13 +212,13 @@
   "powerscale_datamover_base_policy_create": {
     "tool_group": "datamover",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "datamover"
   },
   "powerscale_datamover_base_policy_delete": {
     "tool_group": "datamover",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "datamover"
   },
   "powerscale_filepool_policy_get": {
@@ -242,19 +242,19 @@
   "powerscale_filepool_policy_create": {
     "tool_group": "filepool",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "filepool"
   },
   "powerscale_filepool_policy_update": {
     "tool_group": "filepool",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "filepool"
   },
   "powerscale_filepool_policy_remove": {
     "tool_group": "filepool",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "filepool"
   },
   "powerscale_nfs_get": {
@@ -272,19 +272,19 @@
   "powerscale_nfs_create": {
     "tool_group": "nfs",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "nfs"
   },
   "powerscale_nfs_remove": {
     "tool_group": "nfs",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "nfs"
   },
   "powerscale_nfs_global_settings_set": {
     "tool_group": "nfs",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "nfs"
   },
   "powerscale_smb_get": {
@@ -314,37 +314,37 @@
   "powerscale_smb_create": {
     "tool_group": "smb",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "smb"
   },
   "powerscale_smb_remove": {
     "tool_group": "smb",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "smb"
   },
   "powerscale_smb_global_settings_set": {
     "tool_group": "smb",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "smb"
   },
   "powerscale_smb_session_close": {
     "tool_group": "smb",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "smb"
   },
   "powerscale_smb_sessions_close_by_user": {
     "tool_group": "smb",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "smb"
   },
   "powerscale_smb_openfile_close": {
     "tool_group": "smb",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "smb"
   },
   "powerscale_s3_get": {
@@ -356,13 +356,13 @@
   "powerscale_s3_create": {
     "tool_group": "s3",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "s3"
   },
   "powerscale_s3_remove": {
     "tool_group": "s3",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "s3"
   },
   "powerscale_directory_list": {
@@ -422,79 +422,79 @@
   "powerscale_directory_create": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "filemgmt"
   },
   "powerscale_directory_delete": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "filemgmt"
   },
   "powerscale_directory_move": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "filemgmt"
   },
   "powerscale_directory_copy": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "filemgmt"
   },
   "powerscale_file_create": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "filemgmt"
   },
   "powerscale_file_delete": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "filemgmt"
   },
   "powerscale_file_move": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "filemgmt"
   },
   "powerscale_file_copy": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "filemgmt"
   },
   "powerscale_acl_set": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "filemgmt"
   },
   "powerscale_metadata_set": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "filemgmt"
   },
   "powerscale_access_point_create": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "filemgmt"
   },
   "powerscale_access_point_delete": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "filemgmt"
   },
   "powerscale_worm_set": {
     "tool_group": "filemgmt",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "filemgmt"
   },
   "powerscale_user_get": {
@@ -506,19 +506,19 @@
   "powerscale_user_create": {
     "tool_group": "users",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "users"
   },
   "powerscale_user_modify": {
     "tool_group": "users",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "users"
   },
   "powerscale_user_remove": {
     "tool_group": "users",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "users"
   },
   "powerscale_group_get": {
@@ -530,19 +530,19 @@
   "powerscale_group_create": {
     "tool_group": "groups",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "groups"
   },
   "powerscale_group_modify": {
     "tool_group": "groups",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "groups"
   },
   "powerscale_group_remove": {
     "tool_group": "groups",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "groups"
   },
   "powerscale_event_get": {
@@ -728,7 +728,7 @@
   "powerscale_tools_toggle": {
     "tool_group": "management",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "none"
   },
   "powerscale_cluster_list": {
@@ -740,19 +740,19 @@
   "powerscale_cluster_select": {
     "tool_group": "management",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "none"
   },
   "powerscale_cluster_add": {
     "tool_group": "management",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "none"
   },
   "powerscale_cluster_remove": {
     "tool_group": "management",
     "tool_mode": "write",
-    "enabled": false,
+    "enabled": true,
     "function": "none"
   },
   "powerscale_hardware_fcports_get": {

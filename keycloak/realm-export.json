@@ -39,6 +39,240 @@
           "realm": ["mcp-write"]
         },
         "clientRole": false
+      },
+      {
+        "name": "mcp-group-api_sessions",
+        "description": "Access to api_sessions tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-capacity",
+        "description": "Access to capacity tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-cluster_nodes",
+        "description": "Access to cluster_nodes tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-connectivity",
+        "description": "Access to connectivity tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-datamover",
+        "description": "Access to datamover tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-debug",
+        "description": "Access to debug tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-events",
+        "description": "Access to events tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-filemgmt",
+        "description": "Access to filemgmt tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-filepool",
+        "description": "Access to filepool tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-fsa",
+        "description": "Access to fsa tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-groupnets_summary",
+        "description": "Access to groupnets_summary tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-groups",
+        "description": "Access to groups tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-hardening",
+        "description": "Access to hardening tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-hardware",
+        "description": "Access to hardware tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-id_resolution",
+        "description": "Access to id_resolution tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-jobs",
+        "description": "Access to jobs tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-lfn",
+        "description": "Access to lfn tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-licensing",
+        "description": "Access to licensing tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-local_info",
+        "description": "Access to local_info tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-metadataiq",
+        "description": "Access to metadataiq tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-mpa",
+        "description": "Access to mpa tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-networking",
+        "description": "Access to networking tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-nfs",
+        "description": "Access to nfs tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-performance",
+        "description": "Access to performance tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-quota_reports",
+        "description": "Access to quota_reports tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-quotas",
+        "description": "Access to quotas tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-s3",
+        "description": "Access to s3 tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-smb",
+        "description": "Access to smb tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-snapshot_changelists",
+        "description": "Access to snapshot_changelists tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-snapshots",
+        "description": "Access to snapshots tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-statistics",
+        "description": "Access to statistics tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-storagepool_nodetypes",
+        "description": "Access to storagepool_nodetypes tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-supportassist",
+        "description": "Access to supportassist tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-synciq",
+        "description": "Access to synciq tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-synciq_reports",
+        "description": "Access to synciq_reports tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-users",
+        "description": "Access to users tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-utils",
+        "description": "Access to utils tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-verify",
+        "description": "Access to verify tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "mcp-group-zones_summary",
+        "description": "Access to zones_summary tool group",
+        "composite": false,
+        "clientRole": false
       }
     ]
   },

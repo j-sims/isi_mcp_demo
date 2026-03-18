@@ -55,7 +55,10 @@ All other PowerScale tools automatically operate against the currently selected 
 
 ## Dynamic Tool Management
 
-Each MCP tool has a **mode** (`read` or `write`) and an **enabled** flag. The server ships in read-only mode — all 55 domain write tools are disabled by default and must be explicitly enabled.
+Each MCP tool has a **mode** (`read` or `write`) and an **enabled** flag. All 212 tools ship enabled by default. Tool access can be controlled in two ways:
+
+- **Without auth** (`AUTH_ENABLED=false`): Use `powerscale_tools_toggle` and `config/tools.json` to enable/disable tools by group, mode, or name. This is the primary access control mechanism for single-user or trusted-network deployments.
+- **With auth** (`AUTH_ENABLED=true`): Keycloak RBAC provides per-user access control via mode roles and group roles. The tool toggle mechanism still works alongside RBAC — it controls which tools are registered, while RBAC controls which registered tools each user can see.
 
 Tool state is persisted in `config/tools.json` across container restarts.
 
@@ -87,7 +90,7 @@ powerscale_tools_toggle(names=["quotas"], action="enable")
 # Enable a single tool
 powerscale_tools_toggle(names=["powerscale_quota_set"], action="enable")
 
-# Disable write tools (return to read-only mode)
+# Disable write tools (restrict to read-only)
 powerscale_tools_toggle(names=["write"], action="disable")
 ```
 

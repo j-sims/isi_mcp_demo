@@ -1,6 +1,9 @@
 # Capabilities and Functionality
 
-The server provides comprehensive cluster management through 212 MCP tools organized into 41 groups. The server starts in **read-only mode** — all 55 domain write tools are disabled by default and must be explicitly enabled before the LLM can make changes to the cluster. Four management tools for cluster and tool control are always enabled.
+The server provides comprehensive cluster management through 212 MCP tools organized into 41 groups. All tools ship enabled by default. Tool access can be controlled in two ways:
+
+- **Without auth** (`AUTH_ENABLED=false`): Use `config/tools.json` and the `powerscale_tools_toggle` management tool to enable/disable tools by group, mode, or name
+- **With auth** (`AUTH_ENABLED=true`): Keycloak RBAC provides per-user access control — mode roles (`mcp-read`/`mcp-write`/`mcp-admin`) control read vs write access, and group roles (`mcp-group-{name}`) restrict visibility to specific tool groups
 
 For the complete feature list including Phase 8 analytics and diagnostics modules, see **[Features & Tools](features.md)**.
 
