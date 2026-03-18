@@ -97,7 +97,7 @@ class VaultManager:
         encrypted = vault.encrypt(plaintext)
         self.vault_file.write_bytes(encrypted if isinstance(encrypted, bytes) else encrypted.encode())
 
-    def add_cluster(self, name: str, host: str, port: int, username: str, password: str, verify_ssl: bool):
+    def add_cluster(self, name: str, host: str, port: int, username: str, password: str, verify_ssl: bool, ca_bundle: str = None):
         """Add or update a cluster and persist the vault."""
         if not host.startswith(('http://', 'https://')):
             host = f'https://{host}'
@@ -108,6 +108,8 @@ class VaultManager:
             'password': password,
             'verify_ssl': verify_ssl,
         }
+        if ca_bundle:
+            self._clusters[name]['ca_bundle'] = ca_bundle
         if not self._selected:
             self._selected = name
         self._save_vault()

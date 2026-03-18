@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import re
+import subprocess
 import time
 from datetime import datetime
 from typing import Dict, Any, Optional, List
@@ -4502,7 +4503,7 @@ def powerscale_cluster_add(
     port: int = 8080,
     username: str = "root",
     password: str = "",
-    verify_ssl: bool = False,
+    verify_ssl: bool = True,
 ) -> Dict[str, Any]:
     """
     Add a new PowerScale cluster to the vault, or update an existing one.
@@ -4510,6 +4511,9 @@ def powerscale_cluster_add(
     IMPORTANT: This is a MUTATING operation. Confirm with the user before executing.
 
     The cluster credentials are encrypted and saved to the vault file immediately.
+    This tool automatically extracts the cluster's TLS certificate for SSL verification
+    (useful for self-signed certificates), but falls back gracefully if extraction fails.
+
     Use powerscale_cluster_select to switch to the new cluster.
 
     Arguments:
@@ -4518,15 +4522,37 @@ def powerscale_cluster_add(
     - port: API port (default 8080)
     - username: Admin username (default root)
     - password: Admin password
-    - verify_ssl: Whether to verify SSL certificates (default false for self-signed certs)
+    - verify_ssl: Whether to verify SSL certificates (default true; auto-disabled cert extracted)
     """
     try:
+        # Extract cluster certificate for SSL verification (best-effort, falls back gracefully)
+        host_bare = re.sub(r'^https?://', '', host).split(':')[0]
+        vault_dir = os.path.dirname(os.environ.get("VAULT_FILE", "/app/vault/vault.yml"))
+        cert_path_container = f"{vault_dir}/{name}_cert.pem"
+        ca_bundle = None
+
+        try:
+            result = subprocess.run(
+                ["sh", "-c",
+                 f"openssl s_client -connect {host_bare}:{port} -showcerts "
+                 f"</dev/null 2>/dev/null | openssl x509 -outform PEM > {cert_path_container}"],
+                timeout=10, capture_output=True,
+            )
+            if result.returncode == 0 and os.path.getsize(cert_path_container) > 0:
+                ca_bundle = cert_path_container
+                logger.info(f"Extracted certificate for cluster '{name}' at {cert_path_container}")
+        except (subprocess.TimeoutExpired, OSError, FileNotFoundError) as e:
+            logger.debug(f"Certificate extraction failed (will use verify_ssl={verify_ssl}): {e}")
+            ca_bundle = None
+
         vm = VaultManager()
-        vm.add_cluster(name, host, port, username, password, verify_ssl)
+        vm.add_cluster(name, host, port, username, password, verify_ssl, ca_bundle=ca_bundle)
+        ssl_status = "with certificate pinning" if ca_bundle else "with verify_ssl=true"
         return {
             "success": True,
             "cluster": name,
-            "message": f"Cluster '{name}' saved to vault. Use powerscale_cluster_select to target it.",
+            "ssl_verified": ca_bundle is not None,
+            "message": f"Cluster '{name}' saved to vault {ssl_status}. Use powerscale_cluster_select to target it.",
             "clusters": vm.list_clusters(),
         }
     except Exception as e:

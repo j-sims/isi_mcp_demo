@@ -28,9 +28,38 @@ All mutating operations (create, delete, modify, set) include safety prompts in 
 
 ### Cluster-to-Server TLS
 
-- Set `verify_ssl: false` only for clusters with self-signed certificates
-- For production clusters, always use valid certificates and set `verify_ssl: true`
-- Certificate verification is per-cluster and configured in the vault
+The MCP server verifies TLS certificates for all cluster connections. By default, `verify_ssl: true` — the server validates the cluster's certificate against the system certificate store.
+
+For **self-signed certificates** (common on PowerScale clusters), the server supports per-cluster CA bundle pinning via the `ca_bundle` field:
+
+```yaml
+clusters:
+  my_cluster:
+    host: "https://192.168.0.33"
+    port: 8080
+    username: root
+    password: ...
+    verify_ssl: true
+    ca_bundle: /app/vault/my_cluster_cert.pem  # Path to cluster's self-signed cert (container path)
+```
+
+The `ca_bundle` field takes precedence — when present, the server validates the cluster certificate specifically against this CA bundle rather than the system certificate store.
+
+**Automatic extraction (recommended):**
+- `./setup.sh` automatically extracts the cluster's TLS certificate during initial setup and stores it in the vault directory
+- No manual steps required — the certificate is extracted inside the container and referenced in `vault.yml`
+- Transparent to the user — just run `./setup.sh` as normal
+
+**Manual refresh after cluster certificate rotation:**
+- If the cluster's certificate changes (e.g., re-keyed or renewed), re-run `./setup.sh` to extract and update the `ca_bundle`
+- Alternatively, use the `powerscale_cluster_add` management tool at runtime to update the cluster and extract the new certificate
+
+**For CA-signed certificates (production):**
+- If your cluster uses a certificate signed by your corporate CA, omit the `ca_bundle` field and keep `verify_ssl: true`
+- The certificate will be validated against the system certificate store (assuming your CA root is installed in the container)
+
+**For development/testing only:**
+- Set `verify_ssl: false` to disable all certificate verification (exposes you to MITM attacks — only for isolated test networks)
 
 ### Client-to-Server TLS (Nginx Reverse Proxy)
 
@@ -163,7 +192,7 @@ In production environments:
 3. **Rotate vault passwords regularly** using the vault rekey command
 4. **Use strong vault passwords** with sufficient entropy
 5. **Restrict access to vault.yml** file permissions (read-only by server user)
-6. **Replace self-signed certs** with CA-signed certificates for production
+6. **Use per-cluster CA bundle pinning** for self-signed certificates (recommended) — `setup.sh` extracts them automatically. For production, replace with CA-signed certificates if possible
 7. **Protect the Keycloak admin console** — restrict `/auth/admin/` by IP at the nginx layer if the server is internet-facing
 8. **Rotate the `powerscale-m2m` client secret** periodically via Keycloak admin → Clients → Credentials → Regenerate
 9. **Log MCP operations** via nginx access logs for compliance auditing

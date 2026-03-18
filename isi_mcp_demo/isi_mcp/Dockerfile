@@ -6,6 +6,7 @@ WORKDIR /app
 #   iputils-ping  - for ICMP health checks
 #   sshpass, openssh-client - Ansible connectivity
 #   curl - for Docker HEALTHCHECK
+#   openssl - for cluster TLS certificate extraction in setup.sh
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
@@ -13,6 +14,7 @@ RUN set -eux; \
         sshpass \
         openssh-client \
         curl \
+        openssl \
         gosu; \
     rm -rf /var/lib/apt/lists/*
 

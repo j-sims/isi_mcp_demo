@@ -4,6 +4,8 @@
 #   Run: ./setup.sh
 #   This will prompt you for cluster credentials and vault password,
 #   then create and encrypt vault.yml automatically.
+#   The cluster's TLS certificate is also extracted and referenced via ca_bundle.
+#   (No additional steps needed — the cert extraction is automatic and transparent.)
 #
 # MANUAL SETUP (if needed):
 #   1. Copy this file:         cp vault-sample.yml vault.yml
@@ -22,7 +24,8 @@ clusters:
     port: 8080
     username: root
     password: changeme
-    verify_ssl: false
+    verify_ssl: true
+    ca_bundle: /app/vault/my_cluster_cert.pem  # Path to cluster's self-signed cert; auto-extracted by setup.sh
 
 # Optional: Keycloak passwords (only needed when AUTH_ENABLED=true in config/isi_mcp.env).
 # When present, start.sh extracts these automatically so only the vault password is needed at startup.

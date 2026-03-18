@@ -259,6 +259,11 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Initialize cluster CA bundle variable (will be set during cert extraction)
+# ---------------------------------------------------------------------------
+CLUSTER_CA_BUNDLE=""
+
+# ---------------------------------------------------------------------------
 # Write plaintext vault.yml (will be encrypted in the next step)
 # ---------------------------------------------------------------------------
 if [[ "$SKIP_SETUP" == false ]]; then
@@ -270,7 +275,7 @@ clusters:
     port: ${CLUSTER_PORT}
     username: ${CLUSTER_USER}
     password: ${CLUSTER_PASS}
-    verify_ssl: false
+    verify_ssl: true
 VAULT_EOF
         if [[ -n "${KEYCLOAK_DB_PASSWORD:-}" ]]; then
             cat << KEYCLOAK_EOF
@@ -303,6 +308,42 @@ fi
 info "Building Docker image..."
 $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" build
 ok "Image built"
+
+# ---------------------------------------------------------------------------
+# Extract cluster TLS certificate (for SSL verification without replacing cert)
+#
+# Uses the just-built Docker image — no openssl needed on the host.
+# The vault dir is already bind-mounted at /app/vault inside the container.
+# Extracts the cert and saves it to vault/${CLUSTER_NAME}_cert.pem, then updates vault.yml.
+# ---------------------------------------------------------------------------
+if [[ "$SKIP_SETUP" == false ]]; then
+    HOST_BARE="${VAULT_HOST#https://}"  # strip https:// prefix
+    HOST_BARE="${HOST_BARE#http://}"
+    info "Extracting cluster TLS certificate for SSL verification..."
+
+    # Use openssl inside the container to extract the certificate
+    if $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" run --rm isi_mcp \
+        sh -c "openssl s_client -connect ${HOST_BARE}:${CLUSTER_PORT} \
+               -showcerts </dev/null 2>/dev/null \
+               | openssl x509 -outform PEM \
+               > /app/vault/${CLUSTER_NAME}_cert.pem" 2>/dev/null \
+        && [[ -s "${VAULT_DIR}/${CLUSTER_NAME}_cert.pem" ]]; then
+        ok "Cluster certificate saved to vault/${CLUSTER_NAME}_cert.pem"
+        CLUSTER_CA_BUNDLE="/app/vault/${CLUSTER_NAME}_cert.pem"
+
+        # Update vault.yml to include ca_bundle line
+        if grep -q "^    ca_bundle:" "$VAULT_FILE" 2>/dev/null; then
+            # Already has ca_bundle, just update it
+            sed -i "s|^    ca_bundle:.*|    ca_bundle: ${CLUSTER_CA_BUNDLE}|" "$VAULT_FILE"
+        else
+            # Add ca_bundle line after verify_ssl
+            sed -i "/^    verify_ssl:/a\\    ca_bundle: ${CLUSTER_CA_BUNDLE}" "$VAULT_FILE"
+        fi
+    else
+        warn "Could not extract cluster certificate — falling back to verify_ssl: true (no ca_bundle)"
+        rm -f "${VAULT_DIR}/${CLUSTER_NAME}_cert.pem" 2>/dev/null || true
+    fi
+fi
 
 # ---------------------------------------------------------------------------
 # Encrypt vault.yml using VaultLib Python API inside the built image.

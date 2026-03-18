@@ -15,6 +15,7 @@ class Cluster:
         username: str = None,
         password: str = None,
         verify_ssl: bool = None,
+        ca_bundle: str = None,
         debug_env_var: str = "DEBUG",
         ):
 
@@ -28,9 +29,14 @@ class Cluster:
         self.username = username or os.environ.get("USERNAME")
         self.password = password or os.environ.get("PASSWORD")
 
-        if verify_ssl is None:
-            verify_ssl = os.environ.get("VERIFY_SSL", "False").lower() == "true"
-        self.verify_ssl = verify_ssl
+        # ca_bundle takes precedence for SSL verification
+        # If provided, urllib3 will verify the cluster cert against this CA bundle file
+        if ca_bundle:
+            self.verify_ssl = ca_bundle
+        else:
+            if verify_ssl is None:
+                verify_ssl = os.environ.get("VERIFY_SSL", "True").lower() == "true"
+            self.verify_ssl = verify_ssl
 
         if not self.host or not self.port or not self.username or not self.password:
             logger.debug(
@@ -45,8 +51,8 @@ class Cluster:
             logger.debug("HOST=%s PORT=%s USERNAME=%s VERIFY_SSL=%s URL=%s",
                          self.host, self.port, self.username, self.verify_ssl, self.url)
 
-        # disable urllib3 warnings if SSL verification is turned off
-        if not self.verify_ssl:
+        # disable urllib3 warnings only if SSL verification is explicitly disabled (not when using ca_bundle)
+        if self.verify_ssl is False:
             urllib3.disable_warnings()
 
         # Build SDK configuration and API client
@@ -96,6 +102,7 @@ class Cluster:
                 username=creds.get("username"),
                 password=creds.get("password"),
                 verify_ssl=creds.get("verify_ssl"),
+                ca_bundle=creds.get("ca_bundle"),
                 debug_env_var=debug_env_var,
             )
         # Fallback: use env vars (original behavior)
