@@ -45,19 +45,27 @@ Optional:
   --port PORT     API port (default: 8080)
   --user USER     Cluster username (default: root)
   --name NAME     Cluster label in vault.yml (default: my_cluster)
-  --vault-pass VAULTPASS  Vault encryption password (prompted if not provided)
   --detach        Start the server in the background (default: foreground)
   -h, --help      Show this help message
+
+Environment Variables (for non-interactive setup — avoid shell history):
+  VAULT_PASSWORD              Vault encryption password (prompted if not set)
+  KEYCLOAK_DB_PASSWORD        Keycloak database password when AUTH_ENABLED=true (prompted if not set)
+  KEYCLOAK_ADMIN_PASSWORD     Keycloak admin password when AUTH_ENABLED=true (prompted if not set)
 
 Examples:
   # Interactive setup (prompts for host, cluster password, and vault password)
   ./setup.sh
 
-  # Non-interactive setup
-  ./setup.sh --host 192.168.0.33 --user root --pass secret --vault-pass vaultkey123
+  # Non-interactive setup using read to avoid shell history
+  export VAULT_PASSWORD=$(read -s -p 'Vault password: ' pwd && echo $pwd)
+  ./setup.sh --host 192.168.0.33 --user root --pass secret
 
-  # Start in background
-  ./setup.sh --host 192.168.0.33 --pass secret --vault-pass vaultkey123 --detach
+  # Start in background with auth enabled
+  export VAULT_PASSWORD=$(read -s -p 'Vault password: ' pwd && echo $pwd)
+  export KEYCLOAK_DB_PASSWORD=$(read -s -p 'Keycloak DB password: ' pwd && echo $pwd)
+  export KEYCLOAK_ADMIN_PASSWORD=$(read -s -p 'Keycloak admin password: ' pwd && echo $pwd)
+  ./setup.sh --host 192.168.0.33 --pass secret --detach
 
 After setup, restart the server with vault password:
   docker compose up -e VAULT_PASSWORD=vaultkey123
@@ -75,7 +83,7 @@ CLUSTER_PORT=8080
 CLUSTER_USER="root"
 CLUSTER_PASS=""
 CLUSTER_NAME="my_cluster"
-VAULT_PASS=""
+VAULT_PASS="${VAULT_PASSWORD:-}"
 NODETACH=true
 
 while [[ $# -gt 0 ]]; do
@@ -85,8 +93,7 @@ while [[ $# -gt 0 ]]; do
         --user)       CLUSTER_USER="$2"; shift 2 ;;
         --pass)       CLUSTER_PASS="$2"; shift 2 ;;
         --name)       CLUSTER_NAME="$2"; shift 2 ;;
-        --vault-pass) VAULT_PASS="$2"; shift 2 ;;
-        --nodetach)     NODETACH=false; shift ;;
+        --detach)     NODETACH=false; shift ;;
         -h|--help)    show_help; exit 0 ;;
         *)            fail "Unknown argument: $1"; echo "Run ./setup.sh --help for usage."; exit 1 ;;
     esac
@@ -350,7 +357,7 @@ echo ""
 warn "Note: Self-signed certs require clients to accept untrusted certificates."
 echo ""
 info "To restart the server later (requires vault password):"
-echo "  export VAULT_PASSWORD=\$(read -s -p 'Enter your password: ' pwd && echo \$pwd)"
+echo "  export VAULT_PASSWORD=\$(read -s -p 'Vault password: ' pwd && echo \$pwd)"
 if [[ -n "$COMPOSE_PROFILES" ]]; then
 echo "  export KEYCLOAK_DB_PASSWORD=\$(read -s -p 'Keycloak DB password: ' pwd && echo \$pwd)"
 echo "  export KEYCLOAK_ADMIN_PASSWORD=\$(read -s -p 'Keycloak admin password: ' pwd && echo \$pwd)"

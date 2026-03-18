@@ -109,7 +109,7 @@ class AnsibleRunner:
 
         return playbook_path
 
-    def run_playbook(self, playbook_path: Path) -> dict:
+    def run_playbook(self, playbook_path: Path, extra_extravars: dict = None) -> dict:
         """
         Execute a playbook using ansible-runner and return structured results.
 
@@ -118,6 +118,8 @@ class AnsibleRunner:
 
         Args:
             playbook_path: Absolute path to the rendered playbook YAML
+            extra_extravars: Optional dict of additional extravars to inject at runtime
+                (e.g., user passwords, other sensitive values)
 
         Returns:
             dict with keys: success, status, rc, playbook_path, stdout
@@ -128,6 +130,10 @@ class AnsibleRunner:
             "api_user": self.cluster.username,
             "api_password": self.cluster.password,
         }
+
+        # Merge in any additional runtime extravars (e.g., user passwords)
+        if extra_extravars:
+            extravars.update(extra_extravars)
 
         # Set environment variables for ansible-runner to find collections
         # In Docker: /app/.ansible/collections (installed as mcp user)
@@ -174,7 +180,7 @@ class AnsibleRunner:
 
         return result
 
-    def execute(self, template_name: str, variables: dict) -> dict:
+    def execute(self, template_name: str, variables: dict, extra_extravars: dict = None) -> dict:
         """
         Full pipeline: render template, then execute the resulting playbook.
 
@@ -186,6 +192,8 @@ class AnsibleRunner:
         Args:
             template_name: The .yml.j2 template filename
             variables: Resource-specific variables
+            extra_extravars: Optional dict of additional extravars to inject at runtime
+                (e.g., user passwords, other sensitive values kept out of rendered playbooks)
 
         Returns:
             dict with execution results (same shape as run_playbook output),
@@ -207,4 +215,4 @@ class AnsibleRunner:
                 ),
             }
 
-        return self.run_playbook(playbook_path)
+        return self.run_playbook(playbook_path, extra_extravars=extra_extravars)

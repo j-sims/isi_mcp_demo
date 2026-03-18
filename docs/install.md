@@ -31,19 +31,21 @@ The script prompts for your cluster host, credentials, and a vault encryption pa
 - The vault password is never stored on disk — provide it only at runtime via the `VAULT_PASSWORD` environment variable
 - Builds the Docker image and starts the MCP server
 
-**Non-interactive (for scripting):**
+**Non-interactive (for scripting — use env vars to avoid shell history):**
 
 ```bash
-./setup.sh --host 192.168.0.33 --user root --pass secret --vault-pass vaultkey123
+export VAULT_PASSWORD=$(read -s -p 'Vault password: ' pwd && echo $pwd)
+./setup.sh --host 192.168.0.33 --user root --pass secret
 ```
 
 **Start in the foreground (for debugging):**
 
 ```bash
-./setup.sh --host 192.168.0.33 --pass secret --vault-pass vaultkey123 --nodetach
+export VAULT_PASSWORD=$(read -s -p 'Vault password: ' pwd && echo $pwd)
+./setup.sh --host 192.168.0.33 --pass secret --detach false
 ```
 
-By default, `setup.sh` starts the MCP server in the background. Use `--nodetach` to run in foreground instead.
+By default, `setup.sh` starts the MCP server in the background. Use `--detach false` or omit the flag to run in foreground instead.
 
 The setup script also generates self-signed TLS certificates (in `nginx/certs/`) for the nginx reverse proxy. The MCP server will be available at `https://localhost/mcp` via nginx.
 
@@ -213,13 +215,15 @@ That's the only file change needed. Passwords are never stored in files.
 ./setup.sh
 ```
 
-`setup.sh` reads `config/isi_mcp.env`, detects `AUTH_ENABLED=true`, and prompts for the two Keycloak passwords in addition to the usual cluster credentials and vault password:
+`setup.sh` reads `config/isi_mcp.env`, detects `AUTH_ENABLED=true`, and prompts for the two Keycloak passwords in addition to the usual cluster credentials and vault password.
 
-```
-Vault encryption password (for vault.yml): ••••••••
-Authentication is enabled in config/isi_mcp.env. Keycloak credentials required.
-Keycloak database password (KEYCLOAK_DB_PASSWORD): ••••••••
-Keycloak admin password (KEYCLOAK_ADMIN_PASSWORD): ••••••••
+For non-interactive setup with auth, pass all three passwords via environment variables:
+
+```bash
+export VAULT_PASSWORD=$(read -s -p 'Vault password: ' pwd && echo $pwd)
+export KEYCLOAK_DB_PASSWORD=$(read -s -p 'Keycloak DB password: ' pwd && echo $pwd)
+export KEYCLOAK_ADMIN_PASSWORD=$(read -s -p 'Keycloak admin password: ' pwd && echo $pwd)
+./setup.sh --host 192.168.0.33 --user root --pass secret
 ```
 
 All passwords are handled in memory only — nothing is written to disk. `setup.sh` automatically adds `--profile auth` to start the Keycloak services.

@@ -56,7 +56,6 @@ class Users:
         runner = AnsibleRunner(self.cluster)
         variables = {
             "user_name": user_name,
-            "password": password,
             "update_password": update_password,
         }
         if access_zone:
@@ -81,7 +80,10 @@ class Users:
             variables["role_name"] = role_name
         if role_state:
             variables["role_state"] = role_state
-        return runner.execute("user_create.yml.j2", variables)
+
+        # Pass password via extravars to keep it out of rendered playbook files
+        extra_extravars = {"user_password": password}
+        return runner.execute("user_create.yml.j2", variables, extra_extravars=extra_extravars)
 
     def modify(self, user_name: str,
                access_zone: str = None, provider_type: str = None,
@@ -111,15 +113,19 @@ class Users:
             variables["home_directory"] = home_directory
         if shell is not None:
             variables["shell"] = shell
-        if password is not None:
-            variables["password"] = password
         if update_password is not None:
             variables["update_password"] = update_password
         if role_name:
             variables["role_name"] = role_name
         if role_state:
             variables["role_state"] = role_state
-        return runner.execute("user_modify.yml.j2", variables)
+
+        # Pass password via extravars to keep it out of rendered playbook files
+        extra_extravars = {}
+        if password is not None:
+            extra_extravars["user_password"] = password
+
+        return runner.execute("user_modify.yml.j2", variables, extra_extravars=extra_extravars)
 
     def remove(self, user_name: str,
                access_zone: str = None, provider_type: str = None) -> dict:

@@ -150,8 +150,10 @@ In production environments:
 ## Playbook Audit Trail
 
 - All rendered Ansible playbooks are saved to the `playbooks/` directory for audit trail purposes
-- Rendered playbooks contain resource parameters but NOT actual credentials
-- Credentials are injected at runtime via ansible-runner's extravars mechanism, keeping them out of saved files
+- Rendered playbooks contain resource parameters and configuration but **never** actual credentials
+- **Cluster API credentials** (username, password) are injected at runtime via ansible-runner's `extravars` mechanism
+- **User account passwords** are also injected via `extravars`, using `{{ user_password }}` placeholders in templates
+- This pattern ensures sensitive values never appear in the audit trail — only placeholders that are replaced at execution time
 - When running multiple instances, playbook filenames include the container hostname to prevent collisions
 
 ## Recommended Practices
