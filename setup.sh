@@ -611,6 +611,19 @@ if [[ $# -gt 0 ]]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Initialize config env files from .env.sample if they don't exist yet
+# (first-time setup, or after a git pull that added new .env.sample files)
+# ---------------------------------------------------------------------------
+for _sample in "${SCRIPT_DIR}/config/"*.env.sample; do
+    _env="${_sample%.sample}"
+    if [[ ! -f "$_env" ]]; then
+        cp "$_sample" "$_env"
+        ok "Created $(basename "$_env") from $(basename "$_sample")"
+    fi
+done
+unset _sample _env
+
+# ---------------------------------------------------------------------------
 # Parse arguments
 # ---------------------------------------------------------------------------
 CLUSTER_HOST=""

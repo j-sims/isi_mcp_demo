@@ -60,7 +60,15 @@ git log HEAD..origin/master --oneline
    git pull
    ```
 
-3. **Start the services** (rebuilds the Docker image automatically):
+3. **Check for new settings in the sample config** (optional but recommended):
+
+   A `git pull` may add new settings to `config/isi_mcp.env.sample`. Your local `config/isi_mcp.env` is never overwritten — compare the two and add any new settings you need:
+
+   ```bash
+   diff config/isi_mcp.env.sample config/isi_mcp.env
+   ```
+
+4. **Start the services** (rebuilds the Docker image automatically):
 
    ```bash
    ./start.sh
@@ -96,5 +104,6 @@ curl -sk https://localhost/version
 
 - **Vault credentials are never stored on disk.** You will always be prompted for the vault password on start.
 - **`stop.sh --clean` is destructive** — it removes the Keycloak database volume and all generated playbooks. Do not use it for routine upgrades.
-- **Config files in `config/` are committed to the repository.** A `git pull` may update them. Review any changes to `config/isi_mcp.env` or `config/tools.json` before restarting.
+- **`config/*.env` files are excluded from git.** They are created from `config/*.env.sample` on first run of `setup.sh` and are never overwritten by a `git pull`. Your local settings (including `AUTH_ENABLED=true`) are preserved across upgrades.
+- **`config/*.env.sample` files are tracked by git.** A pull may update them with new default settings. Use `diff` to compare against your live `.env` files after a pull.
 - **`vault.yml` is excluded from git** (via `.gitignore`) and is never overwritten by a pull.
