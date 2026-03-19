@@ -7,8 +7,7 @@
 #
 # Usage:
 #   ./setup.sh                                         # interactive prompts
-#   ./setup.sh --host 192.168.0.33 --pass secret       # non-interactive
-#   ./setup.sh --host 192.168.0.33 --pass secret --detach
+#   ./setup.sh --host 172.16.10.10 --pass secret       # non-interactive
 #   ./setup.sh -h
 
 set -euo pipefail
@@ -38,37 +37,39 @@ First-time setup for the PowerScale MCP Server.
 Creates encrypted cluster credentials, builds the Docker image, and starts the server.
 
 Required (prompted interactively if not provided):
-  --host HOST     Cluster hostname or IP (e.g. 192.168.0.33 or https://192.168.0.33)
-  --pass PASS     Cluster admin password
+  --host HOST         Cluster hostname or IP (e.g. 172.16.10.10 or https://172.16.10.10)
+  --pass PASS         Cluster admin password
 
 Optional:
-  --port PORT     API port (default: 8080)
-  --user USER     Cluster username (default: root)
-  --name NAME     Cluster label in vault.yml (default: my_cluster)
-  --detach        Start the server in the background (default: foreground)
-  -h, --help      Show this help message
+  --port PORT         API port (default: 8080)
+  --user USER         Cluster username (prompted with 'root' as default)
+  --name NAME         Cluster label in vault.yml (default: isilon)
+  --auth true|false   Enable OAuth authentication via Keycloak (default: false)
+  -h, --help          Show this help message
 
 Environment Variables (for non-interactive setup — avoid shell history):
   VAULT_PASSWORD              Vault encryption password (prompted if not set)
-  KEYCLOAK_DB_PASSWORD        Keycloak database password when AUTH_ENABLED=true (prompted if not set)
-  KEYCLOAK_ADMIN_PASSWORD     Keycloak admin password when AUTH_ENABLED=true (prompted if not set)
+  KEYCLOAK_DB_PASSWORD        Keycloak database password when --auth true (prompted if not set)
+  KEYCLOAK_ADMIN_PASSWORD     Keycloak admin password when --auth true (prompted if not set)
 
 Examples:
-  # Interactive setup (prompts for host, cluster password, and vault password)
+  # Interactive setup (prompts for all required values)
   ./setup.sh
 
   # Non-interactive setup using read to avoid shell history
-  export VAULT_PASSWORD=$(read -s -p 'Vault password: ' pwd && echo $pwd)
-  ./setup.sh --host 192.168.0.33 --user root --pass secret
+  read -s -p 'Vault password: ' VAULT_PASSWORD && export VAULT_PASSWORD
+  read -s -p 'Cluster password: ' CLUSTER_PASS
+  ./setup.sh --host 172.16.10.10 --user root --pass "$CLUSTER_PASS"
 
-  # Start in background with auth enabled
-  export VAULT_PASSWORD=$(read -s -p 'Vault password: ' pwd && echo $pwd)
-  export KEYCLOAK_DB_PASSWORD=$(read -s -p 'Keycloak DB password: ' pwd && echo $pwd)
-  export KEYCLOAK_ADMIN_PASSWORD=$(read -s -p 'Keycloak admin password: ' pwd && echo $pwd)
-  ./setup.sh --host 192.168.0.33 --pass secret --detach
+  # Setup with auth enabled
+  read -s -p 'Vault password: ' VAULT_PASSWORD && export VAULT_PASSWORD
+  read -s -p 'Keycloak DB password: ' KEYCLOAK_DB_PASSWORD && export KEYCLOAK_DB_PASSWORD
+  read -s -p 'Keycloak admin password: ' KEYCLOAK_ADMIN_PASSWORD && export KEYCLOAK_ADMIN_PASSWORD
+  ./setup.sh --host 172.16.10.10 --auth true
 
 After setup, restart the server with vault password:
-  docker compose up -e VAULT_PASSWORD=vaultkey123
+  read -s -p 'Vault password: ' VAULT_PASSWORD && export VAULT_PASSWORD
+  docker compose up -d
 
 To edit vault credentials later (requires vault password):
   docker compose exec isi_mcp ansible-vault edit /app/vault/vault.yml
@@ -80,11 +81,11 @@ HELP
 # ---------------------------------------------------------------------------
 CLUSTER_HOST=""
 CLUSTER_PORT=8080
-CLUSTER_USER="root"
+CLUSTER_USER=""
 CLUSTER_PASS=""
-CLUSTER_NAME="my_cluster"
+CLUSTER_NAME="isilon"
 VAULT_PASS="${VAULT_PASSWORD:-}"
-NODETACH=true
+AUTH_ARG=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -93,11 +94,25 @@ while [[ $# -gt 0 ]]; do
         --user)       CLUSTER_USER="$2"; shift 2 ;;
         --pass)       CLUSTER_PASS="$2"; shift 2 ;;
         --name)       CLUSTER_NAME="$2"; shift 2 ;;
-        --detach)     NODETACH=false; shift ;;
+        --auth)       AUTH_ARG="$2"; shift 2 ;;
         -h|--help)    show_help; exit 0 ;;
         *)            fail "Unknown argument: $1"; echo "Run ./setup.sh --help for usage."; exit 1 ;;
     esac
 done
+
+# ---------------------------------------------------------------------------
+# Apply --auth argument to config/isi_mcp.env if provided
+# ---------------------------------------------------------------------------
+APP_CONFIG_EARLY="${SCRIPT_DIR}/config/isi_mcp.env"
+if [[ -n "$AUTH_ARG" ]]; then
+    if [[ "$AUTH_ARG" == "true" || "$AUTH_ARG" == "false" ]]; then
+        sed -i "s/^AUTH_ENABLED=.*/AUTH_ENABLED=${AUTH_ARG}/" "$APP_CONFIG_EARLY"
+        ok "Set AUTH_ENABLED=${AUTH_ARG} in config/isi_mcp.env"
+    else
+        fail "--auth must be 'true' or 'false' (got: ${AUTH_ARG})"
+        exit 1
+    fi
+fi
 
 # ---------------------------------------------------------------------------
 # Check prerequisites (docker and docker-compose required for setup)
@@ -201,22 +216,30 @@ fi
 # Prompt for cluster credentials (only if not keeping existing vault)
 # ---------------------------------------------------------------------------
 if [[ "$SKIP_SETUP" == false ]]; then
-    if [[ -z "$CLUSTER_HOST" ]]; then
-        read -rp "Cluster host (e.g. 192.168.0.33): " CLUSTER_HOST
-    fi
-    if [[ -z "$CLUSTER_HOST" ]]; then
-        fail "Cluster host is required."
-        exit 1
-    fi
+    while [[ -z "$CLUSTER_HOST" ]]; do
+        read -rp "Cluster host: " input_host
+        CLUSTER_HOST="$input_host"
+        if [[ -z "$CLUSTER_HOST" ]]; then
+            warn "Cluster host is required."
+        fi
+    done
 
-    if [[ -z "$CLUSTER_PASS" ]]; then
-        read -rsp "Cluster password for ${CLUSTER_USER}@${CLUSTER_HOST}: " CLUSTER_PASS
+    while [[ -z "$CLUSTER_USER" ]]; do
+        read -rp "Cluster username: " input_user
+        CLUSTER_USER="$input_user"
+        if [[ -z "$CLUSTER_USER" ]]; then
+            warn "Cluster username is required."
+        fi
+    done
+
+    while [[ -z "$CLUSTER_PASS" ]]; do
+        read -rsp "Cluster password for ${CLUSTER_USER}@${CLUSTER_HOST}: " input_pass
         echo
-    fi
-    if [[ -z "$CLUSTER_PASS" ]]; then
-        fail "Cluster password is required."
-        exit 1
-    fi
+        CLUSTER_PASS="$input_pass"
+        if [[ -z "$CLUSTER_PASS" ]]; then
+            warn "Cluster password is required."
+        fi
+    done
 fi
 
 # ---------------------------------------------------------------------------
@@ -236,7 +259,7 @@ fi
 # Set AUTH_ENABLED=true there to enable OAuth via Keycloak.
 # If enabled, prompt for Keycloak passwords (never stored in files).
 # ---------------------------------------------------------------------------
-APP_CONFIG="${SCRIPT_DIR}/config/isi_mcp.env"
+APP_CONFIG="${APP_CONFIG_EARLY}"
 COMPOSE_PROFILES=""
 if grep -qE '^AUTH_ENABLED=true' "$APP_CONFIG" 2>/dev/null; then
     info "Authentication is enabled in config/isi_mcp.env. Keycloak credentials required."
@@ -410,10 +433,10 @@ echo ""
 warn "Note: Self-signed certs require clients to accept untrusted certificates."
 echo ""
 info "To restart the server later (requires vault password):"
-echo "  export VAULT_PASSWORD=\$(read -s -p 'Vault password: ' pwd && echo \$pwd)"
+echo "  read -s -p 'Vault password: ' VAULT_PASSWORD && export VAULT_PASSWORD"
 if [[ -n "$COMPOSE_PROFILES" ]]; then
-echo "  export KEYCLOAK_DB_PASSWORD=\$(read -s -p 'Keycloak DB password: ' pwd && echo \$pwd)"
-echo "  export KEYCLOAK_ADMIN_PASSWORD=\$(read -s -p 'Keycloak admin password: ' pwd && echo \$pwd)"
+echo "  read -s -p 'Keycloak DB password: ' KEYCLOAK_DB_PASSWORD && export KEYCLOAK_DB_PASSWORD"
+echo "  read -s -p 'Keycloak admin password: ' KEYCLOAK_ADMIN_PASSWORD && export KEYCLOAK_ADMIN_PASSWORD"
 fi
 echo "  $COMPOSE_CMD -f ${SCRIPT_DIR}/docker-compose.yml $COMPOSE_PROFILES up -d"
 echo ""
@@ -445,11 +468,6 @@ echo ""
 info "Stopping any existing container..."
 $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" $COMPOSE_PROFILES down 2>/dev/null || true
 
-if [[ "$NODETACH" == true ]]; then
-    info "Starting MCP server in background..."
-    VAULT_PASSWORD="$VAULT_PASS" $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" $COMPOSE_PROFILES up -d
-    ok "Server started. View logs: $COMPOSE_CMD -f ${SCRIPT_DIR}/docker-compose.yml logs -f"
-else
-    info "Starting MCP server (Ctrl+C to stop)..."
-    VAULT_PASSWORD="$VAULT_PASS" $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" $COMPOSE_PROFILES up
-fi
+info "Starting MCP server in background..."
+VAULT_PASSWORD="$VAULT_PASS" $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" $COMPOSE_PROFILES up -d
+ok "Server started. View logs: $COMPOSE_CMD -f ${SCRIPT_DIR}/docker-compose.yml logs -f"
