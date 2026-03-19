@@ -4573,12 +4573,12 @@ def powerscale_cluster_add(
     - verify_ssl: Whether to verify SSL certificates (default true; auto-disabled cert extracted)
     """
     try:
-        # Extract cluster certificate for SSL verification (best-effort, falls back gracefully)
         host_bare = re.sub(r'^https?://', '', host).split(':')[0]
         vault_dir = os.path.dirname(os.environ.get("VAULT_FILE", "/app/vault/vault.yml"))
         cert_path_container = f"{vault_dir}/{name}_cert.pem"
-        ca_bundle = None
 
+        # Step 1: Extract the cluster's TLS certificate
+        cert_extracted = False
         try:
             result = subprocess.run(
                 ["sh", "-c",
@@ -4586,23 +4586,99 @@ def powerscale_cluster_add(
                  f"</dev/null 2>/dev/null | openssl x509 -outform PEM > {cert_path_container}"],
                 timeout=10, capture_output=True,
             )
-            if result.returncode == 0 and os.path.getsize(cert_path_container) > 0:
-                ca_bundle = cert_path_container
-                logger.info(f"Extracted certificate for cluster '{name}' at {cert_path_container}")
+            cert_extracted = (
+                result.returncode == 0
+                and os.path.exists(cert_path_container)
+                and os.path.getsize(cert_path_container) > 0
+            )
         except (subprocess.TimeoutExpired, OSError, FileNotFoundError) as e:
-            logger.debug(f"Certificate extraction failed (will use verify_ssl={verify_ssl}): {e}")
-            ca_bundle = None
+            logger.debug(f"Certificate extraction failed: {e}")
+
+        # Step 2: Inspect the extracted cert to decide the SSL strategy.
+        #
+        # Three cases:
+        #   a) CA-signed cert (Subject != Issuer): customer installed their own cert.
+        #      Use verify_ssl=True and trust the system CA store. The ca_bundle is
+        #      the server's leaf cert and cannot act as a CA, so we don't use it.
+        #   b) Self-signed with CA:TRUE: rare v3 self-signed cert that IS a valid CA.
+        #      Use as ca_bundle for cert pinning.
+        #   c) Self-signed without CA:TRUE: PowerScale's default X.509 v1 cert.
+        #      Cannot be used as a CA bundle — auto-disable SSL verification.
+        ca_bundle = None
+        cert_is_ca = False
+        is_self_signed = False
+        if cert_extracted:
+            try:
+                check = subprocess.run(
+                    ["openssl", "x509", "-in", cert_path_container, "-text", "-noout"],
+                    capture_output=True, text=True, timeout=5,
+                )
+                cert_is_ca = "CA:TRUE" in check.stdout
+
+                id_check = subprocess.run(
+                    ["openssl", "x509", "-in", cert_path_container, "-noout", "-subject", "-issuer"],
+                    capture_output=True, text=True, timeout=5,
+                )
+                lines = id_check.stdout.strip().splitlines()
+                subject = next((l.split("subject=", 1)[1] for l in lines if "subject=" in l), "")
+                issuer = next((l.split("issuer=", 1)[1] for l in lines if "issuer=" in l), "")
+                is_self_signed = subject.strip() == issuer.strip()
+
+                if is_self_signed and cert_is_ca:
+                    ca_bundle = cert_path_container  # (b) pin against this cert
+                    logger.info(f"Extracted CA-capable self-signed cert for cluster '{name}'")
+                else:
+                    # Not usable as a CA bundle — remove to avoid confusion
+                    try:
+                        os.remove(cert_path_container)
+                    except OSError:
+                        pass
+                    if is_self_signed:
+                        logger.debug(f"Cert for '{name}' is self-signed but lacks CA:TRUE (X.509 v1)")
+                    else:
+                        logger.debug(f"Cert for '{name}' is CA-signed — will use system CA store")
+            except (subprocess.TimeoutExpired, OSError) as e:
+                logger.debug(f"Cert inspection failed: {e}")
+
+        # Step 3: Determine effective verify_ssl.
+        # If the user explicitly passed verify_ssl=False, honor it.
+        # If cert is a valid CA (case b), use cert pinning.
+        # If cert is CA-signed (case a), keep verify_ssl=True (system CA store).
+        # If cert is self-signed without CA:TRUE (case c, PowerScale default),
+        #   auto-disable SSL verification since it cannot be verified.
+        ssl_note = None
+        if ca_bundle:
+            # (b) cert pinning
+            effective_verify_ssl = True
+            ssl_note = "Certificate pinning active — cluster cert extracted and trusted directly."
+        elif not verify_ssl:
+            # User explicitly requested no verification
+            effective_verify_ssl = False
+        elif is_self_signed and not cert_is_ca:
+            # (c) PowerScale default v1 self-signed cert — cannot verify
+            effective_verify_ssl = False
+            ssl_note = (
+                "SSL verification auto-disabled: the cluster's TLS certificate is X.509 v1 "
+                "(self-signed, no CA:TRUE extension) and cannot be used as a trust anchor. "
+                "This is the default for PowerScale self-signed certificates."
+            )
+        else:
+            # (a) CA-signed cert or extraction failed — keep verify_ssl=True
+            effective_verify_ssl = True
 
         vm = VaultManager()
-        vm.add_cluster(name, host, port, username, password, verify_ssl, ca_bundle=ca_bundle)
-        ssl_status = "with certificate pinning" if ca_bundle else "with verify_ssl=true"
-        return {
+        vm.add_cluster(name, host, port, username, password, effective_verify_ssl, ca_bundle=ca_bundle)
+        response = {
             "success": True,
             "cluster": name,
             "ssl_verified": ca_bundle is not None,
-            "message": f"Cluster '{name}' saved to vault {ssl_status}. Use powerscale_cluster_select to target it.",
+            "verify_ssl": effective_verify_ssl,
+            "message": f"Cluster '{name}' saved to vault. Use powerscale_cluster_select to target it.",
             "clusters": vm.list_clusters(),
         }
+        if ssl_note:
+            response["ssl_note"] = ssl_note
+        return response
     except Exception as e:
         return {"error": f"Failed to add cluster: {str(e)}"}
 

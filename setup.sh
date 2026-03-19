@@ -357,26 +357,62 @@ if [[ "$SKIP_SETUP" == false ]]; then
     info "Extracting cluster TLS certificate for SSL verification..."
 
     # Use openssl inside the container to extract the certificate
+    CERT_EXTRACTED=false
     if $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" run --rm isi_mcp \
         sh -c "openssl s_client -connect ${HOST_BARE}:${CLUSTER_PORT} \
                -showcerts </dev/null 2>/dev/null \
                | openssl x509 -outform PEM \
                > /app/vault/${CLUSTER_NAME}_cert.pem" 2>/dev/null \
         && [[ -s "${VAULT_DIR}/${CLUSTER_NAME}_cert.pem" ]]; then
-        ok "Cluster certificate saved to vault/${CLUSTER_NAME}_cert.pem"
-        CLUSTER_CA_BUNDLE="/app/vault/${CLUSTER_NAME}_cert.pem"
+        CERT_EXTRACTED=true
+    fi
 
-        # Update vault.yml to include ca_bundle line
+    # Inspect the extracted cert to decide the SSL strategy.
+    #
+    # Three cases:
+    #   a) CA-signed cert (Subject != Issuer): customer installed their own cert.
+    #      Keep verify_ssl: true and rely on the system CA store.
+    #   b) Self-signed with CA:TRUE: valid v3 self-signed CA cert.
+    #      Store as ca_bundle for cert pinning.
+    #   c) Self-signed without CA:TRUE: PowerScale default X.509 v1 cert.
+    #      Cannot be used as a CA bundle — set verify_ssl: false.
+    CERT_IS_CA=false
+    IS_SELF_SIGNED=false
+    if [[ "$CERT_EXTRACTED" == true ]]; then
+        if openssl x509 -in "${VAULT_DIR}/${CLUSTER_NAME}_cert.pem" -text -noout 2>/dev/null \
+            | grep -q "CA:TRUE"; then
+            CERT_IS_CA=true
+        fi
+        SUBJECT=$(openssl x509 -in "${VAULT_DIR}/${CLUSTER_NAME}_cert.pem" -noout -subject 2>/dev/null | sed 's/subject=//')
+        ISSUER=$(openssl x509  -in "${VAULT_DIR}/${CLUSTER_NAME}_cert.pem" -noout -issuer  2>/dev/null | sed 's/issuer=//')
+        if [[ "$SUBJECT" == "$ISSUER" ]]; then
+            IS_SELF_SIGNED=true
+        fi
+    fi
+
+    if [[ "$IS_SELF_SIGNED" == true && "$CERT_IS_CA" == true ]]; then
+        # (b) Self-signed v3 CA cert — use for cert pinning
+        ok "Cluster certificate saved to vault/${CLUSTER_NAME}_cert.pem (CA:TRUE — cert pinning enabled)"
+        CLUSTER_CA_BUNDLE="/app/vault/${CLUSTER_NAME}_cert.pem"
         if grep -q "^    ca_bundle:" "$VAULT_FILE" 2>/dev/null; then
-            # Already has ca_bundle, just update it
             sed -i "s|^    ca_bundle:.*|    ca_bundle: ${CLUSTER_CA_BUNDLE}|" "$VAULT_FILE"
         else
-            # Add ca_bundle line after verify_ssl
             sed -i "/^    verify_ssl:/a\\    ca_bundle: ${CLUSTER_CA_BUNDLE}" "$VAULT_FILE"
         fi
-    else
-        warn "Could not extract cluster certificate — falling back to verify_ssl: true (no ca_bundle)"
+    elif [[ "$IS_SELF_SIGNED" == false && "$CERT_EXTRACTED" == true ]]; then
+        # (a) CA-signed cert — keep verify_ssl: true, use system CA store
         rm -f "${VAULT_DIR}/${CLUSTER_NAME}_cert.pem" 2>/dev/null || true
+        ok "Cluster has a CA-signed certificate — SSL verification enabled using system CA store."
+    else
+        # (c) Self-signed without CA:TRUE (PowerScale v1 default) or extraction failed
+        rm -f "${VAULT_DIR}/${CLUSTER_NAME}_cert.pem" 2>/dev/null || true
+        if [[ "$CERT_EXTRACTED" == true ]]; then
+            warn "Cluster cert is X.509 v1 self-signed (no CA:TRUE) — typical for PowerScale default certs."
+        else
+            warn "Could not extract cluster certificate."
+        fi
+        warn "Setting verify_ssl: false in vault.yml — SSL certificate will not be verified."
+        sed -i "s/^    verify_ssl:.*/    verify_ssl: false/" "$VAULT_FILE"
     fi
 fi
 
