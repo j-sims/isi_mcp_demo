@@ -1,15 +1,65 @@
 # PowerScale MCP Server
-This MCP demo is an excercise in the proof of the possible. Use at your own risk and report issues on github.
 
+Manage PowerScale storage clusters using natural language. Ask your LLM client:
+- "Is the cluster healthy?"
+- "Create an NFS export for /ifs/data/projects with read-write access for 10.0.0.0/24"
+- "Increase the quota on /ifs/home/jsmith by 50 GiB"
 
-An MCP (Model Context Protocol) server for Dell PowerScale (Isilon) storage cluster automation. It exposes cluster management capabilities as MCP tools that any LLM client can use to query, configure, and manage one or more PowerScale clusters through natural language.
+The server translates plain English into cluster operations, eliminating manual Ansible scripting and API complexity.
 
-The server provides 212 tools across 41 groups, including cluster health checks, capacity analysis, node inventory, license status, quota management, snapshots, replication, file operations, SMB/NFS/S3 configuration, user and group management, events, live performance metrics, advanced analytics (FSA, MetadataIQ, MPA), multi-party authorization, job management, and network topology. All operations are audited through rendered Ansible playbooks saved for compliance tracking. Credentials are stored in an encrypted Ansible Vault with support for multiple clusters and runtime switching.
+**Why?** Storage cluster management spreads across CLIs, APIs, and spreadsheets. This MCP (Model Context Protocol) server abstracts that friction, letting you manage infrastructure through conversation while maintaining full audit trails for compliance.
 
-Tool access can be controlled in two ways:
+**What's Included:** 212 tools across 41 functional groups—health checks, capacity analysis, quotas, snapshots, replication, file operations, NFS/SMB/S3 configuration, user management, performance metrics, and advanced analytics. All operations are audited through rendered Ansible playbooks. Credentials are encrypted and support multi-cluster switching at runtime. Two control modes: simple tool toggles or fine-grained Keycloak RBAC for production deployments.
 
-- **Without authentication** (`AUTH_ENABLED=false`): Use `config/tools.json` and the `powerscale_tools_toggle` management tool to enable or disable tools by group, mode, or individual name. All 212 tools ship enabled by default; disable write tools or specific groups to restrict what the LLM can do.
-- **With authentication** (`AUTH_ENABLED=true`): **Keycloak RBAC** controls access with two dimensions — **mode roles** (`mcp-read`, `mcp-write`, `mcp-admin`) and **group roles** (`mcp-group-quotas`, `mcp-group-smb`, etc.) for fine-grained per-user access control. This is the recommended approach for multi-user or production deployments.
+## Example Usage
+
+### Quick Checks
+```
+"Is the cluster healthy?"
+"How much free space is on the cluster?"
+"List all current snapshot schedules"
+"Switch to the production cluster"
+```
+
+### Multi-Step Operational Tasks
+```
+"Create an /ifs/data/financial directory with ACLs for the Finance group,
+set up SMB and NFS access, create a 5GB hard quota with 4GB soft quota,
+schedule snapshots 4 times daily, and replicate to our DR cluster every 20 minutes"
+
+"Set up home directories for 10 new contractors (contractor01-contractor10) with
+individual SMB shares, 2GB quotas, daily snapshots, and add them all to the
+contractors security group"
+
+"Create a student lab environment: set up 10 student users with home dirs,
+SMB shares, 2GB quotas, and daily snapshot schedules at noon"
+```
+
+### Reporting & Analysis
+```
+"Generate a CSV of quota usage with a chargeback analysis at $0.30/MiB
+and save it as ChargeBack-$(date).csv"
+
+"Create a custom HTML report named PowerscaleSummary-$(date).html with
+cluster health, capacity, quota usage, and replication status, formatted
+as a dark-themed dashboard with tabs for each cluster"
+
+"Generate a PCI compliance report comparing our cluster configuration against
+current standards and highlight any risks or misconfigurations"
+```
+
+### Interactive Guided Setup
+```
+"I need storage for a new application. Walk me through the setup process,
+asking me questions about capacity, performance, redundancy, and access
+requirements, then configure the storage appropriately"
+```
+
+### Administrative Cleanup
+```
+"Remove all lab users, groups, home directories, quotas, and snapshot
+schedules we created during testing so we can start fresh"
+```
 
 ## Documentation
 
@@ -49,20 +99,6 @@ See **[Installation & Setup](docs/install.md)** for detailed Docker deployment i
 
 See **[Features & Tools](docs/features.md)** for the complete feature list, tool groups, and detailed tool descriptions.
 
-## Example Usage
-
-The LLM can accomplish tasks like:
-
-```
-"Is the cluster healthy?"
-"How much free space is on the cluster?"
-"Create an NFS export for /ifs/data/projects with read-write access for 10.0.0.0/24"
-"Increase the quota on /ifs/home/jsmith by 50 GiB"
-"Create a snapshot schedule for /ifs/data that runs daily at midnight"
-"List all files in /ifs/data/reports"
-"Switch to the production cluster"
-```
-
 ## System Requirements
 
 - **Docker and Docker Compose** (standalone `docker-compose` tool, not the `docker compose` plugin)
@@ -87,6 +123,10 @@ The LLM can accomplish tasks like:
 | **Node.js** | 14+ | Optional | For MCP client (Claude Code, Claude Desktop) |
 
 **Version Policy**: Patch versions (e.g., 0.7.0 → 0.7.1) are automatically compatible. Major/minor version changes may introduce breaking changes—test thoroughly before upgrading production deployments.
+
+## Project Status
+
+This is a proof-of-concept demonstration of MCP capabilities for PowerScale cluster automation. Use at your own risk in non-production environments. The project is actively maintained and suitable for testing, learning, and sandbox deployments. For production use, thoroughly validate all operations in a staging cluster first.
 
 ## Support
 
