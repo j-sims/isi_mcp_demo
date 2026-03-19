@@ -14,6 +14,7 @@ Tool access can be controlled in two ways:
 ## Documentation
 
 - **[Installation & Setup](docs/install.md)** — Initial setup, running the server, and vault credential management
+- **[Upgrading](docs/upgrading.md)** — Checking your version, comparing against the repo, and upgrading
 - **[Cluster & Tool Management](docs/management.md)** — Managing multiple clusters, runtime cluster switching, and dynamic tool groups
 - **[Features & Tools](docs/features.md)** — Complete feature list, tool groups, and detailed tool descriptions
 - **[Capabilities & Functionality](docs/functionality.md)** — Available tool groups and example use cases

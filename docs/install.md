@@ -57,6 +57,8 @@ The setup script also generates self-signed TLS certificates (in `nginx/certs/`)
 
 After initial setup, use `start.sh` and `stop.sh` to manage the server. These scripts read `config/isi_mcp.env` to detect whether authentication is enabled, prompt for the required passwords, and handle the `--profile auth` flag automatically.
 
+> **Upgrading?** See **[Upgrading](upgrading.md)** for how to check your version against the repository and upgrade safely.
+
 **Starting the server:**
 
 ```bash
