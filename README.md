@@ -69,6 +69,25 @@ The LLM can accomplish tasks like:
 - PowerScale cluster with OneFS v9.12.0 (only this version has been tested)
 - LLM client supporting MCP protocol (Claude, Cursor, Windsurf, etc.)
 
+## Support Matrix
+
+| Component | Version | Status | Notes |
+|-----------|---------|--------|-------|
+| **PowerScale** | 9.12.0 | Tested | Only this OneFS version has been validated |
+| **Python** | 3.12 | Required | Used in Docker image |
+| **isilon-sdk** | >=0.7.0, <1.0.0 | Required | PowerScale API client library |
+| **ansible-core** | >=2.16.0, <3.0.0 | Required | Ansible automation framework |
+| **ansible-runner** | >=2.4.0, <3.0.0 | Required | Python-native Ansible playbook execution |
+| **dellemc.powerscale** | Latest | Required | Dell PowerScale Ansible collection (auto-installed) |
+| **fastmcp** | >=2.0.0, <3.0.0 | Required | MCP server framework |
+| **uvicorn** | >=0.30.0, <1.0.0 | Required | ASGI server |
+| **Docker** | 20.10+ | Recommended | For containerized deployment |
+| **Docker Compose** | 1.29+ | Recommended | Standalone tool (not docker compose plugin) |
+| **Kubernetes** | 1.20+ | Optional | For K8s deployment (k3s, minikube, EKS, etc.) |
+| **Node.js** | 14+ | Optional | For MCP client (Claude Code, Claude Desktop) |
+
+**Version Policy**: Patch versions (e.g., 0.7.0 → 0.7.1) are automatically compatible. Major/minor version changes may introduce breaking changes—test thoroughly before upgrading production deployments.
+
 ## Support
 
 This project is community supported and provided on a best-effort basis. For issues, questions, or feature requests, please open an issue on [GitHub](https://github.com/dell/isi_mcp_demo/issues). Refer to the documentation above for additional guidance.
