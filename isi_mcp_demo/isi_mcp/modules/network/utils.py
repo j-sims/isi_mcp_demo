@@ -12,9 +12,8 @@ def pingable(host: str, debug=False, timeout=1) -> bool:
         debug: Print debug messages if True
         timeout: Timeout in seconds for ping response (default: 1)
     """
-    # Use ping with timeout (-W timeout in milliseconds)
-    timeout_ms = int(timeout * 1000)
-    cmd = ["ping", "-c", "1", "-W", str(timeout_ms), host]
+    # Use ping with timeout (-W timeout in seconds, as required by Linux iputils ping)
+    cmd = ["ping", "-c", "1", "-W", str(int(timeout)), host]
     try:
         completed = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         logger.debug("ping %s → rc=%d", host, completed.returncode)

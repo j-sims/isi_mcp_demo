@@ -60,7 +60,6 @@ from modules.onefs.v9_12_0.mpa import MPA
 from modules.onefs.v9_12_0.local_info import LocalInfo
 from modules.onefs.v9_12_0.api_sessions import ApiSessions
 from modules.onefs.v9_12_0.groupnets_summary import GroupnetsSummary
-from modules.network.utils import pingable
 from modules.ansible.vault_manager import VaultManager
 
 configure_logging()
@@ -351,22 +350,16 @@ def _refresh_tool_state() -> None:
 
 
 def _get_reachable_cluster() -> Cluster:
-    """Create a cluster from vault and verify network reachability via ping.
+    """Create a cluster from vault credentials.
 
-    Raises RuntimeError if the cluster host cannot be reached.
+    Raises RuntimeError if no cluster host is configured.
     This should be used by all domain tools instead of Cluster.from_vault() directly.
     Also refreshes tool state from disk for multi-instance consistency.
     """
     _refresh_tool_state()
     c = Cluster.from_vault()
-    host_for_ping = re.sub(r'^https?://', '', c.host) if c.host else None
-    if not host_for_ping:
+    if not c.host:
         raise RuntimeError("No cluster host configured.")
-    if not pingable(host_for_ping, debug=c.debug):
-        raise RuntimeError(
-            f"Cluster host '{host_for_ping}' is not reachable. "
-            "Verify the cluster is online and network connectivity is available."
-        )
     return c
 
 
