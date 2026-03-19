@@ -143,5 +143,5 @@ if [[ "$REBOOT" == true ]]; then
 fi
 
 echo "Starting services..."
-docker-compose -f "$COMPOSE_FILE" $COMPOSE_PROFILES up -d
+docker-compose -f "$COMPOSE_FILE" $COMPOSE_PROFILES up -d --build
 echo "Done. Services are running."
