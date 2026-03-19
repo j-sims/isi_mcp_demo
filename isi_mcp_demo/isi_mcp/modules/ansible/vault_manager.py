@@ -114,6 +114,40 @@ class VaultManager:
             self._selected = name
         self._save_vault()
 
+    def modify_cluster(self, name: str, new_name: str = None, host: str = None,
+                       port: int = None, username: str = None, password: str = None,
+                       verify_ssl: bool = None, ca_bundle: str = None) -> bool:
+        """Update one or more fields of an existing cluster and persist the vault.
+
+        Returns False if the cluster does not exist.
+        If new_name is provided the cluster is renamed (the old key is removed).
+        """
+        if name not in self._clusters:
+            return False
+        entry = self._clusters[name]
+        if host is not None:
+            if not host.startswith(('http://', 'https://')):
+                host = f'https://{host}'
+            entry['host'] = host
+        if port is not None:
+            entry['port'] = port
+        if username is not None:
+            entry['username'] = username
+        if password is not None:
+            entry['password'] = password
+        if verify_ssl is not None:
+            entry['verify_ssl'] = verify_ssl
+        if ca_bundle is not None:
+            entry['ca_bundle'] = ca_bundle
+        if new_name and new_name != name:
+            self._clusters[new_name] = entry
+            del self._clusters[name]
+            if self._selected == name:
+                self._selected = new_name
+                self._save_selected()
+        self._save_vault()
+        return True
+
     def remove_cluster(self, name: str) -> bool:
         """Remove a cluster and persist the vault. Returns False if not found."""
         if name not in self._clusters:

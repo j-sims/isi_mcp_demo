@@ -48,8 +48,9 @@ The LLM can manage clusters using four always-available management tools:
 
 - `powerscale_cluster_list` — lists all configured clusters and shows which is currently selected
 - `powerscale_cluster_select` — switches the active cluster by name; set `reload_vault=true` to pick up vault edits made while the server is running
-- `powerscale_cluster_add` — add a new cluster to the vault at runtime
+- `powerscale_cluster_add` — add a new cluster to the vault at runtime (also handles TLS cert extraction)
 - `powerscale_cluster_remove` — remove a cluster from the vault at runtime
+- `powerscale_cluster_modify` — update one or more fields of an existing cluster (name, host, port, username, password, verify_ssl) without replacing the entire entry; only supply the fields you want to change
 
 All other PowerScale tools automatically operate against the currently selected cluster.
 
@@ -62,7 +63,7 @@ Each MCP tool has a **mode** (`read` or `write`) and an **enabled** flag. All 21
 
 Tool state is persisted in `config/tools.json` across container restarts.
 
-**Important**: The 4 management write tools (`powerscale_tools_toggle`, `powerscale_cluster_select`, `powerscale_cluster_add`, `powerscale_cluster_remove`) cannot be disabled and are always available, regardless of their `enabled` flag in `config/tools.json`.
+**Important**: The 5 management write tools (`powerscale_tools_toggle`, `powerscale_cluster_select`, `powerscale_cluster_add`, `powerscale_cluster_remove`, `powerscale_cluster_modify`) cannot be disabled and are always available, regardless of their `enabled` flag in `config/tools.json`.
 
 ### Inspecting Tool State
 
@@ -103,4 +104,4 @@ These tools cannot be disabled and are always accessible to the LLM:
 - `powerscale_tools_list` / `powerscale_tools_list_by_group` / `powerscale_tools_list_by_mode` — inspect tool state
 - `powerscale_tools_toggle` — enable or disable tools by mode, group, or name
 - `powerscale_cluster_list` / `powerscale_cluster_select` — view and switch target clusters
-- `powerscale_cluster_add` / `powerscale_cluster_remove` — add or remove clusters from the vault
+- `powerscale_cluster_add` / `powerscale_cluster_remove` / `powerscale_cluster_modify` — add, remove, or update clusters in the vault

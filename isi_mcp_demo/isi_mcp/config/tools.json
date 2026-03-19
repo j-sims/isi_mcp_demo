@@ -755,6 +755,12 @@
     "enabled": true,
     "function": "none"
   },
+  "powerscale_cluster_modify": {
+    "tool_group": "management",
+    "tool_mode": "write",
+    "enabled": true,
+    "function": "none"
+  },
   "powerscale_hardware_fcports_get": {
     "tool_group": "hardware",
     "tool_mode": "read",

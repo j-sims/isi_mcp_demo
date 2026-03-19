@@ -174,6 +174,7 @@ MANAGEMENT_TOOLS = {
     "powerscale_cluster_select",
     "powerscale_cluster_add",
     "powerscale_cluster_remove",
+    "powerscale_cluster_modify",
 }
 
 # Build reverse lookup: tool_name -> group_name
@@ -4719,6 +4720,71 @@ def powerscale_cluster_remove(name: str) -> Dict[str, Any]:
         }
     except Exception as e:
         return {"error": f"Failed to remove cluster: {str(e)}"}
+
+
+@mcp.tool()
+def powerscale_cluster_modify(
+    name: str,
+    new_name: str = None,
+    host: str = None,
+    port: int = None,
+    username: str = None,
+    password: str = None,
+    verify_ssl: bool = None,
+) -> Dict[str, Any]:
+    """
+    Modify an existing PowerScale cluster entry in the vault.
+
+    IMPORTANT: This is a MUTATING operation. Confirm with the user before executing.
+
+    Only supply the fields you want to change — unspecified fields are left as-is.
+    To rename a cluster, provide new_name. SSL certificate handling is NOT
+    automatically re-run when host changes; use powerscale_cluster_add to
+    replace the entry with full cert extraction if needed.
+
+    Arguments:
+    - name: Current cluster label (use powerscale_cluster_list to see names)
+    - new_name: Rename the cluster to this label (optional)
+    - host: New hostname or IP address (https:// prefix added automatically if omitted)
+    - port: New API port
+    - username: New admin username
+    - password: New admin password
+    - verify_ssl: Whether to verify SSL certificates
+    """
+    try:
+        vm = VaultManager()
+        clusters = {c["name"] for c in vm.list_clusters()}
+        if name not in clusters:
+            return {
+                "success": False,
+                "error": f"Cluster '{name}' not found in vault.",
+                "available_clusters": sorted(clusters),
+            }
+        if new_name and new_name != name and new_name in clusters:
+            return {
+                "success": False,
+                "error": f"A cluster named '{new_name}' already exists. Choose a different name.",
+            }
+        updated = vm.modify_cluster(
+            name,
+            new_name=new_name,
+            host=host,
+            port=port,
+            username=username,
+            password=password,
+            verify_ssl=verify_ssl,
+        )
+        if not updated:
+            return {"success": False, "error": f"Cluster '{name}' not found in vault."}
+        effective_name = new_name if new_name else name
+        return {
+            "success": True,
+            "cluster": effective_name,
+            "message": f"Cluster '{name}' updated successfully.",
+            "clusters": vm.list_clusters(),
+        }
+    except Exception as e:
+        return {"error": f"Failed to modify cluster: {str(e)}"}
 
 
 # ---------------------------------------------------------------------------
