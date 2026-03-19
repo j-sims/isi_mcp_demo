@@ -24,8 +24,9 @@ class VaultManager:
             cls._instance._initialized = False
         return cls._instance
 
-    # TTL for re-reading cluster_state.json (seconds)
+    # TTL for re-checking vault.yml mtime and cluster_state.json (seconds)
     _CLUSTER_STATE_TTL = 5
+    _VAULT_TTL = 5
 
     def __init__(self):
         if self._initialized:
@@ -40,6 +41,8 @@ class VaultManager:
         self._clusters: dict = {}
         self._selected: str | None = None
         self._selected_last_read: float = 0.0
+        self._vault_last_mtime: float = 0.0
+        self._vault_last_check: float = 0.0
         self._load_vault()
         # Load persisted selection if file exists
         self._load_selected()
@@ -78,6 +81,13 @@ class VaultManager:
 
         self._clusters = data.get("clusters", {})
 
+        # Record mtime so _refresh_vault() can detect future changes
+        try:
+            self._vault_last_mtime = self.vault_file.stat().st_mtime
+            self._vault_last_check = time.monotonic()
+        except OSError:
+            pass
+
         # Default to first cluster in the YAML ordered dict
         if self._clusters:
             self._selected = next(iter(self._clusters))
@@ -96,6 +106,30 @@ class VaultManager:
         vault = VaultLib(secrets=[("default", VaultSecret(password_bytes))])
         encrypted = vault.encrypt(plaintext)
         self.vault_file.write_bytes(encrypted if isinstance(encrypted, bytes) else encrypted.encode())
+
+    def _refresh_vault(self) -> None:
+        """Re-read the vault file if its mtime changed since last load.
+
+        Called at the start of read operations so the running server picks up
+        external vault changes (e.g. from setup.sh add-cluster) without restart.
+        A stat() check is performed at most once per _VAULT_TTL seconds.
+        Re-decryption only happens when the file was actually modified.
+        """
+        now = time.monotonic()
+        if now - self._vault_last_check < self._VAULT_TTL:
+            return
+        self._vault_last_check = now
+        try:
+            mtime = self.vault_file.stat().st_mtime
+        except OSError:
+            return
+        if mtime != self._vault_last_mtime:
+            prev_selected = self._selected
+            self._load_vault()
+            # Restore persisted selection; fall back to what was selected before
+            self._load_selected()
+            if self._selected is None and prev_selected in self._clusters:
+                self._selected = prev_selected
 
     def add_cluster(self, name: str, host: str, port: int, username: str, password: str, verify_ssl: bool, ca_bundle: str = None):
         """Add or update a cluster and persist the vault."""
@@ -162,6 +196,8 @@ class VaultManager:
         """Re-read and decrypt the vault file. Called when vault may have changed."""
         self._clusters = {}
         self._selected = None
+        self._vault_last_mtime = 0.0
+        self._vault_last_check = 0.0
         self._load_vault()
 
     def _load_selected(self) -> None:
@@ -211,6 +247,8 @@ class VaultManager:
 
     def list_clusters(self) -> list[dict]:
         """Return list of cluster info dicts (no passwords)."""
+        self._refresh_vault()
+        self._refresh_selected()
         result = []
         for name, cfg in self._clusters.items():
             result.append(
@@ -226,6 +264,7 @@ class VaultManager:
 
     def get_selected_credentials(self) -> dict | None:
         """Return credentials dict for the currently selected cluster, or None."""
+        self._refresh_vault()
         if not self._selected or self._selected not in self._clusters:
             return None
         return dict(self._clusters[self._selected])
