@@ -807,24 +807,40 @@ fi
 APP_CONFIG="${APP_CONFIG_EARLY}"
 COMPOSE_PROFILES=""
 if grep -qE '^AUTH_ENABLED=true' "$APP_CONFIG" 2>/dev/null; then
-    info "Authentication is enabled in config/isi_mcp.env. Keycloak credentials required."
-    if [[ -z "${KEYCLOAK_DB_PASSWORD:-}" ]]; then
-        read -rsp "Keycloak database password (KEYCLOAK_DB_PASSWORD): " KEYCLOAK_DB_PASSWORD
-        echo
-        export KEYCLOAK_DB_PASSWORD
-    fi
-    if [[ -z "$KEYCLOAK_DB_PASSWORD" ]]; then
-        fail "KEYCLOAK_DB_PASSWORD is required when AUTH_ENABLED=true."
-        exit 1
-    fi
-    if [[ -z "${KEYCLOAK_ADMIN_PASSWORD:-}" ]]; then
-        read -rsp "Keycloak admin password (KEYCLOAK_ADMIN_PASSWORD): " KEYCLOAK_ADMIN_PASSWORD
-        echo
-        export KEYCLOAK_ADMIN_PASSWORD
-    fi
-    if [[ -z "$KEYCLOAK_ADMIN_PASSWORD" ]]; then
-        fail "KEYCLOAK_ADMIN_PASSWORD is required when AUTH_ENABLED=true."
-        exit 1
+    if [[ "$SKIP_SETUP" == false ]]; then
+        # New setup — passwords required
+        info "Authentication is enabled. Keycloak credentials required."
+        if [[ -z "${KEYCLOAK_DB_PASSWORD:-}" ]]; then
+            read -rsp "Keycloak database password (KEYCLOAK_DB_PASSWORD): " KEYCLOAK_DB_PASSWORD
+            echo
+            export KEYCLOAK_DB_PASSWORD
+        fi
+        if [[ -z "$KEYCLOAK_DB_PASSWORD" ]]; then
+            fail "KEYCLOAK_DB_PASSWORD is required when AUTH_ENABLED=true."
+            exit 1
+        fi
+        if [[ -z "${KEYCLOAK_ADMIN_PASSWORD:-}" ]]; then
+            read -rsp "Keycloak admin password (KEYCLOAK_ADMIN_PASSWORD): " KEYCLOAK_ADMIN_PASSWORD
+            echo
+            export KEYCLOAK_ADMIN_PASSWORD
+        fi
+        if [[ -z "$KEYCLOAK_ADMIN_PASSWORD" ]]; then
+            fail "KEYCLOAK_ADMIN_PASSWORD is required when AUTH_ENABLED=true."
+            exit 1
+        fi
+    else
+        # Existing vault — passwords optional (may already be in vault)
+        info "Authentication is enabled. Enter keycloak credentials to add to vault, or press Enter if already configured."
+        if [[ -z "${KEYCLOAK_DB_PASSWORD:-}" ]]; then
+            read -rsp "Keycloak database password (Enter to skip): " KEYCLOAK_DB_PASSWORD
+            echo
+            export KEYCLOAK_DB_PASSWORD
+        fi
+        if [[ -z "${KEYCLOAK_ADMIN_PASSWORD:-}" ]]; then
+            read -rsp "Keycloak admin password (Enter to skip): " KEYCLOAK_ADMIN_PASSWORD
+            echo
+            export KEYCLOAK_ADMIN_PASSWORD
+        fi
     fi
     COMPOSE_PROFILES="--profile auth"
 fi
@@ -888,6 +904,41 @@ fi
 info "Building Docker image..."
 $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" build
 ok "Image built"
+
+# ---------------------------------------------------------------------------
+# If keeping an existing vault but auth is now enabled, inject keycloak section
+# (handles the case where setup was initially done without auth, auth enabled later)
+# ---------------------------------------------------------------------------
+if [[ "$SKIP_SETUP" == true ]] && grep -qE '^AUTH_ENABLED=true' "$APP_CONFIG" 2>/dev/null \
+        && [[ -n "${KEYCLOAK_DB_PASSWORD:-}" ]]; then
+    info "Checking vault for keycloak credentials..."
+    export _KC_DB_PASS="$KEYCLOAK_DB_PASSWORD"
+    export _KC_ADMIN_PASS="${KEYCLOAK_ADMIN_PASSWORD:-}"
+    VAULT_PASSWORD="$VAULT_PASS" $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" run --rm --no-deps \
+        -e VAULT_PASSWORD -e _KC_DB_PASS -e _KC_ADMIN_PASS \
+        isi_mcp python3 -c "
+import os, yaml, sys
+from ansible.parsing.vault import VaultLib, VaultSecret
+pwd = os.environ.get('VAULT_PASSWORD', '').encode()
+vault = VaultLib([('default', VaultSecret(pwd))])
+with open('/app/vault/vault.yml') as f:
+    data = yaml.safe_load(vault.decrypt(f.read()))
+if 'keycloak' in data:
+    print('Keycloak section already present in vault — no update needed.')
+    sys.exit(0)
+data['keycloak'] = {
+    'db_password': os.environ['_KC_DB_PASS'],
+    'admin_password': os.environ.get('_KC_ADMIN_PASS', ''),
+}
+plaintext = yaml.dump(data, default_flow_style=False).encode()
+encrypted = vault.encrypt(plaintext)
+with open('/app/vault/vault.yml', 'wb') as f:
+    f.write(encrypted if isinstance(encrypted, bytes) else encrypted.encode())
+print('Keycloak credentials added to vault.')
+"
+    unset _KC_DB_PASS _KC_ADMIN_PASS
+    ok "Vault updated with keycloak credentials."
+fi
 
 # ---------------------------------------------------------------------------
 # Extract cluster TLS certificate (for SSL verification without replacing cert)
@@ -1013,13 +1064,8 @@ echo "  Cursor/Windsurf SSE endpoint: https://localhost/sse"
 echo ""
 warn "Note: Self-signed certs require clients to accept untrusted certificates."
 echo ""
-info "To restart the server later (requires vault password):"
-echo "  read -s -p 'Vault password: ' VAULT_PASSWORD && export VAULT_PASSWORD"
-if [[ -n "$COMPOSE_PROFILES" ]]; then
-echo "  read -s -p 'Keycloak DB password: ' KEYCLOAK_DB_PASSWORD && export KEYCLOAK_DB_PASSWORD"
-echo "  read -s -p 'Keycloak admin password: ' KEYCLOAK_ADMIN_PASSWORD && export KEYCLOAK_ADMIN_PASSWORD"
-fi
-echo "  $COMPOSE_CMD -f ${SCRIPT_DIR}/docker-compose.yml $COMPOSE_PROFILES up -d"
+info "To restart the server later:"
+echo "  ./start.sh"
 echo ""
 info "To add or edit clusters later:"
 echo "  $COMPOSE_CMD -f ${SCRIPT_DIR}/docker-compose.yml exec isi_mcp ansible-vault edit /app/vault/vault.yml"

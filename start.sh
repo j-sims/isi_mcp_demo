@@ -108,6 +108,7 @@ if [[ "$AUTH_ENABLED" == true ]]; then
     export KEYCLOAK_DB_PASSWORD
     KEYCLOAK_DB_PASSWORD=$(_vault_get_keycloak "db_password")
     if [[ -z "$KEYCLOAK_DB_PASSWORD" ]]; then
+        echo "WARNING: Keycloak DB password not found in vault (vault.yml missing or keycloak.db_password not set)."
         KEYCLOAK_DB_PASSWORD=$(read -rs -p 'Keycloak DB password: ' pwd && echo "$pwd")
         echo
     else
@@ -119,6 +120,7 @@ if [[ "$AUTH_ENABLED" == true ]]; then
     if [[ "$KEYCLOAK_NEEDS_INIT" == true ]]; then
         KEYCLOAK_ADMIN_PASSWORD=$(_vault_get_keycloak "admin_password")
         if [[ -z "$KEYCLOAK_ADMIN_PASSWORD" ]]; then
+            echo "WARNING: Keycloak admin password not found in vault (vault.yml missing or keycloak.admin_password not set)."
             KEYCLOAK_ADMIN_PASSWORD=$(read -rs -p 'Keycloak admin password: ' pwd && echo "$pwd")
             echo
         else
