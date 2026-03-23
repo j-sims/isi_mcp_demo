@@ -184,6 +184,50 @@ In production environments:
 - Use the rate limiting configuration to prevent abuse
 - Monitor nginx access logs for suspicious activity
 
+## MCP Tool Audit Log
+
+Every MCP tool call is recorded in an append-only rotating log at `audit/audit.log` (bind-mounted from the host `./audit/` directory into the container at `/app/audit/`).
+
+### Format
+
+One JSON object per line (NDJSON). Each entry contains:
+
+| Field | Description |
+|---|---|
+| `timestamp` | ISO 8601 UTC timestamp of the call |
+| `uuid` | Deterministic UUID5 derived from `{timestamp}:{username}:{domain}:{mode}` — stable fingerprint for a given event |
+| `username` | Caller identity — `preferred_username` from JWT when auth is enabled; `anonymous` when auth is disabled |
+| `domain` | Keycloak realm from the JWT `iss` claim (e.g. `powerscale`); `local` when auth is disabled |
+| `tool` | MCP tool name (e.g. `powerscale_quota_set`) |
+| `mode` | `read` or `write` — from `config/tools.json` |
+| `inputs` | Tool arguments as a JSON object |
+| `output` | Tool response as a JSON value (truncated at 4 096 characters if large) |
+| `error` | Exception message if the call failed; `null` on success |
+
+Example entry:
+
+```json
+{"timestamp":"2026-03-23T14:05:22.341Z","uuid":"3f2e1a0b-...","username":"jim","domain":"powerscale","tool":"powerscale_quota_set","mode":"write","inputs":{"path":"/ifs/data/project","hard_limit":"10GiB"},"output":{"result":"quota updated"},"error":null}
+```
+
+### Log Rotation
+
+Rotation is controlled by two settings in `config/isi_mcp.env`:
+
+| Variable | Default | Description |
+|---|---|---|
+| `MAX_AUDIT_LOGFILE_SIZE` | `10485760` (10 MiB) | Maximum size of `audit.log` before rotation |
+| `MAX_AUDIT_LOGFILE_COUNT` | `10` | Number of rotated backup files to retain (`audit.log.1` … `audit.log.N`) |
+
+Rotated files are named `audit.log.1`, `audit.log.2`, etc. The current active file is always `audit.log`. The total maximum disk usage is `MAX_AUDIT_LOGFILE_SIZE × (MAX_AUDIT_LOGFILE_COUNT + 1)`.
+
+### Notes
+
+- The audit log is **always active** regardless of whether `AUTH_ENABLED` is set. When auth is disabled, entries are written with `username: anonymous` and `domain: local`.
+- The log is written by `AuditMiddleware` in `server.py`, which runs for **every tool call** — including management tools.
+- The `audit/` directory is bind-mounted (not baked into the image) so logs persist across container rebuilds and restarts.
+- The `audit/` directory itself is gitignored — log files are never committed to the repository.
+
 ## Playbook Audit Trail
 
 - All rendered Ansible playbooks are saved to the `playbooks/` directory for audit trail purposes
@@ -203,6 +247,6 @@ In production environments:
 6. **Use per-cluster CA bundle pinning** for self-signed certificates (recommended) — `setup.sh` extracts them automatically. For production, replace with CA-signed certificates if possible
 7. **Protect the Keycloak admin console** — restrict `/auth/admin/` by IP at the nginx layer if the server is internet-facing
 8. **Rotate the `powerscale-m2m` client secret** periodically via Keycloak admin → Clients → Credentials → Regenerate
-9. **Log MCP operations** via nginx access logs for compliance auditing
-10. **Monitor cluster access** for suspicious activity patterns
+9. **Review the MCP audit log** (`audit/audit.log`) for compliance auditing — every tool call is recorded with caller identity, inputs, and outputs. Complement with nginx access logs for connection-level visibility
+10. **Monitor cluster access** for suspicious activity patterns — correlate the MCP audit log with PowerScale event logs to trace operations end-to-end
 11. **Keep the server updated** with security patches for FastMCP, Keycloak, and dependencies

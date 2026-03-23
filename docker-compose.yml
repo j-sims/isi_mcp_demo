@@ -28,6 +28,7 @@ services:
       - ./vault:/app/vault
       - ./playbooks:/app/playbooks
       - ./isi_mcp_demo/isi_mcp/config:/app/config
+      - ./audit:/app/audit
     networks:
       - isi_mcp_net
     restart: unless-stopped

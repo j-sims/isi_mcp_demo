@@ -49,6 +49,18 @@ if [ ! -f "${CERT_DIR}/server.crt" ] || [ ! -f "${CERT_DIR}/server.key" ]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Initialize config env files from .env.sample if they don't exist yet
+# (first-time use, or after a git pull that added new .env.sample files)
+# ---------------------------------------------------------------------------
+for _sample in "${SCRIPT_DIR}/config/"*.env.sample; do
+    _env="${_sample%.sample}"
+    if [[ ! -f "$_env" ]]; then
+        cp "$_sample" "$_env"
+        echo "Created $(basename "$_env") from $(basename "$_sample")"
+    fi
+done
+
+# ---------------------------------------------------------------------------
 # Detect whether authentication is enabled in config/isi_mcp.env
 # ---------------------------------------------------------------------------
 APP_CONFIG="${SCRIPT_DIR}/config/isi_mcp.env"

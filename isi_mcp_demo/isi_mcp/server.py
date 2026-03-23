@@ -291,6 +291,83 @@ if _FASTMCP_AUTH_AVAILABLE:
         mcp.add_middleware(RoleEnforcementMiddleware())
         logger.info("Role enforcement middleware enabled (mcp-read/write/admin + group RBAC)")
 
+    class AuditMiddleware(Middleware):
+        """Record every tool call as a single NDJSON line in the rotating audit log.
+
+        Captures: timestamp, deterministic UUID, username, domain (realm), tool
+        name, mode (read|write), inputs, output, and any error string.  Always
+        active regardless of AUTH_ENABLED — anonymous/local are used when no JWT
+        token is present.
+        """
+
+        def __init__(self):
+            from modules.audit.logger import AuditLogger
+            self._audit = AuditLogger()
+
+        def _caller_info(self) -> tuple:
+            """Return (username, domain). Falls back to anonymous/local when no token."""
+            try:
+                token = get_access_token()
+            except Exception:
+                token = None
+            if token is not None:
+                username = token.claims.get("preferred_username", "unknown")
+                issuer = token.claims.get("iss", "")
+                # Extract realm from issuer URL, e.g. ".../realms/powerscale" → "powerscale"
+                parts = issuer.rstrip("/").split("/")
+                domain = parts[-1] if parts else "unknown"
+            else:
+                username = "anonymous"
+                domain = "local"
+            return username, domain
+
+        @staticmethod
+        def _extract_output(result) -> Any:
+            """Pull serialisable data out of a ToolResult object.
+
+            Prefers structured_content (already a dict) when present; otherwise
+            collects the text from all TextContent blocks and parses it as JSON
+            so the audit entry contains real data, not an object repr string.
+            """
+            if result is None:
+                return None
+            structured = getattr(result, "structured_content", None)
+            if structured is not None:
+                return structured
+            content = getattr(result, "content", None)
+            if not content:
+                return None
+            texts = [getattr(block, "text", None) for block in content]
+            texts = [t for t in texts if t is not None]
+            if not texts:
+                return None
+            combined = "\n".join(texts)
+            try:
+                return json.loads(combined)
+            except (json.JSONDecodeError, ValueError):
+                return combined
+
+        async def on_call_tool(self, context, call_next):
+            tool_name = context.message.name
+            mode = _TOOL_TO_MODE.get(tool_name, "read")
+            inputs = getattr(context.message, "arguments", {}) or {}
+            username, domain = self._caller_info()
+
+            error = None
+            result = None
+            try:
+                result = await call_next(context)
+                return result
+            except Exception as exc:
+                error = str(exc)
+                raise
+            finally:
+                self._audit.log(username, domain, tool_name, mode, inputs,
+                                self._extract_output(result), error)
+
+    mcp.add_middleware(AuditMiddleware())
+    logger.info("Audit middleware enabled (rotating NDJSON log at /app/audit/audit.log)")
+
 
 def _resolve_names_to_tools(names: List[str]) -> List[str]:
     """Resolve group names, mode targets ("read"/"write"), or individual tool
