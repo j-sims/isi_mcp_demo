@@ -426,15 +426,19 @@ def _refresh_tool_state() -> None:
             logger.debug("Refresh: disabled tool %s", name)
 
 
-def _get_reachable_cluster() -> Cluster:
+def _get_cluster(cluster_name: str = None) -> Cluster:
     """Create a cluster from vault credentials.
 
+    If cluster_name is provided, connects to that specific named cluster.
+    Otherwise uses the currently selected cluster.
     Raises RuntimeError if no cluster host is configured.
-    This should be used by all domain tools instead of Cluster.from_vault() directly.
-    Also refreshes tool state from disk for multi-instance consistency.
+    Raises ValueError if the specified cluster_name is not found.
     """
     _refresh_tool_state()
-    c = Cluster.from_vault()
+    if cluster_name:
+        c = Cluster.from_vault_by_name(cluster_name)
+    else:
+        c = Cluster.from_vault()
     if not c.host:
         raise RuntimeError("No cluster host configured.")
     return c
@@ -473,7 +477,7 @@ def current_time() -> dict:
     }
 
 @mcp.tool()
-def powerscale_cluster_verify() -> dict:
+def powerscale_cluster_verify(cluster_name: str = None) -> dict:
     """
     Perform a comprehensive cluster state verification on the PowerScale (formerly Isilon) cluster.
 
@@ -509,7 +513,7 @@ def powerscale_cluster_verify() -> dict:
     """
 
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         verifier = Verify(cluster)
         return verifier.verify()
 
@@ -517,7 +521,7 @@ def powerscale_cluster_verify() -> dict:
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_capacity() -> dict:
+def powerscale_capacity(cluster_name: str = None) -> dict:
     """
     Return real-time storage capacity statistics for the PowerScale cluster.
 
@@ -550,7 +554,7 @@ def powerscale_capacity() -> dict:
     compression ratios together.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         capacity = Capacity(cluster)
         return capacity.get()
 
@@ -558,7 +562,7 @@ def powerscale_capacity() -> dict:
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_config() -> dict:
+def powerscale_config(cluster_name: str = None) -> dict:
     """
     Return cluster configuration and hardware details for the PowerScale cluster.
 
@@ -602,7 +606,7 @@ def powerscale_config() -> dict:
     - What drives or partitions does each node have?
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         config = Config(cluster)
         return config.get()
 
@@ -612,7 +616,8 @@ def powerscale_config() -> dict:
 @mcp.tool()
 def powerscale_quota_get(
     limit: int = 1000,
-    resume: Optional[str] = None
+    resume: Optional[str] = None,
+    cluster_name: str = None,
     ) -> Dict[str, Any]:
     """
     Return quotas defined on the PowerScale cluster using pagination.
@@ -660,7 +665,7 @@ def powerscale_quota_get(
         # Normalize resume in case LLM sends "null"
         resume = None if resume in (None, "null", "None") else resume
 
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         quotas = Quotas(cluster)
 
         page = quotas.get(limit=limit, resume=resume)
@@ -679,7 +684,7 @@ def powerscale_quota_get(
         return {"error": str(e)} 
 
 @mcp.tool()
-def powerscale_quota_set(path:str, size:int) -> str:
+def powerscale_quota_set(path:str, size:int, cluster_name: str = None) -> str:
     """
     Set the hard quota on a PowerScale cluster path to an absolute size in bytes.
 
@@ -705,7 +710,7 @@ def powerscale_quota_set(path:str, size:int) -> str:
     Returns a confirmation message describing the change made.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         quotas = Quotas(cluster)
         return quotas.set_hard_quota(path, size)
 
@@ -713,7 +718,7 @@ def powerscale_quota_set(path:str, size:int) -> str:
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_quota_increment(path:str, size:int) -> str:
+def powerscale_quota_increment(path:str, size:int, cluster_name: str = None) -> str:
     """
     Increase the hard quota on a PowerScale cluster path by a given number of bytes.
 
@@ -742,7 +747,7 @@ def powerscale_quota_increment(path:str, size:int) -> str:
     Returns a confirmation message describing the change made.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         quotas = Quotas(cluster)
         return quotas.increment_hard_quota(path, size)
 
@@ -750,7 +755,7 @@ def powerscale_quota_increment(path:str, size:int) -> str:
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_quota_decrement(path:str, size:int) -> str:
+def powerscale_quota_decrement(path:str, size:int, cluster_name: str = None) -> str:
     """
     Decrease the hard quota on a PowerScale cluster path by a given number of bytes.
 
@@ -783,7 +788,7 @@ def powerscale_quota_decrement(path:str, size:int) -> str:
     Returns a confirmation message describing the change made.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         quotas = Quotas(cluster)
         return quotas.decrement_hard_quota(path, size)
 
@@ -793,7 +798,8 @@ def powerscale_quota_decrement(path:str, size:int) -> str:
 @mcp.tool()
 def powerscale_snapshot_get(
     limit: int = 1000,
-    resume: Optional[str] = None
+    resume: Optional[str] = None,
+    cluster_name: str = None,
     ) -> Dict[str, Any]:
     """
     Returns snapshots on the PowerScale cluster using pagination.
@@ -839,7 +845,7 @@ def powerscale_snapshot_get(
     try:
         resume = None if resume in (None, "null", "None") else resume
 
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         snapshots = Snapshots(cluster)
 
         page = snapshots.get(limit=limit, resume=resume)
@@ -860,7 +866,8 @@ def powerscale_snapshot_get(
 @mcp.tool()
 def powerscale_snapshot_schedule_get(
     limit: int = 1000,
-    resume: Optional[str] = None
+    resume: Optional[str] = None,
+    cluster_name: str = None,
     ) -> Dict[str, Any]:
     """
     Returns snapshot schedules on the PowerScale cluster using pagination.
@@ -904,7 +911,7 @@ def powerscale_snapshot_schedule_get(
     try:
         resume = None if resume in (None, "null", "None") else resume
 
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         schedules = SnapshotSchedules(cluster)
 
         page = schedules.get(limit=limit, resume=resume)
@@ -923,7 +930,7 @@ def powerscale_snapshot_schedule_get(
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_synciq_get() -> Dict[str, Any]:
+def powerscale_synciq_get(cluster_name: str = None) -> Dict[str, Any]:
     """
     Returns all SyncIQ replication policies on the PowerScale cluster.
 
@@ -956,7 +963,7 @@ def powerscale_synciq_get() -> Dict[str, Any]:
     - items: List of SyncIQ policy objects
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         synciq = SyncIQ(cluster)
         return synciq.get()
 
@@ -966,7 +973,8 @@ def powerscale_synciq_get() -> Dict[str, Any]:
 @mcp.tool()
 def powerscale_nfs_get(
     limit: int = 1000,
-    resume: Optional[str] = None
+    resume: Optional[str] = None,
+    cluster_name: str = None,
     ) -> Dict[str, Any]:
     """
     Returns NFS exports on the PowerScale cluster using pagination.
@@ -1014,7 +1022,7 @@ def powerscale_nfs_get(
     try:
         resume = None if resume in (None, "null", "None") else resume
 
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         nfs = Nfs(cluster)
 
         page = nfs.get(limit=limit, resume=resume)
@@ -1035,7 +1043,8 @@ def powerscale_nfs_get(
 @mcp.tool()
 def powerscale_s3_get(
     limit: int = 1000,
-    resume: Optional[str] = None
+    resume: Optional[str] = None,
+    cluster_name: str = None,
     ) -> Dict[str, Any]:
     """
     Returns S3 buckets on the PowerScale cluster using pagination.
@@ -1079,7 +1088,7 @@ def powerscale_s3_get(
     try:
         resume = None if resume in (None, "null", "None") else resume
 
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         s3 = S3(cluster)
 
         page = s3.get(limit=limit, resume=resume)
@@ -1100,7 +1109,8 @@ def powerscale_s3_get(
 @mcp.tool()
 def powerscale_smb_get(
     limit: int = 1000,
-    resume: Optional[str] = None
+    resume: Optional[str] = None,
+    cluster_name: str = None,
     ) -> Dict[str, Any]:
     """
     Returns SMB shares on the PowerScale cluster using pagination.
@@ -1145,7 +1155,7 @@ def powerscale_smb_get(
     try:
         resume = None if resume in (None, "null", "None") else resume
 
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         smb = Smb(cluster)
 
         page = smb.get(limit=limit, resume=resume)
@@ -1202,6 +1212,7 @@ def powerscale_smb_create(
     permissions: str = None,
     host_acls: str = None,
     run_as_root: str = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     Create an SMB (CIFS) share on the PowerScale cluster.
@@ -1285,7 +1296,7 @@ def powerscale_smb_create(
     - playbook_path: Path to the executed playbook (for audit)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         smb = Smb(cluster)
         return smb.add(
             share_name=share_name,
@@ -1325,7 +1336,7 @@ def powerscale_smb_create(
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_smb_remove(share_name: str) -> dict:
+def powerscale_smb_remove(share_name: str, cluster_name: str = None) -> dict:
     """
     Remove an SMB (CIFS) share from the PowerScale cluster.
 
@@ -1348,14 +1359,14 @@ def powerscale_smb_remove(share_name: str) -> dict:
     - playbook_path: Path to the executed playbook (for audit)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         smb = Smb(cluster)
         return smb.remove(share_name=share_name)
     except Exception as e:
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_smb_global_settings_get() -> dict:
+def powerscale_smb_global_settings_get(cluster_name: str = None) -> dict:
     """
     Retrieve the current SMB global settings from the PowerScale cluster.
 
@@ -1382,7 +1393,7 @@ def powerscale_smb_global_settings_get() -> dict:
     - View SMB performance configuration (workers, multichannel)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         smb = Smb(cluster)
         return smb.get_global_settings()
     except Exception as e:
@@ -1409,6 +1420,7 @@ def powerscale_smb_global_settings_set(
     onefs_cpu_multiplier: int = None,
     onefs_num_workers: int = None,
     ignore_eas: bool = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     Update SMB global settings on the PowerScale cluster.
@@ -1446,7 +1458,7 @@ def powerscale_smb_global_settings_set(
     - Tune SMB performance settings
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         smb = Smb(cluster)
         return smb.set_global_settings(
             service=service,
@@ -1478,6 +1490,7 @@ def powerscale_smb_sessions_get(
     lnn: Optional[str] = None,
     lnn_skip: Optional[str] = None,
     resume: Optional[str] = None,
+    cluster_name: str = None,
     ) -> Dict[str, Any]:
     """
     Returns active SMB sessions across cluster nodes.
@@ -1526,7 +1539,7 @@ def powerscale_smb_sessions_get(
     try:
         resume = None if resume in (None, "null", "None") else resume
 
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         smb = Smb(cluster)
 
         page = smb.get_sessions(limit=limit, lnn=lnn, lnn_skip=lnn_skip, resume=resume)
@@ -1543,7 +1556,7 @@ def powerscale_smb_sessions_get(
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_smb_session_close(session_id: str) -> Dict[str, Any]:
+def powerscale_smb_session_close(session_id: str, cluster_name: str = None) -> Dict[str, Any]:
     """
     Closes (forcibly terminates) an active SMB session by session ID.
 
@@ -1561,7 +1574,7 @@ def powerscale_smb_session_close(session_id: str) -> Dict[str, Any]:
     - message: Confirmation message
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         smb = Smb(cluster)
         return smb.delete_session(session_id)
     except Exception as e:
@@ -1571,6 +1584,7 @@ def powerscale_smb_session_close(session_id: str) -> Dict[str, Any]:
 def powerscale_smb_sessions_close_by_user(
     computer: str,
     user: str,
+    cluster_name: str = None,
     ) -> Dict[str, Any]:
     """
     Closes all active SMB sessions for a specific user on a specific client computer.
@@ -1590,7 +1604,7 @@ def powerscale_smb_sessions_close_by_user(
     - message: Confirmation message
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         smb = Smb(cluster)
         return smb.delete_sessions_by_user(computer=computer, user=user)
     except Exception as e:
@@ -1602,6 +1616,7 @@ def powerscale_smb_openfiles_get(
     resume: Optional[str] = None,
     sort: Optional[str] = None,
     dir: Optional[str] = None,
+    cluster_name: str = None,
     ) -> Dict[str, Any]:
     """
     Returns all files currently open via SMB on the cluster.
@@ -1643,7 +1658,7 @@ def powerscale_smb_openfiles_get(
     try:
         resume = None if resume in (None, "null", "None") else resume
 
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         smb = Smb(cluster)
 
         page = smb.get_openfiles(limit=limit, resume=resume, sort=sort, dir=dir)
@@ -1660,7 +1675,7 @@ def powerscale_smb_openfiles_get(
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_smb_openfile_close(openfile_id: str) -> Dict[str, Any]:
+def powerscale_smb_openfile_close(openfile_id: str, cluster_name: str = None) -> Dict[str, Any]:
     """
     Closes (forcibly terminates) an open SMB file handle by ID.
 
@@ -1678,7 +1693,7 @@ def powerscale_smb_openfile_close(openfile_id: str) -> Dict[str, Any]:
     - message: Confirmation message
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         smb = Smb(cluster)
         return smb.delete_openfile(openfile_id)
     except Exception as e:
@@ -1703,7 +1718,8 @@ def powerscale_nfs_create(
     map_root: str = None,
     # Phase 4 - Advanced Features
     map_non_root: str = None,
-    ignore_unresolvable_hosts: bool = None
+    ignore_unresolvable_hosts: bool = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     Create an NFS export on the PowerScale cluster with comprehensive configuration options.
@@ -1783,7 +1799,7 @@ def powerscale_nfs_create(
     - playbook_path: Path to the executed playbook (for audit)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         nfs = Nfs(cluster)
 
         # Parse basic client list
@@ -1825,7 +1841,7 @@ def powerscale_nfs_create(
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_nfs_remove(path: str, access_zone: str = "System") -> dict:
+def powerscale_nfs_remove(path: str, access_zone: str = "System", cluster_name: str = None) -> dict:
     """
     Remove an NFS export from the PowerScale cluster.
 
@@ -1849,14 +1865,14 @@ def powerscale_nfs_remove(path: str, access_zone: str = "System") -> dict:
     - playbook_path: Path to the executed playbook (for audit)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         nfs = Nfs(cluster)
         return nfs.remove(path=path, access_zone=access_zone)
     except Exception as e:
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_nfs_global_settings_get() -> dict:
+def powerscale_nfs_global_settings_get(cluster_name: str = None) -> dict:
     """
     Retrieve the current NFS global settings from the PowerScale cluster.
 
@@ -1881,7 +1897,7 @@ def powerscale_nfs_global_settings_get() -> dict:
     - Check RDMA and rquota status
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         nfs = Nfs(cluster)
         return nfs.get_global_settings()
     except Exception as e:
@@ -1900,6 +1916,7 @@ def powerscale_nfs_global_settings_set(
     rpc_minthreads: int = None,
     rquota_enabled: bool = None,
     nfs_rdma_enabled: bool = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     Update NFS global settings on the PowerScale cluster.
@@ -1929,7 +1946,7 @@ def powerscale_nfs_global_settings_set(
     - Enable or disable RDMA and rquota
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         nfs = Nfs(cluster)
 
         # Build nfsv3 dict if any v3 params are set
@@ -1968,7 +1985,8 @@ def powerscale_nfs_global_settings_set(
 
 @mcp.tool()
 def powerscale_s3_create(s3_bucket_name: str, path: str, owner: str = "root",
-                         description: str = None, create_path: bool = None) -> dict:
+                         description: str = None, create_path: bool = None,
+                         cluster_name: str = None) -> dict:
     """
     Create an S3 bucket on the PowerScale cluster.
 
@@ -1998,7 +2016,7 @@ def powerscale_s3_create(s3_bucket_name: str, path: str, owner: str = "root",
     - playbook_path: Path to the executed playbook (for audit)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         s3 = S3(cluster)
         return s3.add(s3_bucket_name=s3_bucket_name, path=path, owner=owner,
                       description=description, create_path=create_path)
@@ -2006,7 +2024,7 @@ def powerscale_s3_create(s3_bucket_name: str, path: str, owner: str = "root",
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_s3_remove(s3_bucket_name: str) -> dict:
+def powerscale_s3_remove(s3_bucket_name: str, cluster_name: str = None) -> dict:
     """
     Remove an S3 bucket from the PowerScale cluster.
 
@@ -2029,7 +2047,7 @@ def powerscale_s3_remove(s3_bucket_name: str) -> dict:
     - playbook_path: Path to the executed playbook (for audit)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         s3 = S3(cluster)
         return s3.remove(s3_bucket_name=s3_bucket_name)
     except Exception as e:
@@ -2038,7 +2056,8 @@ def powerscale_s3_remove(s3_bucket_name: str) -> dict:
 @mcp.tool()
 def powerscale_snapshot_schedule_create(name: str, path: str, schedule: str,
                                         pattern: str = None, duration: str = None,
-                                        alias: str = None) -> dict:
+                                        alias: str = None,
+                                        cluster_name: str = None) -> dict:
     """
     Create a snapshot schedule on the PowerScale cluster.
 
@@ -2103,7 +2122,7 @@ def powerscale_snapshot_schedule_create(name: str, path: str, schedule: str,
     - playbook_path: Path to the executed playbook (for audit)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         schedules = SnapshotSchedules(cluster)
         desired_retention = int(duration) if duration else None
         return schedules.add(name=name, path=path, schedule=schedule,
@@ -2113,7 +2132,7 @@ def powerscale_snapshot_schedule_create(name: str, path: str, schedule: str,
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_snapshot_schedule_remove(name: str) -> dict:
+def powerscale_snapshot_schedule_remove(name: str, cluster_name: str = None) -> dict:
     """
     Remove a snapshot schedule from the PowerScale cluster.
 
@@ -2137,7 +2156,7 @@ def powerscale_snapshot_schedule_remove(name: str) -> dict:
     - playbook_path: Path to the executed playbook (for audit)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         schedules = SnapshotSchedules(cluster)
         return schedules.remove(name=name)
     except Exception as e:
@@ -2146,7 +2165,8 @@ def powerscale_snapshot_schedule_remove(name: str) -> dict:
 @mcp.tool()
 def powerscale_snapshot_create(path: str, snapshot_name: str = None, alias: str = None,
                                 desired_retention: int = None, retention_unit: str = "hours",
-                                expiration_timestamp: str = None) -> dict:
+                                expiration_timestamp: str = None,
+                                cluster_name: str = None) -> dict:
     """
     Create a manual snapshot on the PowerScale cluster.
 
@@ -2184,7 +2204,7 @@ def powerscale_snapshot_create(path: str, snapshot_name: str = None, alias: str 
     - playbook_path: Path to the executed playbook (for audit)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         snapshots = Snapshots(cluster)
         return snapshots.create(path=path, snapshot_name=snapshot_name, alias=alias,
                                desired_retention=desired_retention,
@@ -2194,7 +2214,7 @@ def powerscale_snapshot_create(path: str, snapshot_name: str = None, alias: str 
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_snapshot_delete(snapshot_name: str) -> dict:
+def powerscale_snapshot_delete(snapshot_name: str, cluster_name: str = None) -> dict:
     """
     Delete a snapshot from the PowerScale cluster.
 
@@ -2222,7 +2242,7 @@ def powerscale_snapshot_delete(snapshot_name: str) -> dict:
     - playbook_path: Path to the executed playbook (for audit)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         snapshots = Snapshots(cluster)
         return snapshots.delete(snapshot_name=snapshot_name)
     except Exception as e:
@@ -2231,7 +2251,8 @@ def powerscale_snapshot_delete(snapshot_name: str) -> dict:
 @mcp.tool()
 def powerscale_snapshot_pending_get(begin: int = None, end: int = None,
                                     schedule: str = None, limit: int = 1000,
-                                    resume: str = None) -> Dict[str, Any]:
+                                    resume: str = None,
+                                    cluster_name: str = None) -> Dict[str, Any]:
     """
     Return a list of snapshots scheduled to be created in the future.
 
@@ -2277,7 +2298,7 @@ def powerscale_snapshot_pending_get(begin: int = None, end: int = None,
         # Normalize resume in case LLM sends "null"
         resume = None if resume in (None, "null", "None") else resume
 
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         snapshots = Snapshots(cluster)
 
         page = snapshots.get_pending(begin=begin, end=end, schedule=schedule,
@@ -2297,7 +2318,7 @@ def powerscale_snapshot_pending_get(begin: int = None, end: int = None,
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_snapshot_alias_create(name: str, target: str) -> dict:
+def powerscale_snapshot_alias_create(name: str, target: str, cluster_name: str = None) -> dict:
     """
     Create an alias pointing to an existing snapshot.
 
@@ -2327,14 +2348,14 @@ def powerscale_snapshot_alias_create(name: str, target: str) -> dict:
     - id: The alias ID if available
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         snapshots = Snapshots(cluster)
         return snapshots.create_alias(name=name, target=target)
     except Exception as e:
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_snapshot_alias_get(alias_id: str) -> dict:
+def powerscale_snapshot_alias_get(alias_id: str, cluster_name: str = None) -> dict:
     """
     Get information about a snapshot alias.
 
@@ -2362,7 +2383,7 @@ def powerscale_snapshot_alias_get(alias_id: str) -> dict:
     - error: Error message if the alias was not found
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         snapshots = Snapshots(cluster)
         return snapshots.get_alias(alias_id=alias_id)
     except Exception as e:
@@ -2372,7 +2393,8 @@ def powerscale_snapshot_alias_get(alias_id: str) -> dict:
 def powerscale_synciq_create(policy_name: str, source_path: str,
                               target_host: str, target_path: str,
                               action: str = "sync", schedule: str = None,
-                              description: str = None, enabled: bool = None) -> dict:
+                              description: str = None, enabled: bool = None,
+                              cluster_name: str = None) -> dict:
     """
     Create a SyncIQ replication policy on the PowerScale cluster.
 
@@ -2408,7 +2430,7 @@ def powerscale_synciq_create(policy_name: str, source_path: str,
     - playbook_path: Path to the executed playbook (for audit)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         synciq = SyncIQ(cluster)
         return synciq.add(policy_name=policy_name, source_path=source_path,
                           target_host=target_host, target_path=target_path,
@@ -2418,7 +2440,7 @@ def powerscale_synciq_create(policy_name: str, source_path: str,
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_synciq_remove(policy_name: str) -> dict:
+def powerscale_synciq_remove(policy_name: str, cluster_name: str = None) -> dict:
     """
     Remove a SyncIQ replication policy from the PowerScale cluster.
 
@@ -2441,7 +2463,7 @@ def powerscale_synciq_remove(policy_name: str) -> dict:
     - playbook_path: Path to the executed playbook (for audit)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         synciq = SyncIQ(cluster)
         return synciq.remove(policy_name=policy_name)
     except Exception as e:
@@ -2452,7 +2474,7 @@ def powerscale_synciq_remove(policy_name: str) -> dict:
 # ============================================================================
 
 @mcp.tool()
-def powerscale_datamover_policy_get(limit: int = 1000, resume: str = None) -> Dict[str, Any]:
+def powerscale_datamover_policy_get(limit: int = 1000, resume: str = None, cluster_name: str = None) -> Dict[str, Any]:
     """
     Returns a paginated list of DataMover policies on the PowerScale cluster.
 
@@ -2479,7 +2501,7 @@ def powerscale_datamover_policy_get(limit: int = 1000, resume: str = None) -> Di
     token to get the next batch of results.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         datamover = DataMover(cluster)
         # Normalize resume token (handle "null", "None", None)
         resume = None if resume in (None, "null", "None") else resume
@@ -2488,7 +2510,7 @@ def powerscale_datamover_policy_get(limit: int = 1000, resume: str = None) -> Di
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_datamover_policy_get_by_id(policy_id: str) -> Dict[str, Any]:
+def powerscale_datamover_policy_get_by_id(policy_id: str, cluster_name: str = None) -> Dict[str, Any]:
     """
     Retrieves detailed information about a specific DataMover policy by ID or name.
 
@@ -2511,7 +2533,7 @@ def powerscale_datamover_policy_get_by_id(policy_id: str) -> Dict[str, Any]:
     - error: Error message if the operation failed
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         datamover = DataMover(cluster)
         return datamover.get_policy(policy_id=policy_id)
     except Exception as e:
@@ -2520,7 +2542,8 @@ def powerscale_datamover_policy_get_by_id(policy_id: str) -> Dict[str, Any]:
 @mcp.tool()
 def powerscale_datamover_policy_create(name: str, base_policy_id: int = None,
                                        enabled: bool = None, priority: str = None,
-                                       run_now: bool = None, schedule: str = None) -> dict:
+                                       run_now: bool = None, schedule: str = None,
+                                       cluster_name: str = None) -> dict:
     """
     Create a new DataMover policy on the PowerScale cluster.
 
@@ -2552,7 +2575,7 @@ def powerscale_datamover_policy_create(name: str, base_policy_id: int = None,
     Use base_policy_id to reference an existing base policy, or the policy may use defaults.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         datamover = DataMover(cluster)
         return datamover.create_policy(name=name, base_policy_id=base_policy_id,
                                        enabled=enabled, priority=priority,
@@ -2561,7 +2584,7 @@ def powerscale_datamover_policy_create(name: str, base_policy_id: int = None,
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_datamover_policy_delete(policy_id: str) -> dict:
+def powerscale_datamover_policy_delete(policy_id: str, cluster_name: str = None) -> dict:
     """
     Delete a DataMover policy from the PowerScale cluster.
 
@@ -2584,14 +2607,14 @@ def powerscale_datamover_policy_delete(policy_id: str) -> dict:
     - message: Success or error message
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         datamover = DataMover(cluster)
         return datamover.delete_policy(policy_id=policy_id)
     except Exception as e:
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_datamover_policy_last_job(policy_id: str) -> dict:
+def powerscale_datamover_policy_last_job(policy_id: str, cluster_name: str = None) -> dict:
     """
     Retrieve the last job information for a specific DataMover policy.
 
@@ -2615,7 +2638,7 @@ def powerscale_datamover_policy_last_job(policy_id: str) -> dict:
     - error: Error message if the operation failed
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         datamover = DataMover(cluster)
         return datamover.get_policy_last_job(policy_id=policy_id)
     except Exception as e:
@@ -2626,7 +2649,7 @@ def powerscale_datamover_policy_last_job(policy_id: str) -> dict:
 # ============================================================================
 
 @mcp.tool()
-def powerscale_datamover_account_get(limit: int = 1000, resume: str = None) -> Dict[str, Any]:
+def powerscale_datamover_account_get(limit: int = 1000, resume: str = None, cluster_name: str = None) -> Dict[str, Any]:
     """
     Returns a paginated list of DataMover accounts on the PowerScale cluster.
 
@@ -2650,7 +2673,7 @@ def powerscale_datamover_account_get(limit: int = 1000, resume: str = None) -> D
     - resume: Token for fetching the next page (None if last page)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         datamover = DataMover(cluster)
         # Normalize resume token (handle "null", "None", None)
         resume = None if resume in (None, "null", "None") else resume
@@ -2659,7 +2682,7 @@ def powerscale_datamover_account_get(limit: int = 1000, resume: str = None) -> D
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_datamover_account_get_by_id(account_id: str) -> Dict[str, Any]:
+def powerscale_datamover_account_get_by_id(account_id: str, cluster_name: str = None) -> Dict[str, Any]:
     """
     Retrieves detailed information about a specific DataMover account by ID or name.
 
@@ -2682,7 +2705,7 @@ def powerscale_datamover_account_get_by_id(account_id: str) -> Dict[str, Any]:
     - error: Error message if the operation failed
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         datamover = DataMover(cluster)
         return datamover.get_account(account_id=account_id)
     except Exception as e:
@@ -2692,7 +2715,8 @@ def powerscale_datamover_account_get_by_id(account_id: str) -> Dict[str, Any]:
 def powerscale_datamover_account_create(name: str, account_type: str, uri: str,
                                         briefcase: str = None, enforce_sse: bool = None,
                                         local_network_pool: str = None, max_sparks: int = None,
-                                        remote_network_pool: str = None, storage_class: str = None) -> dict:
+                                        remote_network_pool: str = None, storage_class: str = None,
+                                        cluster_name: str = None) -> dict:
     """
     Create a new DataMover account on the PowerScale cluster.
 
@@ -2727,7 +2751,7 @@ def powerscale_datamover_account_create(name: str, account_type: str, uri: str,
     Different account types (S3, NFS, local) have different URI formats and requirements.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         datamover = DataMover(cluster)
         return datamover.create_account(name=name, account_type=account_type, uri=uri,
                                         briefcase=briefcase, enforce_sse=enforce_sse,
@@ -2739,7 +2763,7 @@ def powerscale_datamover_account_create(name: str, account_type: str, uri: str,
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_datamover_account_delete(account_id: str) -> dict:
+def powerscale_datamover_account_delete(account_id: str, cluster_name: str = None) -> dict:
     """
     Delete a DataMover account from the PowerScale cluster.
 
@@ -2765,7 +2789,7 @@ def powerscale_datamover_account_delete(account_id: str) -> dict:
     policies to fail. Always check policy dependencies before deleting accounts.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         datamover = DataMover(cluster)
         return datamover.delete_account(account_id=account_id)
     except Exception as e:
@@ -2776,7 +2800,7 @@ def powerscale_datamover_account_delete(account_id: str) -> dict:
 # ============================================================================
 
 @mcp.tool()
-def powerscale_datamover_base_policy_get(limit: int = 1000, resume: str = None) -> Dict[str, Any]:
+def powerscale_datamover_base_policy_get(limit: int = 1000, resume: str = None, cluster_name: str = None) -> Dict[str, Any]:
     """
     Returns a paginated list of DataMover base policies on the PowerScale cluster.
 
@@ -2800,7 +2824,7 @@ def powerscale_datamover_base_policy_get(limit: int = 1000, resume: str = None) 
     - resume: Token for fetching the next page (None if last page)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         datamover = DataMover(cluster)
         # Normalize resume token (handle "null", "None", None)
         resume = None if resume in (None, "null", "None") else resume
@@ -2809,7 +2833,7 @@ def powerscale_datamover_base_policy_get(limit: int = 1000, resume: str = None) 
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_datamover_base_policy_get_by_id(base_policy_id: str) -> Dict[str, Any]:
+def powerscale_datamover_base_policy_get_by_id(base_policy_id: str, cluster_name: str = None) -> Dict[str, Any]:
     """
     Retrieves detailed information about a specific DataMover base policy by ID or name.
 
@@ -2832,7 +2856,7 @@ def powerscale_datamover_base_policy_get_by_id(base_policy_id: str) -> Dict[str,
     - error: Error message if the operation failed
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         datamover = DataMover(cluster)
         return datamover.get_base_policy(base_policy_id=base_policy_id)
     except Exception as e:
@@ -2841,7 +2865,8 @@ def powerscale_datamover_base_policy_get_by_id(base_policy_id: str) -> Dict[str,
 @mcp.tool()
 def powerscale_datamover_base_policy_create(name: str, enabled: bool = None, priority: str = None,
                                             source_account_id: str = None, source_base_path: str = None,
-                                            target_account_id: str = None, target_base_path: str = None) -> dict:
+                                            target_account_id: str = None, target_base_path: str = None,
+                                            cluster_name: str = None) -> dict:
     """
     Create a new DataMover base policy on the PowerScale cluster.
 
@@ -2874,7 +2899,7 @@ def powerscale_datamover_base_policy_create(name: str, enabled: bool = None, pri
     the base policy ID to inherit its configuration.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         datamover = DataMover(cluster)
         return datamover.create_base_policy(name=name, enabled=enabled, priority=priority,
                                            source_account_id=source_account_id,
@@ -2885,7 +2910,7 @@ def powerscale_datamover_base_policy_create(name: str, enabled: bool = None, pri
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_datamover_base_policy_delete(base_policy_id: str) -> dict:
+def powerscale_datamover_base_policy_delete(base_policy_id: str, cluster_name: str = None) -> dict:
     """
     Delete a DataMover base policy from the PowerScale cluster.
 
@@ -2912,7 +2937,7 @@ def powerscale_datamover_base_policy_delete(base_policy_id: str) -> dict:
     Deleting a base policy that is referenced by existing policies may cause issues.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         datamover = DataMover(cluster)
         return datamover.delete_base_policy(base_policy_id=base_policy_id)
     except Exception as e:
@@ -2923,7 +2948,7 @@ def powerscale_datamover_base_policy_delete(base_policy_id: str) -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_filepool_policy_get() -> Dict[str, Any]:
+def powerscale_filepool_policy_get(cluster_name: str = None) -> Dict[str, Any]:
     """
     Returns all FilePool policies on the PowerScale cluster.
 
@@ -2959,14 +2984,14 @@ def powerscale_filepool_policy_get() -> Dict[str, Any]:
     - total: Total number of policies
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         filepool = FilePool(cluster)
         return filepool.get()
     except Exception as e:
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_filepool_policy_get_by_name(policy_id: str) -> Dict[str, Any]:
+def powerscale_filepool_policy_get_by_name(policy_id: str, cluster_name: str = None) -> Dict[str, Any]:
     """
     Retrieve detailed information about a specific FilePool policy by name or ID.
 
@@ -2987,14 +3012,14 @@ def powerscale_filepool_policy_get_by_name(policy_id: str) -> Dict[str, Any]:
     - error: Error message if the policy was not found
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         filepool = FilePool(cluster)
         return filepool.get_policy(policy_id=policy_id)
     except Exception as e:
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_filepool_default_policy_get() -> Dict[str, Any]:
+def powerscale_filepool_default_policy_get(cluster_name: str = None) -> Dict[str, Any]:
     """
     Return the system default FilePool policy on the PowerScale cluster.
 
@@ -3012,7 +3037,7 @@ def powerscale_filepool_default_policy_get() -> Dict[str, Any]:
     - default_policy: The default policy object with actions and settings
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         filepool = FilePool(cluster)
         return filepool.get_default_policy()
     except Exception as e:
@@ -3029,6 +3054,7 @@ def powerscale_filepool_policy_create(
     set_requested_protection: str = None,
     set_data_access_pattern: str = None,
     set_write_performance_optimization: str = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     Create a FilePool policy on the PowerScale cluster.
@@ -3105,7 +3131,7 @@ def powerscale_filepool_policy_create(
     - playbook_path: Path to the executed playbook (for audit)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         filepool = FilePool(cluster)
         return filepool.create(
             policy_name=policy_name,
@@ -3132,6 +3158,7 @@ def powerscale_filepool_policy_update(
     set_requested_protection: str = None,
     set_data_access_pattern: str = None,
     set_write_performance_optimization: str = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     Update an existing FilePool policy on the PowerScale cluster.
@@ -3171,7 +3198,7 @@ def powerscale_filepool_policy_update(
     - message: Success or error message
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         filepool = FilePool(cluster)
         return filepool.update(
             policy_id=policy_id,
@@ -3188,7 +3215,7 @@ def powerscale_filepool_policy_update(
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_filepool_policy_remove(policy_name: str) -> dict:
+def powerscale_filepool_policy_remove(policy_name: str, cluster_name: str = None) -> dict:
     """
     Remove a FilePool policy from the PowerScale cluster.
 
@@ -3212,7 +3239,7 @@ def powerscale_filepool_policy_remove(policy_name: str) -> dict:
     - playbook_path: Path to the executed playbook (for audit)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         filepool = FilePool(cluster)
         return filepool.delete(policy_name=policy_name)
     except Exception as e:
@@ -3223,7 +3250,8 @@ def powerscale_quota_create(path: str, quota_type: str, limit_size: str,
                              soft_grace_period: str = None,
                              soft_grace_period_unit: str = "days",
                              include_overheads: bool = False,
-                             persona: str = None) -> dict:
+                             persona: str = None,
+                             cluster_name: str = None) -> dict:
     """
     Create a new quota on the PowerScale cluster using Ansible automation.
 
@@ -3263,7 +3291,7 @@ def powerscale_quota_create(path: str, quota_type: str, limit_size: str,
     - playbook_path: Path to the executed playbook (for audit)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         quotas = Quotas(cluster)
         return quotas.add_quota(path=path, quota_type=quota_type,
                                 limit_size=limit_size,
@@ -3275,7 +3303,7 @@ def powerscale_quota_create(path: str, quota_type: str, limit_size: str,
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_quota_remove(path: str, quota_type: str) -> dict:
+def powerscale_quota_remove(path: str, quota_type: str, cluster_name: str = None) -> dict:
     """
     Remove a quota from the PowerScale cluster using Ansible automation.
 
@@ -3299,7 +3327,7 @@ def powerscale_quota_remove(path: str, quota_type: str) -> dict:
     - playbook_path: Path to the executed playbook (for audit)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         quotas = Quotas(cluster)
         return quotas.remove_quota(path=path, quota_type=quota_type)
     except Exception as e:
@@ -3319,7 +3347,8 @@ def powerscale_directory_list(
     dir: Optional[str] = None,
     type: Optional[str] = None,
     hidden: bool = False,
-    access_point: Optional[str] = None
+    access_point: Optional[str] = None,
+    cluster_name: str = None,
 ) -> Dict[str, Any]:
     """
     List the contents of a directory on the PowerScale cluster filesystem.
@@ -3368,7 +3397,7 @@ def powerscale_directory_list(
     try:
         resume = None if resume in (None, "null", "None") else resume
 
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.list_directory(
             path=path, detail=detail, limit=limit, resume=resume,
@@ -3378,7 +3407,7 @@ def powerscale_directory_list(
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_directory_attributes(path: str) -> Dict[str, Any]:
+def powerscale_directory_attributes(path: str, cluster_name: str = None) -> Dict[str, Any]:
     """
     Get attribute information for a directory on the PowerScale cluster.
 
@@ -3400,7 +3429,7 @@ def powerscale_directory_attributes(path: str) -> Dict[str, Any]:
       such as Last-Modified, Content-Type, and x-isi-ifs-target-type.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.get_directory_attributes(path=path)
     except Exception as e:
@@ -3412,7 +3441,8 @@ def powerscale_directory_create(
     recursive: bool = True,
     access_control: Optional[str] = None,
     overwrite: bool = False,
-    access_point: Optional[str] = None
+    access_point: Optional[str] = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     Create a directory on the PowerScale cluster filesystem.
@@ -3441,7 +3471,7 @@ def powerscale_directory_create(
     - message: Human-readable confirmation
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.create_directory(
             path=path, recursive=recursive, access_control=access_control,
@@ -3453,7 +3483,8 @@ def powerscale_directory_create(
 def powerscale_directory_delete(
     path: str,
     recursive: bool = False,
-    access_point: Optional[str] = None
+    access_point: Optional[str] = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     Delete a directory from the PowerScale cluster filesystem.
@@ -3483,7 +3514,7 @@ def powerscale_directory_delete(
     - message: Human-readable confirmation
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.delete_directory(
             path=path, recursive=recursive, access_point=access_point)
@@ -3494,7 +3525,8 @@ def powerscale_directory_delete(
 def powerscale_directory_move(
     path: str,
     destination: str,
-    access_point: Optional[str] = None
+    access_point: Optional[str] = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     Move or rename a directory on the PowerScale cluster filesystem.
@@ -3521,7 +3553,7 @@ def powerscale_directory_move(
     - message: Human-readable confirmation
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.move_directory(
             path=path, destination=destination, access_point=access_point)
@@ -3534,7 +3566,8 @@ def powerscale_directory_copy(
     destination: str,
     overwrite: bool = False,
     merge: bool = False,
-    continue_on_error: bool = False
+    continue_on_error: bool = False,
+    cluster_name: str = None,
 ) -> dict:
     """
     Recursively copy a directory on the PowerScale cluster filesystem.
@@ -3567,7 +3600,7 @@ def powerscale_directory_copy(
     - message: Human-readable confirmation
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.copy_directory(
             source=source, destination=destination, overwrite=overwrite,
@@ -3578,7 +3611,8 @@ def powerscale_directory_copy(
 @mcp.tool()
 def powerscale_file_read(
     path: str,
-    byte_range: Optional[str] = None
+    byte_range: Optional[str] = None,
+    cluster_name: str = None,
 ) -> Dict[str, Any]:
     """
     Read the contents of a file on the PowerScale cluster filesystem.
@@ -3615,14 +3649,14 @@ def powerscale_file_read(
     - headers: Response headers with metadata
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.get_file_contents(path=path, byte_range=byte_range)
     except Exception as e:
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_file_attributes(path: str) -> Dict[str, Any]:
+def powerscale_file_attributes(path: str, cluster_name: str = None) -> Dict[str, Any]:
     """
     Get attribute information for a file on the PowerScale cluster.
 
@@ -3646,7 +3680,7 @@ def powerscale_file_attributes(path: str) -> Dict[str, Any]:
       x-isi-ifs-target-type.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.get_file_attributes(path=path)
     except Exception as e:
@@ -3658,7 +3692,8 @@ def powerscale_file_create(
     contents: str = '',
     access_control: Optional[str] = None,
     content_type: Optional[str] = None,
-    overwrite: bool = False
+    overwrite: bool = False,
+    cluster_name: str = None,
 ) -> dict:
     """
     Create a file on the PowerScale cluster filesystem.
@@ -3690,7 +3725,7 @@ def powerscale_file_create(
     - message: Human-readable confirmation
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.create_file(
             path=path, contents=contents, access_control=access_control,
@@ -3699,7 +3734,7 @@ def powerscale_file_create(
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_file_delete(path: str) -> dict:
+def powerscale_file_delete(path: str, cluster_name: str = None) -> dict:
     """
     Delete a file from the PowerScale cluster filesystem.
 
@@ -3720,7 +3755,7 @@ def powerscale_file_delete(path: str) -> dict:
     - message: Human-readable confirmation
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.delete_file(path=path)
     except Exception as e:
@@ -3729,7 +3764,8 @@ def powerscale_file_delete(path: str) -> dict:
 @mcp.tool()
 def powerscale_file_move(
     path: str,
-    destination: str
+    destination: str,
+    cluster_name: str = None,
 ) -> dict:
     """
     Move or rename a file on the PowerScale cluster filesystem.
@@ -3757,7 +3793,7 @@ def powerscale_file_move(
     - message: Human-readable confirmation
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.move_file(path=path, destination=destination)
     except Exception as e:
@@ -3769,7 +3805,8 @@ def powerscale_file_copy(
     destination: str,
     overwrite: bool = False,
     clone: bool = False,
-    snapshot: Optional[str] = None
+    snapshot: Optional[str] = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     Copy a file on the PowerScale cluster filesystem.
@@ -3805,7 +3842,7 @@ def powerscale_file_copy(
     - message: Human-readable confirmation
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.copy_file(
             source=source, destination=destination, overwrite=overwrite,
@@ -3816,7 +3853,8 @@ def powerscale_file_copy(
 @mcp.tool()
 def powerscale_acl_get(
     path: str,
-    zone: Optional[str] = None
+    zone: Optional[str] = None,
+    cluster_name: str = None,
 ) -> Dict[str, Any]:
     """
     Get the access control list (ACL) for a file or directory on the
@@ -3848,7 +3886,7 @@ def powerscale_acl_get(
     - Full ACL dict with acl entries, owner, group, mode, and authoritative
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.get_acl(path=path, zone=zone)
     except Exception as e:
@@ -3862,7 +3900,8 @@ def powerscale_acl_set(
     group: Optional[str] = None,
     acl: Optional[str] = None,
     action: str = 'replace',
-    zone: Optional[str] = None
+    zone: Optional[str] = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     Set the access control list (ACL) on a file or directory on the
@@ -3912,7 +3951,7 @@ def powerscale_acl_set(
         if acl_list is not None:
             authoritative = "acl"
 
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.set_acl(
             path=path, mode=mode, owner=owner, group=group,
@@ -3925,7 +3964,8 @@ def powerscale_acl_set(
 def powerscale_metadata_get(
     path: str,
     is_directory: bool = True,
-    zone: Optional[str] = None
+    zone: Optional[str] = None,
+    cluster_name: str = None,
 ) -> Dict[str, Any]:
     """
     Get metadata attributes for a file or directory on the PowerScale cluster.
@@ -3952,7 +3992,7 @@ def powerscale_metadata_get(
     - attrs: List of metadata attribute dicts
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.get_metadata(path=path, is_directory=is_directory, zone=zone)
     except Exception as e:
@@ -3964,7 +4004,8 @@ def powerscale_metadata_set(
     attrs: str,
     action: str = 'update',
     is_directory: bool = True,
-    zone: Optional[str] = None
+    zone: Optional[str] = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     Set metadata attributes on a file or directory on the PowerScale cluster.
@@ -3997,7 +4038,7 @@ def powerscale_metadata_set(
     try:
         attrs_list = json.loads(attrs)
 
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.set_metadata(
             path=path, attrs=attrs_list, action=action,
@@ -4007,7 +4048,8 @@ def powerscale_metadata_set(
 
 @mcp.tool()
 def powerscale_access_point_list(
-    versions: bool = False
+    versions: bool = False,
+    cluster_name: str = None,
 ) -> Dict[str, Any]:
     """
     List namespace access points on the PowerScale cluster.
@@ -4027,7 +4069,7 @@ def powerscale_access_point_list(
     - namespaces: List of access point objects with path and name information
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.list_access_points(versions=versions)
     except Exception as e:
@@ -4036,7 +4078,8 @@ def powerscale_access_point_list(
 @mcp.tool()
 def powerscale_access_point_create(
     name: str,
-    path: str
+    path: str,
+    cluster_name: str = None,
 ) -> dict:
     """
     Create a namespace access point on the PowerScale cluster.
@@ -4060,14 +4103,14 @@ def powerscale_access_point_create(
     - message: Human-readable confirmation
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.create_access_point(name=name, path=path)
     except Exception as e:
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_access_point_delete(name: str) -> dict:
+def powerscale_access_point_delete(name: str, cluster_name: str = None) -> dict:
     """
     Delete a namespace access point from the PowerScale cluster.
 
@@ -4089,14 +4132,14 @@ def powerscale_access_point_delete(name: str) -> dict:
     - message: Human-readable confirmation
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.delete_access_point(name=name)
     except Exception as e:
         return {"error": str(e)}
 
 @mcp.tool()
-def powerscale_worm_get(path: str) -> Dict[str, Any]:
+def powerscale_worm_get(path: str, cluster_name: str = None) -> Dict[str, Any]:
     """
     Get WORM (Write Once Read Many) properties for a file on the
     PowerScale cluster.
@@ -4125,7 +4168,7 @@ def powerscale_worm_get(path: str) -> Dict[str, Any]:
     - Full WORM properties dict for the file
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.get_worm_properties(path=path)
     except Exception as e:
@@ -4135,7 +4178,8 @@ def powerscale_worm_get(path: str) -> Dict[str, Any]:
 def powerscale_worm_set(
     path: str,
     commit_to_worm: bool = False,
-    worm_retention_date: Optional[str] = None
+    worm_retention_date: Optional[str] = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     Set WORM (Write Once Read Many) properties on a file on the
@@ -4168,7 +4212,7 @@ def powerscale_worm_set(
     - message: Human-readable confirmation
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.set_worm_properties(
             path=path, commit_to_worm=commit_to_worm,
@@ -4188,7 +4232,8 @@ def powerscale_directory_query(
     dir: Optional[str] = None,
     type: Optional[str] = None,
     hidden: bool = False,
-    max_depth: Optional[int] = None
+    max_depth: Optional[int] = None,
+    cluster_name: str = None,
 ) -> Dict[str, Any]:
     """
     Query objects within a directory on the PowerScale cluster by attribute
@@ -4246,7 +4291,7 @@ def powerscale_directory_query(
         conditions_list = json.loads(conditions)
         result_attrs_list = json.loads(result_attrs) if result_attrs else None
 
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fm = FileMgmt(cluster)
         return fm.query_directory(
             path=path, conditions=conditions_list, logic=logic,
@@ -4898,6 +4943,7 @@ def powerscale_user_get(
     access_zone: Optional[str] = None,
     limit: int = 1000,
     resume: Optional[str] = None,
+    cluster_name: str = None,
 ) -> Dict[str, Any]:
     """
     List local users on the PowerScale cluster, or retrieve a specific user by name.
@@ -4927,7 +4973,7 @@ def powerscale_user_get(
     """
     try:
         resume = None if resume in (None, "null", "None") else resume
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         users = Users(cluster)
         page = users.get(
             user_name=user_name,
@@ -4963,6 +5009,7 @@ def powerscale_user_create(
     role_name: Optional[str] = None,
     role_state: Optional[str] = None,
     update_password: str = "on_create",
+    cluster_name: str = None,
 ) -> dict:
     """
     Create a new local user on the PowerScale cluster.
@@ -4994,7 +5041,7 @@ def powerscale_user_create(
     - update_password: 'on_create' (set only at creation) or 'always' (update on every run)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         users = Users(cluster)
         return users.add(
             user_name=user_name,
@@ -5031,6 +5078,7 @@ def powerscale_user_modify(
     update_password: Optional[str] = None,
     role_name: Optional[str] = None,
     role_state: Optional[str] = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     Modify an existing user account on the PowerScale cluster.
@@ -5060,7 +5108,7 @@ def powerscale_user_modify(
     - role_state: 'present-for-user' to assign, 'absent-for-user' to remove
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         users = Users(cluster)
         return users.modify(
             user_name=user_name,
@@ -5086,6 +5134,7 @@ def powerscale_user_remove(
     user_name: str,
     access_zone: Optional[str] = None,
     provider_type: Optional[str] = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     Delete a local user account from the PowerScale cluster.
@@ -5105,7 +5154,7 @@ def powerscale_user_remove(
     - provider_type: Authentication provider — must be 'local' for deletion
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         users = Users(cluster)
         return users.remove(
             user_name=user_name,
@@ -5128,6 +5177,7 @@ def powerscale_group_get(
     access_zone: Optional[str] = None,
     limit: int = 1000,
     resume: Optional[str] = None,
+    cluster_name: str = None,
 ) -> Dict[str, Any]:
     """
     List groups on the PowerScale cluster, or retrieve a specific group by name or GID.
@@ -5155,7 +5205,7 @@ def powerscale_group_get(
     """
     try:
         resume = None if resume in (None, "null", "None") else resume
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         grp = Group(cluster)
         page = grp.get(
             group_name=group_name,
@@ -5184,6 +5234,7 @@ def powerscale_group_create(
     provider_type: Optional[str] = None,
     users: Optional[str] = None,
     user_state: Optional[str] = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     Create a new local group on the PowerScale cluster.
@@ -5216,7 +5267,7 @@ def powerscale_group_create(
     - Create a group and immediately populate it with members
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         grp = Group(cluster)
         return grp.add(
             group_name=group_name,
@@ -5238,6 +5289,7 @@ def powerscale_group_modify(
     user_state: Optional[str] = None,
     access_zone: Optional[str] = None,
     provider_type: Optional[str] = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     Add or remove members from an existing group on the PowerScale cluster.
@@ -5271,7 +5323,7 @@ def powerscale_group_modify(
     - Manage group membership by UID instead of username
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         grp = Group(cluster)
         return grp.modify(
             group_name=group_name,
@@ -5291,6 +5343,7 @@ def powerscale_group_remove(
     group_id: Optional[int] = None,
     access_zone: Optional[str] = None,
     provider_type: Optional[str] = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     Delete a local group from the PowerScale cluster.
@@ -5316,7 +5369,7 @@ def powerscale_group_remove(
     - Clean up groups before decommissioning an access zone
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         grp = Group(cluster)
         return grp.remove(
             group_name=group_name,
@@ -5345,6 +5398,7 @@ def powerscale_event_get(
     dir: Optional[str] = None,
     cause: Optional[str] = None,
     event_count: Optional[int] = None,
+    cluster_name: str = None,
 ) -> Dict[str, Any]:
     """
     Retrieve event group occurrences from the PowerScale cluster with optional
@@ -5406,7 +5460,7 @@ def powerscale_event_get(
     """
     resume = None if resume in (None, "null", "None") else resume
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         events = Events(cluster)
         page = events.get(
             limit=limit,
@@ -5437,7 +5491,7 @@ def powerscale_event_get(
 
 
 @mcp.tool()
-def powerscale_event_get_by_id(event_id: str) -> Dict[str, Any]:
+def powerscale_event_get_by_id(event_id: str, cluster_name: str = None) -> Dict[str, Any]:
     """
     Retrieve a single event group occurrence by its ID.
 
@@ -5455,7 +5509,7 @@ def powerscale_event_get_by_id(event_id: str) -> Dict[str, Any]:
     - Check whether a specific event has been resolved
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         events = Events(cluster)
         return events.get_by_id(event_id)
     except Exception as e:
@@ -5468,7 +5522,7 @@ def powerscale_event_get_by_id(event_id: str) -> Dict[str, Any]:
 
 
 @mcp.tool()
-def powerscale_stats_cpu() -> Dict[str, Any]:
+def powerscale_stats_cpu(cluster_name: str = None) -> Dict[str, Any]:
     """
     Return a single instantaneous cluster CPU utilization sample.
 
@@ -5497,7 +5551,7 @@ def powerscale_stats_cpu() -> Dict[str, Any]:
     - What percentage of CPU is idle?
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         stats = Statistics(cluster)
         return stats.get_cpu()
     except Exception as e:
@@ -5505,7 +5559,7 @@ def powerscale_stats_cpu() -> Dict[str, Any]:
 
 
 @mcp.tool()
-def powerscale_stats_network() -> Dict[str, Any]:
+def powerscale_stats_network(cluster_name: str = None) -> Dict[str, Any]:
     """
     Return a single instantaneous cluster external network traffic sample.
 
@@ -5536,7 +5590,7 @@ def powerscale_stats_network() -> Dict[str, Any]:
     - Is there a network bottleneck?
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         stats = Statistics(cluster)
         return stats.get_network()
     except Exception as e:
@@ -5544,7 +5598,7 @@ def powerscale_stats_network() -> Dict[str, Any]:
 
 
 @mcp.tool()
-def powerscale_stats_disk() -> Dict[str, Any]:
+def powerscale_stats_disk(cluster_name: str = None) -> Dict[str, Any]:
     """
     Return a single instantaneous cluster disk I/O sample.
 
@@ -5574,7 +5628,7 @@ def powerscale_stats_disk() -> Dict[str, Any]:
     - What is the disk read vs write rate?
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         stats = Statistics(cluster)
         return stats.get_disk()
     except Exception as e:
@@ -5582,7 +5636,7 @@ def powerscale_stats_disk() -> Dict[str, Any]:
 
 
 @mcp.tool()
-def powerscale_stats_ifs() -> Dict[str, Any]:
+def powerscale_stats_ifs(cluster_name: str = None) -> Dict[str, Any]:
     """
     Return a single instantaneous OneFS filesystem I/O sample.
 
@@ -5611,7 +5665,7 @@ def powerscale_stats_ifs() -> Dict[str, Any]:
     - How much data is the filesystem serving per second?
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         stats = Statistics(cluster)
         return stats.get_ifs()
     except Exception as e:
@@ -5619,7 +5673,7 @@ def powerscale_stats_ifs() -> Dict[str, Any]:
 
 
 @mcp.tool()
-def powerscale_stats_node() -> Dict[str, Any]:
+def powerscale_stats_node(cluster_name: str = None) -> Dict[str, Any]:
     """
     Return a single instantaneous per-node performance sample.
 
@@ -5659,7 +5713,7 @@ def powerscale_stats_node() -> Dict[str, Any]:
     - Are there hot spots in the cluster?
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         stats = Statistics(cluster)
         return stats.get_node_performance()
     except Exception as e:
@@ -5667,7 +5721,7 @@ def powerscale_stats_node() -> Dict[str, Any]:
 
 
 @mcp.tool()
-def powerscale_stats_protocol() -> Dict[str, Any]:
+def powerscale_stats_protocol(cluster_name: str = None) -> Dict[str, Any]:
     """
     Return a single instantaneous per-protocol operation rate sample.
 
@@ -5698,7 +5752,7 @@ def powerscale_stats_protocol() -> Dict[str, Any]:
     - Which protocols are active on the cluster?
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         stats = Statistics(cluster)
         return stats.get_protocol()
     except Exception as e:
@@ -5706,7 +5760,7 @@ def powerscale_stats_protocol() -> Dict[str, Any]:
 
 
 @mcp.tool()
-def powerscale_stats_clients() -> Dict[str, Any]:
+def powerscale_stats_clients(cluster_name: str = None) -> Dict[str, Any]:
     """
     Return a single instantaneous client connection count sample.
 
@@ -5744,7 +5798,7 @@ def powerscale_stats_clients() -> Dict[str, Any]:
     - What is the client load on the cluster?
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         stats = Statistics(cluster)
         return stats.get_clients()
     except Exception as e:
@@ -5755,6 +5809,7 @@ def powerscale_stats_clients() -> Dict[str, Any]:
 def powerscale_stats_get(
     keys: List[str],
     show_nodes: bool = False,
+    cluster_name: str = None,
 ) -> Dict[str, Any]:
     """
     Retrieve a single instantaneous statistics sample for arbitrary user-specified stat keys.
@@ -5785,7 +5840,7 @@ def powerscale_stats_get(
     - Build custom performance dashboards or reports
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         stats = Statistics(cluster)
         return stats.get_current(keys, show_nodes=show_nodes)
     except Exception as e:
@@ -5797,6 +5852,7 @@ def powerscale_stats_keys(
     limit: int = 100,
     resume: Optional[str] = None,
     queryable: bool = False,
+    cluster_name: str = None,
 ) -> Dict[str, Any]:
     """
     List available statistics keys with metadata (description, units, type).
@@ -5826,7 +5882,7 @@ def powerscale_stats_keys(
     """
     resume = None if resume in (None, "null", "None") else resume
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         stats = Statistics(cluster)
         return stats.get_keys(limit=limit, resume=resume, queryable=queryable)
     except Exception as e:
@@ -5834,7 +5890,7 @@ def powerscale_stats_keys(
 
 
 @mcp.tool()
-def powerscale_network_groupnets_get() -> Any:
+def powerscale_network_groupnets_get(cluster_name: str = None) -> Any:
     """
     List all network groupnets on the PowerScale cluster.
 
@@ -5857,7 +5913,7 @@ def powerscale_network_groupnets_get() -> Any:
     - The top-level groupnet names needed to filter subnets and pools
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         network = Network(cluster)
         return network.get_groupnets()
     except Exception as e:
@@ -5867,6 +5923,7 @@ def powerscale_network_groupnets_get() -> Any:
 @mcp.tool()
 def powerscale_network_subnets_get(
     groupnet: Optional[str] = None,
+    cluster_name: str = None,
 ) -> Any:
     """
     List network subnets on the PowerScale cluster.
@@ -5900,7 +5957,7 @@ def powerscale_network_subnets_get(
     - VLAN configuration
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         network = Network(cluster)
         return network.get_subnets(groupnet=groupnet)
     except Exception as e:
@@ -5912,6 +5969,7 @@ def powerscale_network_pools_get(
     groupnet: Optional[str] = None,
     subnet: Optional[str] = None,
     access_zone: Optional[str] = None,
+    cluster_name: str = None,
 ) -> Any:
     """
     List network pools on the PowerScale cluster.
@@ -5949,7 +6007,7 @@ def powerscale_network_pools_get(
     - IP ranges served by each access zone
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         network = Network(cluster)
         return network.get_pools(groupnet=groupnet, subnet=subnet, access_zone=access_zone)
     except Exception as e:
@@ -5959,6 +6017,7 @@ def powerscale_network_pools_get(
 @mcp.tool()
 def powerscale_network_interfaces_get(
     lnn: Optional[int] = None,
+    cluster_name: str = None,
 ) -> Any:
     """
     List network interfaces on PowerScale cluster nodes.
@@ -5995,7 +6054,7 @@ def powerscale_network_interfaces_get(
     - Network interface link state and speed
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         network = Network(cluster)
         return network.get_interfaces(lnn=lnn)
     except Exception as e:
@@ -6003,7 +6062,7 @@ def powerscale_network_interfaces_get(
 
 
 @mcp.tool()
-def powerscale_network_external_get() -> Dict[str, Any]:
+def powerscale_network_external_get(cluster_name: str = None) -> Dict[str, Any]:
     """
     Get global external network settings for the PowerScale cluster.
 
@@ -6031,7 +6090,7 @@ def powerscale_network_external_get() -> Dict[str, Any]:
     - Available TCP ports for client connections
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         network = Network(cluster)
         return network.get_external()
     except Exception as e:
@@ -6039,7 +6098,7 @@ def powerscale_network_external_get() -> Dict[str, Any]:
 
 
 @mcp.tool()
-def powerscale_network_dns_get() -> Dict[str, Any]:
+def powerscale_network_dns_get(cluster_name: str = None) -> Dict[str, Any]:
     """
     Get DNS cache configuration and TTL settings for the PowerScale cluster.
 
@@ -6067,7 +6126,7 @@ def powerscale_network_dns_get() -> Dict[str, Any]:
     - Cache size limits
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         network = Network(cluster)
         return network.get_dns_cache()
     except Exception as e:
@@ -6075,7 +6134,7 @@ def powerscale_network_dns_get() -> Dict[str, Any]:
 
 
 @mcp.tool()
-def powerscale_zones_get() -> Any:
+def powerscale_zones_get(cluster_name: str = None) -> Any:
     """
     List all access zones on the PowerScale cluster.
 
@@ -6106,7 +6165,7 @@ def powerscale_zones_get() -> Any:
     with their groupnet, subnets, pools, and SMB shares in one response.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         network = Network(cluster)
         return network.get_zones()
     except Exception as e:
@@ -6114,7 +6173,7 @@ def powerscale_zones_get() -> Any:
 
 
 @mcp.tool()
-def powerscale_network_map() -> Dict[str, Any]:
+def powerscale_network_map(cluster_name: str = None) -> Dict[str, Any]:
     """
     Return a comprehensive network topology map of the PowerScale cluster.
 
@@ -6180,7 +6239,7 @@ def powerscale_network_map() -> Dict[str, Any]:
     rather than causing the entire map to fail.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         network = Network(cluster)
         return network.get_network_map()
     except Exception as e:
@@ -6192,7 +6251,7 @@ def powerscale_network_map() -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_cluster_nodes_get() -> dict:
+def powerscale_cluster_nodes_get(cluster_name: str = None) -> dict:
     """
     List all nodes in the PowerScale cluster with status, state, and version info.
 
@@ -6208,7 +6267,7 @@ def powerscale_cluster_nodes_get() -> dict:
     and partition details on a specific node.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         nodes = ClusterNodes(cluster)
         return nodes.get()
     except Exception as e:
@@ -6216,7 +6275,7 @@ def powerscale_cluster_nodes_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_cluster_node_get_by_id(node_id: int) -> dict:
+def powerscale_cluster_node_get_by_id(node_id: int, cluster_name: str = None) -> dict:
     """
     Get detailed information for a specific cluster node by its Logical Node Number.
 
@@ -6235,7 +6294,7 @@ def powerscale_cluster_node_get_by_id(node_id: int) -> dict:
                to list nodes and find their LNNs)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         nodes = ClusterNodes(cluster)
         return nodes.get_by_id(node_id)
     except Exception as e:
@@ -6247,7 +6306,7 @@ def powerscale_cluster_node_get_by_id(node_id: int) -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_storagepool_nodetypes_get() -> dict:
+def powerscale_storagepool_nodetypes_get(cluster_name: str = None) -> dict:
     """
     List all storage pool node types configured on the cluster.
 
@@ -6263,7 +6322,7 @@ def powerscale_storagepool_nodetypes_get() -> dict:
     and govern the available protection policies.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         nodetypes = StoragepoolNodetypes(cluster)
         return nodetypes.get()
     except Exception as e:
@@ -6271,7 +6330,7 @@ def powerscale_storagepool_nodetypes_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_storagepool_nodetype_get_by_id(nodetype_id: int) -> dict:
+def powerscale_storagepool_nodetype_get_by_id(nodetype_id: int, cluster_name: str = None) -> dict:
     """
     Get details for a specific storage pool node type by ID.
 
@@ -6280,7 +6339,7 @@ def powerscale_storagepool_nodetype_get_by_id(nodetype_id: int) -> dict:
                    to list node types and find their IDs)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         nodetypes = StoragepoolNodetypes(cluster)
         return nodetypes.get_by_id(nodetype_id)
     except Exception as e:
@@ -6292,7 +6351,7 @@ def powerscale_storagepool_nodetype_get_by_id(nodetype_id: int) -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_license_get(resume: Optional[str] = None) -> dict:
+def powerscale_license_get(resume: Optional[str] = None, cluster_name: str = None) -> dict:
     """
     List all installed PowerScale feature licenses with their status and expiry info.
 
@@ -6314,7 +6373,7 @@ def powerscale_license_get(resume: Optional[str] = None) -> dict:
     """
     resume = None if resume in (None, "null", "None") else resume
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         lic = License(cluster)
         return lic.get(resume=resume)
     except Exception as e:
@@ -6322,7 +6381,7 @@ def powerscale_license_get(resume: Optional[str] = None) -> dict:
 
 
 @mcp.tool()
-def powerscale_license_get_by_name(name: str) -> dict:
+def powerscale_license_get_by_name(name: str, cluster_name: str = None) -> dict:
     """
     Get license details for a specific PowerScale feature by name.
 
@@ -6342,7 +6401,7 @@ def powerscale_license_get_by_name(name: str) -> dict:
     - name: The license feature name (case-sensitive)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         lic = License(cluster)
         return lic.get_by_name(name)
     except Exception as e:
@@ -6354,7 +6413,7 @@ def powerscale_license_get_by_name(name: str) -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_zones_summary_get(groupnet: Optional[str] = None) -> dict:
+def powerscale_zones_summary_get(groupnet: Optional[str] = None, cluster_name: str = None) -> dict:
     """
     Retrieve a lightweight summary of all access zones on the cluster.
 
@@ -6372,7 +6431,7 @@ def powerscale_zones_summary_get(groupnet: Optional[str] = None) -> dict:
     - groupnet: Optional — filter summary to zones in this groupnet (e.g. "groupnet0")
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         zs = ZonesSummary(cluster)
         return zs.get(groupnet=groupnet)
     except Exception as e:
@@ -6380,7 +6439,7 @@ def powerscale_zones_summary_get(groupnet: Optional[str] = None) -> dict:
 
 
 @mcp.tool()
-def powerscale_zones_summary_zone_get(zone_id: int) -> dict:
+def powerscale_zones_summary_zone_get(zone_id: int, cluster_name: str = None) -> dict:
     """
     Retrieve non-privileged summary information for a specific access zone by ID.
 
@@ -6393,7 +6452,7 @@ def powerscale_zones_summary_zone_get(zone_id: int) -> dict:
                zones; for full zone details with auth providers use powerscale_zones_get)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         zs = ZonesSummary(cluster)
         return zs.get_zone(zone_id)
     except Exception as e:
@@ -6405,7 +6464,7 @@ def powerscale_zones_summary_zone_get(zone_id: int) -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_hardware_fcports_get() -> dict:
+def powerscale_hardware_fcports_get(cluster_name: str = None) -> dict:
     """
     List all Fibre Channel ports on the PowerScale cluster.
 
@@ -6416,7 +6475,7 @@ def powerscale_hardware_fcports_get() -> dict:
     - items: List of FC port objects
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         hw = Hardware(cluster)
         return hw.get_fcports()
     except Exception as e:
@@ -6424,7 +6483,7 @@ def powerscale_hardware_fcports_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_hardware_fcport_get(port_id: str) -> dict:
+def powerscale_hardware_fcport_get(port_id: str, cluster_name: str = None) -> dict:
     """
     Get details for a specific Fibre Channel port.
 
@@ -6434,7 +6493,7 @@ def powerscale_hardware_fcport_get(port_id: str) -> dict:
     - port_id: The FC port identifier (e.g. '1:0')
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         hw = Hardware(cluster)
         return hw.get_fcport(port_id)
     except Exception as e:
@@ -6442,7 +6501,7 @@ def powerscale_hardware_fcport_get(port_id: str) -> dict:
 
 
 @mcp.tool()
-def powerscale_hardware_tapes_get() -> dict:
+def powerscale_hardware_tapes_get(cluster_name: str = None) -> dict:
     """
     List all tape and changer devices on the PowerScale cluster.
 
@@ -6454,7 +6513,7 @@ def powerscale_hardware_tapes_get() -> dict:
     - resume: Pagination token (if more results available)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         hw = Hardware(cluster)
         return hw.get_tapes()
     except Exception as e:
@@ -6466,7 +6525,7 @@ def powerscale_hardware_tapes_get() -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_job_list() -> dict:
+def powerscale_job_list(cluster_name: str = None) -> dict:
     """
     List all running and paused jobs on the PowerScale cluster.
 
@@ -6479,7 +6538,7 @@ def powerscale_job_list() -> dict:
     - total: Total number of active jobs
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         j = Jobs(cluster)
         return j.list_jobs()
     except Exception as e:
@@ -6487,7 +6546,7 @@ def powerscale_job_list() -> dict:
 
 
 @mcp.tool()
-def powerscale_job_get(job_id: int) -> dict:
+def powerscale_job_get(job_id: int, cluster_name: str = None) -> dict:
     """
     Get details for a specific running or paused job.
 
@@ -6495,7 +6554,7 @@ def powerscale_job_get(job_id: int) -> dict:
     - job_id: The job instance ID
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         j = Jobs(cluster)
         return j.get_job(job_id)
     except Exception as e:
@@ -6503,7 +6562,7 @@ def powerscale_job_get(job_id: int) -> dict:
 
 
 @mcp.tool()
-def powerscale_job_recent_get(limit: int = 50) -> dict:
+def powerscale_job_recent_get(limit: int = 50, cluster_name: str = None) -> dict:
     """
     List recently completed jobs on the PowerScale cluster.
 
@@ -6518,7 +6577,7 @@ def powerscale_job_recent_get(limit: int = 50) -> dict:
     - total: Total count
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         j = Jobs(cluster)
         return j.get_recent(limit=limit)
     except Exception as e:
@@ -6526,7 +6585,7 @@ def powerscale_job_recent_get(limit: int = 50) -> dict:
 
 
 @mcp.tool()
-def powerscale_job_summary_get() -> dict:
+def powerscale_job_summary_get(cluster_name: str = None) -> dict:
     """
     Get the Job Engine status summary.
 
@@ -6534,7 +6593,7 @@ def powerscale_job_summary_get() -> dict:
     running, paused, or disabled, and aggregate counts of active jobs.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         j = Jobs(cluster)
         return j.get_summary()
     except Exception as e:
@@ -6542,7 +6601,7 @@ def powerscale_job_summary_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_job_types_get() -> dict:
+def powerscale_job_types_get(cluster_name: str = None) -> dict:
     """
     List all available job types on the PowerScale cluster.
 
@@ -6554,7 +6613,7 @@ def powerscale_job_types_get() -> dict:
     - items: List of job type objects
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         j = Jobs(cluster)
         return j.get_types()
     except Exception as e:
@@ -6562,7 +6621,7 @@ def powerscale_job_types_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_job_type_get(job_type_id: str) -> dict:
+def powerscale_job_type_get(job_type_id: str, cluster_name: str = None) -> dict:
     """
     Get details for a specific job type.
 
@@ -6571,7 +6630,7 @@ def powerscale_job_type_get(job_type_id: str) -> dict:
                    'Collect', 'MultiScan', 'ShadowStoreProtect', 'FlexProtect')
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         j = Jobs(cluster)
         return j.get_type(job_type_id)
     except Exception as e:
@@ -6584,6 +6643,7 @@ def powerscale_job_events_get(
     limit: int = 100,
     job_id: Optional[int] = None,
     job_type: Optional[str] = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     Retrieve Job Engine events with optional filtering and pagination.
@@ -6598,7 +6658,7 @@ def powerscale_job_events_get(
     """
     resume = None if resume in (None, "null", "None") else resume
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         j = Jobs(cluster)
         return j.get_events(resume=resume, limit=limit, job_id=job_id, job_type=job_type)
     except Exception as e:
@@ -6611,6 +6671,7 @@ def powerscale_job_reports_get(
     limit: int = 100,
     job_id: Optional[int] = None,
     job_type: Optional[str] = None,
+    cluster_name: str = None,
 ) -> dict:
     """
     List Job Engine reports with optional filtering and pagination.
@@ -6625,7 +6686,7 @@ def powerscale_job_reports_get(
     """
     resume = None if resume in (None, "null", "None") else resume
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         j = Jobs(cluster)
         return j.get_reports(resume=resume, limit=limit, job_id=job_id, job_type=job_type)
     except Exception as e:
@@ -6633,14 +6694,14 @@ def powerscale_job_reports_get(
 
 
 @mcp.tool()
-def powerscale_job_statistics_get() -> dict:
+def powerscale_job_statistics_get(cluster_name: str = None) -> dict:
     """
     Get Job Engine statistics.
 
     Returns aggregate statistics about job execution, throughput, and resource usage.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         j = Jobs(cluster)
         return j.get_statistics()
     except Exception as e:
@@ -6648,7 +6709,7 @@ def powerscale_job_statistics_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_job_policies_get() -> dict:
+def powerscale_job_policies_get(cluster_name: str = None) -> dict:
     """
     List all job impact policies.
 
@@ -6659,7 +6720,7 @@ def powerscale_job_policies_get() -> dict:
     - items: List of impact policy objects
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         j = Jobs(cluster)
         return j.get_policies()
     except Exception as e:
@@ -6667,7 +6728,7 @@ def powerscale_job_policies_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_job_policy_get(policy_id: str) -> dict:
+def powerscale_job_policy_get(policy_id: str, cluster_name: str = None) -> dict:
     """
     Get details for a specific job impact policy.
 
@@ -6675,7 +6736,7 @@ def powerscale_job_policy_get(policy_id: str) -> dict:
     - policy_id: The impact policy name (e.g. 'LOW', 'MEDIUM', 'HIGH', 'OFF_HOURS')
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         j = Jobs(cluster)
         return j.get_policy(policy_id)
     except Exception as e:
@@ -6683,7 +6744,7 @@ def powerscale_job_policy_get(policy_id: str) -> dict:
 
 
 @mcp.tool()
-def powerscale_job_settings_get() -> dict:
+def powerscale_job_settings_get(cluster_name: str = None) -> dict:
     """
     Get Job Engine generic settings.
 
@@ -6691,7 +6752,7 @@ def powerscale_job_settings_get() -> dict:
     and global enable/disable state.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         j = Jobs(cluster)
         return j.get_settings()
     except Exception as e:
@@ -6703,7 +6764,7 @@ def powerscale_job_settings_get() -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_performance_datasets_get() -> dict:
+def powerscale_performance_datasets_get(cluster_name: str = None) -> dict:
     """
     List all performance datasets on the PowerScale cluster.
 
@@ -6714,7 +6775,7 @@ def powerscale_performance_datasets_get() -> dict:
     - total: Total number of datasets
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         p = Performance(cluster)
         return p.list_datasets()
     except Exception as e:
@@ -6722,7 +6783,7 @@ def powerscale_performance_datasets_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_performance_dataset_get(dataset_id: int) -> dict:
+def powerscale_performance_dataset_get(dataset_id: int, cluster_name: str = None) -> dict:
     """
     Get details for a specific performance dataset.
 
@@ -6730,7 +6791,7 @@ def powerscale_performance_dataset_get(dataset_id: int) -> dict:
     - dataset_id: The dataset ID
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         p = Performance(cluster)
         return p.get_dataset(dataset_id)
     except Exception as e:
@@ -6738,7 +6799,7 @@ def powerscale_performance_dataset_get(dataset_id: int) -> dict:
 
 
 @mcp.tool()
-def powerscale_performance_metrics_get() -> dict:
+def powerscale_performance_metrics_get(cluster_name: str = None) -> dict:
     """
     List all available performance metrics on the cluster.
 
@@ -6749,7 +6810,7 @@ def powerscale_performance_metrics_get() -> dict:
     - items: List of metric objects with name, description, units, and type
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         p = Performance(cluster)
         return p.get_metrics()
     except Exception as e:
@@ -6757,7 +6818,7 @@ def powerscale_performance_metrics_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_performance_metric_get(metric_id: str) -> dict:
+def powerscale_performance_metric_get(metric_id: str, cluster_name: str = None) -> dict:
     """
     Get details for a specific performance metric.
 
@@ -6765,7 +6826,7 @@ def powerscale_performance_metric_get(metric_id: str) -> dict:
     - metric_id: The metric name/ID
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         p = Performance(cluster)
         return p.get_metric(metric_id)
     except Exception as e:
@@ -6773,14 +6834,14 @@ def powerscale_performance_metric_get(metric_id: str) -> dict:
 
 
 @mcp.tool()
-def powerscale_performance_settings_get() -> dict:
+def powerscale_performance_settings_get(cluster_name: str = None) -> dict:
     """
     Get performance monitoring settings.
 
     Returns configuration for the performance monitoring subsystem.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         p = Performance(cluster)
         return p.get_settings()
     except Exception as e:
@@ -6788,7 +6849,7 @@ def powerscale_performance_settings_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_performance_dataset_filters_get(dataset_id: int) -> dict:
+def powerscale_performance_dataset_filters_get(dataset_id: int, cluster_name: str = None) -> dict:
     """
     List all filters for a specific performance dataset.
 
@@ -6798,7 +6859,7 @@ def powerscale_performance_dataset_filters_get(dataset_id: int) -> dict:
     - dataset_id: The dataset ID
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         p = Performance(cluster)
         return p.list_dataset_filters(dataset_id)
     except Exception as e:
@@ -6806,7 +6867,7 @@ def powerscale_performance_dataset_filters_get(dataset_id: int) -> dict:
 
 
 @mcp.tool()
-def powerscale_performance_dataset_filter_get(dataset_id: int, filter_id: int) -> dict:
+def powerscale_performance_dataset_filter_get(dataset_id: int, filter_id: int, cluster_name: str = None) -> dict:
     """
     Get a specific filter for a performance dataset.
 
@@ -6815,7 +6876,7 @@ def powerscale_performance_dataset_filter_get(dataset_id: int, filter_id: int) -
     - filter_id: The filter ID
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         p = Performance(cluster)
         return p.get_dataset_filter(dataset_id, filter_id)
     except Exception as e:
@@ -6823,7 +6884,7 @@ def powerscale_performance_dataset_filter_get(dataset_id: int, filter_id: int) -
 
 
 @mcp.tool()
-def powerscale_performance_dataset_workloads_get(dataset_id: int) -> dict:
+def powerscale_performance_dataset_workloads_get(dataset_id: int, cluster_name: str = None) -> dict:
     """
     List all workloads for a specific performance dataset.
 
@@ -6833,7 +6894,7 @@ def powerscale_performance_dataset_workloads_get(dataset_id: int) -> dict:
     - dataset_id: The dataset ID
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         p = Performance(cluster)
         return p.list_dataset_workloads(dataset_id)
     except Exception as e:
@@ -6841,7 +6902,7 @@ def powerscale_performance_dataset_workloads_get(dataset_id: int) -> dict:
 
 
 @mcp.tool()
-def powerscale_performance_dataset_workload_get(dataset_id: int, workload_id: int) -> dict:
+def powerscale_performance_dataset_workload_get(dataset_id: int, workload_id: int, cluster_name: str = None) -> dict:
     """
     Get a specific workload for a performance dataset.
 
@@ -6850,7 +6911,7 @@ def powerscale_performance_dataset_workload_get(dataset_id: int, workload_id: in
     - workload_id: The workload ID
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         p = Performance(cluster)
         return p.get_dataset_workload(dataset_id, workload_id)
     except Exception as e:
@@ -6862,7 +6923,7 @@ def powerscale_performance_dataset_workload_get(dataset_id: int, workload_id: in
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_hardening_profiles_get() -> dict:
+def powerscale_hardening_profiles_get(cluster_name: str = None) -> dict:
     """
     List available security hardening profiles on the PowerScale cluster.
 
@@ -6873,7 +6934,7 @@ def powerscale_hardening_profiles_get() -> dict:
     - items: List of hardening profile objects
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         h = Hardening(cluster)
         return h.get_profiles()
     except Exception as e:
@@ -6881,7 +6942,7 @@ def powerscale_hardening_profiles_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_hardening_state_get() -> dict:
+def powerscale_hardening_state_get(cluster_name: str = None) -> dict:
     """
     Get the current state of the hardening service.
 
@@ -6889,7 +6950,7 @@ def powerscale_hardening_state_get() -> dict:
     which profiles are active.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         h = Hardening(cluster)
         return h.get_state()
     except Exception as e:
@@ -6897,7 +6958,7 @@ def powerscale_hardening_state_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_hardening_reports_get() -> dict:
+def powerscale_hardening_reports_get(cluster_name: str = None) -> dict:
     """
     List compliance reports for all hardening rules.
 
@@ -6908,7 +6969,7 @@ def powerscale_hardening_reports_get() -> dict:
     - items: List of hardening report objects
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         h = Hardening(cluster)
         return h.get_reports()
     except Exception as e:
@@ -6920,7 +6981,7 @@ def powerscale_hardening_reports_get() -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_supportassist_settings_get() -> dict:
+def powerscale_supportassist_settings_get(cluster_name: str = None) -> dict:
     """
     Get SupportAssist configuration settings.
 
@@ -6928,7 +6989,7 @@ def powerscale_supportassist_settings_get() -> dict:
     and gateway settings for Dell SupportAssist integration.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         sa = SupportAssist(cluster)
         return sa.get_settings()
     except Exception as e:
@@ -6936,7 +6997,7 @@ def powerscale_supportassist_settings_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_supportassist_status_get() -> dict:
+def powerscale_supportassist_status_get(cluster_name: str = None) -> dict:
     """
     Get SupportAssist current status.
 
@@ -6944,7 +7005,7 @@ def powerscale_supportassist_status_get() -> dict:
     of the SupportAssist service.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         sa = SupportAssist(cluster)
         return sa.get_status()
     except Exception as e:
@@ -6952,14 +7013,14 @@ def powerscale_supportassist_status_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_supportassist_license_get() -> dict:
+def powerscale_supportassist_license_get(cluster_name: str = None) -> dict:
     """
     Get SupportAssist license activation status.
 
     Returns whether SupportAssist is activated and license entitlement details.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         sa = SupportAssist(cluster)
         return sa.get_license()
     except Exception as e:
@@ -6967,12 +7028,12 @@ def powerscale_supportassist_license_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_supportassist_terms_get() -> dict:
+def powerscale_supportassist_terms_get(cluster_name: str = None) -> dict:
     """
     Get SupportAssist Terms & Conditions text and acceptance status.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         sa = SupportAssist(cluster)
         return sa.get_terms()
     except Exception as e:
@@ -6980,7 +7041,7 @@ def powerscale_supportassist_terms_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_supportassist_tasks_get() -> dict:
+def powerscale_supportassist_tasks_get(cluster_name: str = None) -> dict:
     """
     List all SupportAssist tasks.
 
@@ -6991,7 +7052,7 @@ def powerscale_supportassist_tasks_get() -> dict:
     - items: List of task objects
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         sa = SupportAssist(cluster)
         return sa.list_tasks()
     except Exception as e:
@@ -6999,7 +7060,7 @@ def powerscale_supportassist_tasks_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_supportassist_task_get(task_id: str) -> dict:
+def powerscale_supportassist_task_get(task_id: str, cluster_name: str = None) -> dict:
     """
     Get a specific SupportAssist task by ID.
 
@@ -7007,7 +7068,7 @@ def powerscale_supportassist_task_get(task_id: str) -> dict:
     - task_id: The task identifier
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         sa = SupportAssist(cluster)
         return sa.get_task(task_id)
     except Exception as e:
@@ -7019,7 +7080,7 @@ def powerscale_supportassist_task_get(task_id: str) -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_connectivity_settings_get() -> dict:
+def powerscale_connectivity_settings_get(cluster_name: str = None) -> dict:
     """
     Get connectivity diagnostic configuration settings.
 
@@ -7027,7 +7088,7 @@ def powerscale_connectivity_settings_get() -> dict:
     settings, gateway info, and service enablement status.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         conn = Connectivity(cluster)
         return conn.get_settings()
     except Exception as e:
@@ -7035,14 +7096,14 @@ def powerscale_connectivity_settings_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_connectivity_status_get() -> dict:
+def powerscale_connectivity_status_get(cluster_name: str = None) -> dict:
     """
     Get connectivity diagnostic current status.
 
     Returns current connectivity health, last check time, and any issues.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         conn = Connectivity(cluster)
         return conn.get_status()
     except Exception as e:
@@ -7050,12 +7111,12 @@ def powerscale_connectivity_status_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_connectivity_license_get() -> dict:
+def powerscale_connectivity_license_get(cluster_name: str = None) -> dict:
     """
     Get connectivity service license activation status.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         conn = Connectivity(cluster)
         return conn.get_license()
     except Exception as e:
@@ -7063,14 +7124,14 @@ def powerscale_connectivity_license_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_connectivity_terms_get() -> dict:
+def powerscale_connectivity_terms_get(cluster_name: str = None) -> dict:
     """
     Get telemetry notice text for Dell Technologies connectivity services.
 
     Returns the terms and acceptance status for telemetry data collection.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         conn = Connectivity(cluster)
         return conn.get_terms()
     except Exception as e:
@@ -7078,7 +7139,7 @@ def powerscale_connectivity_terms_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_connectivity_tasks_get() -> dict:
+def powerscale_connectivity_tasks_get(cluster_name: str = None) -> dict:
     """
     List all connectivity diagnostic tasks.
 
@@ -7086,7 +7147,7 @@ def powerscale_connectivity_tasks_get() -> dict:
     - items: List of connectivity task objects
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         conn = Connectivity(cluster)
         return conn.list_tasks()
     except Exception as e:
@@ -7094,7 +7155,7 @@ def powerscale_connectivity_tasks_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_connectivity_task_get(task_id: str) -> dict:
+def powerscale_connectivity_task_get(task_id: str, cluster_name: str = None) -> dict:
     """
     Get a specific connectivity diagnostic task by ID.
 
@@ -7102,7 +7163,7 @@ def powerscale_connectivity_task_get(task_id: str) -> dict:
     - task_id: The task identifier
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         conn = Connectivity(cluster)
         return conn.get_task(task_id)
     except Exception as e:
@@ -7114,7 +7175,7 @@ def powerscale_connectivity_task_get(task_id: str) -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_debug_stats_get() -> dict:
+def powerscale_debug_stats_get(cluster_name: str = None) -> dict:
     """
     Get cumulative Platform API call statistics per resource.
 
@@ -7122,7 +7183,7 @@ def powerscale_debug_stats_get() -> dict:
     understanding API usage patterns and diagnosing performance bottlenecks.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         ds = DebugStats(cluster)
         return ds.get()
     except Exception as e:
@@ -7134,7 +7195,7 @@ def powerscale_debug_stats_get() -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_fsa_results_get() -> dict:
+def powerscale_fsa_results_get(cluster_name: str = None) -> dict:
     """
     List all available FSA (File System Analytics) result sets.
 
@@ -7145,7 +7206,7 @@ def powerscale_fsa_results_get() -> dict:
     - items: List of FSA result set objects (with ID, timestamp, status, path)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fsa = FSA(cluster)
         return fsa.get_results()
     except Exception as e:
@@ -7153,7 +7214,7 @@ def powerscale_fsa_results_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_fsa_result_get(result_id: int) -> dict:
+def powerscale_fsa_result_get(result_id: int, cluster_name: str = None) -> dict:
     """
     Get details for a specific FSA result set.
 
@@ -7161,7 +7222,7 @@ def powerscale_fsa_result_get(result_id: int) -> dict:
     - result_id: The FSA result set ID
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fsa = FSA(cluster)
         return fsa.get_result(result_id)
     except Exception as e:
@@ -7169,14 +7230,14 @@ def powerscale_fsa_result_get(result_id: int) -> dict:
 
 
 @mcp.tool()
-def powerscale_fsa_index_get() -> dict:
+def powerscale_fsa_index_get(cluster_name: str = None) -> dict:
     """
     Get available FSA index table names.
 
     Returns the list of index tables that can be queried for FSA data.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fsa = FSA(cluster)
         return fsa.get_index()
     except Exception as e:
@@ -7184,7 +7245,7 @@ def powerscale_fsa_index_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_fsa_settings_get(scope: Optional[str] = None) -> dict:
+def powerscale_fsa_settings_get(scope: Optional[str] = None, cluster_name: str = None) -> dict:
     """
     Get FSA configuration settings.
 
@@ -7192,7 +7253,7 @@ def powerscale_fsa_settings_get(scope: Optional[str] = None) -> dict:
     - scope: Optional scope filter for settings
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fsa = FSA(cluster)
         return fsa.get_settings(scope=scope)
     except Exception as e:
@@ -7200,7 +7261,7 @@ def powerscale_fsa_settings_get(scope: Optional[str] = None) -> dict:
 
 
 @mcp.tool()
-def powerscale_fsa_top_dirs_get(result_id: int) -> dict:
+def powerscale_fsa_top_dirs_get(result_id: int, cluster_name: str = None) -> dict:
     """
     Get top directories from an FSA result set.
 
@@ -7211,7 +7272,7 @@ def powerscale_fsa_top_dirs_get(result_id: int) -> dict:
     - result_id: The FSA result set ID
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fsa = FSA(cluster)
         return fsa.get_top_dirs(result_id)
     except Exception as e:
@@ -7219,7 +7280,7 @@ def powerscale_fsa_top_dirs_get(result_id: int) -> dict:
 
 
 @mcp.tool()
-def powerscale_fsa_top_dir_get(result_id: int, top_dir_id: int) -> dict:
+def powerscale_fsa_top_dir_get(result_id: int, top_dir_id: int, cluster_name: str = None) -> dict:
     """
     Get a specific top directory entry from an FSA result set.
 
@@ -7228,7 +7289,7 @@ def powerscale_fsa_top_dir_get(result_id: int, top_dir_id: int) -> dict:
     - top_dir_id: The top directory entry ID
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fsa = FSA(cluster)
         return fsa.get_top_dir(result_id, top_dir_id)
     except Exception as e:
@@ -7236,7 +7297,7 @@ def powerscale_fsa_top_dir_get(result_id: int, top_dir_id: int) -> dict:
 
 
 @mcp.tool()
-def powerscale_fsa_top_files_get(result_id: int) -> dict:
+def powerscale_fsa_top_files_get(result_id: int, cluster_name: str = None) -> dict:
     """
     Get top files from an FSA result set.
 
@@ -7247,7 +7308,7 @@ def powerscale_fsa_top_files_get(result_id: int) -> dict:
     - result_id: The FSA result set ID
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fsa = FSA(cluster)
         return fsa.get_top_files(result_id)
     except Exception as e:
@@ -7255,7 +7316,7 @@ def powerscale_fsa_top_files_get(result_id: int) -> dict:
 
 
 @mcp.tool()
-def powerscale_fsa_top_file_get(result_id: int, top_file_id: int) -> dict:
+def powerscale_fsa_top_file_get(result_id: int, top_file_id: int, cluster_name: str = None) -> dict:
     """
     Get a specific top file entry from an FSA result set.
 
@@ -7264,7 +7325,7 @@ def powerscale_fsa_top_file_get(result_id: int, top_file_id: int) -> dict:
     - top_file_id: The top file entry ID
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fsa = FSA(cluster)
         return fsa.get_top_file(result_id, top_file_id)
     except Exception as e:
@@ -7272,7 +7333,7 @@ def powerscale_fsa_top_file_get(result_id: int, top_file_id: int) -> dict:
 
 
 @mcp.tool()
-def powerscale_fsa_histogram_get(result_id: int) -> dict:
+def powerscale_fsa_histogram_get(result_id: int, cluster_name: str = None) -> dict:
     """
     Get histogram of file counts for an FSA result set.
 
@@ -7282,7 +7343,7 @@ def powerscale_fsa_histogram_get(result_id: int) -> dict:
     - result_id: The FSA result set ID
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fsa = FSA(cluster)
         return fsa.get_histogram(result_id)
     except Exception as e:
@@ -7290,7 +7351,7 @@ def powerscale_fsa_histogram_get(result_id: int) -> dict:
 
 
 @mcp.tool()
-def powerscale_fsa_histogram_stat_get(result_id: int, stat: str) -> dict:
+def powerscale_fsa_histogram_stat_get(result_id: int, stat: str, cluster_name: str = None) -> dict:
     """
     Get histogram filtered by a specific statistic.
 
@@ -7299,7 +7360,7 @@ def powerscale_fsa_histogram_stat_get(result_id: int, stat: str) -> dict:
     - stat: The statistic name to filter histogram by
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fsa = FSA(cluster)
         return fsa.get_histogram_stat(result_id, stat)
     except Exception as e:
@@ -7307,7 +7368,7 @@ def powerscale_fsa_histogram_stat_get(result_id: int, stat: str) -> dict:
 
 
 @mcp.tool()
-def powerscale_fsa_directories_get(result_id: int) -> dict:
+def powerscale_fsa_directories_get(result_id: int, cluster_name: str = None) -> dict:
     """
     Get directory information from an FSA result set.
 
@@ -7317,7 +7378,7 @@ def powerscale_fsa_directories_get(result_id: int) -> dict:
     - result_id: The FSA result set ID
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fsa = FSA(cluster)
         return fsa.get_directories(result_id)
     except Exception as e:
@@ -7325,7 +7386,7 @@ def powerscale_fsa_directories_get(result_id: int) -> dict:
 
 
 @mcp.tool()
-def powerscale_fsa_directory_get(result_id: int, directory_id: int) -> dict:
+def powerscale_fsa_directory_get(result_id: int, directory_id: int, cluster_name: str = None) -> dict:
     """
     Get specific directory information from an FSA result set.
 
@@ -7334,7 +7395,7 @@ def powerscale_fsa_directory_get(result_id: int, directory_id: int) -> dict:
     - directory_id: The directory entry ID
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         fsa = FSA(cluster)
         return fsa.get_directory(result_id, directory_id)
     except Exception as e:
@@ -7350,6 +7411,7 @@ def powerscale_synciq_report_subreports_get(
     report_id: str,
     resume: Optional[str] = None,
     limit: int = 100,
+    cluster_name: str = None,
 ) -> dict:
     """
     List subreports for a SyncIQ policy report.
@@ -7364,7 +7426,7 @@ def powerscale_synciq_report_subreports_get(
     """
     resume = None if resume in (None, "null", "None") else resume
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         sr = SyncReports(cluster)
         return sr.get_subreports(report_id, resume=resume, limit=limit)
     except Exception as e:
@@ -7372,7 +7434,7 @@ def powerscale_synciq_report_subreports_get(
 
 
 @mcp.tool()
-def powerscale_synciq_report_subreport_get(report_id: str, subreport_id: str) -> dict:
+def powerscale_synciq_report_subreport_get(report_id: str, subreport_id: str, cluster_name: str = None) -> dict:
     """
     Get a specific subreport from a SyncIQ report.
 
@@ -7381,7 +7443,7 @@ def powerscale_synciq_report_subreport_get(report_id: str, subreport_id: str) ->
     - subreport_id: The subreport ID
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         sr = SyncReports(cluster)
         return sr.get_subreport(report_id, subreport_id)
     except Exception as e:
@@ -7397,6 +7459,7 @@ def powerscale_snapshot_changelist_entries_get(
     changelist_id: str,
     resume: Optional[str] = None,
     limit: int = 100,
+    cluster_name: str = None,
 ) -> dict:
     """
     List entries in a snapshot changelist.
@@ -7411,7 +7474,7 @@ def powerscale_snapshot_changelist_entries_get(
     """
     resume = None if resume in (None, "null", "None") else resume
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         sc = SnapshotChangelists(cluster)
         return sc.get_entries(changelist_id, resume=resume, limit=limit)
     except Exception as e:
@@ -7419,7 +7482,7 @@ def powerscale_snapshot_changelist_entries_get(
 
 
 @mcp.tool()
-def powerscale_snapshot_changelist_entry_get(changelist_id: str, entry_id: str) -> dict:
+def powerscale_snapshot_changelist_entry_get(changelist_id: str, entry_id: str, cluster_name: str = None) -> dict:
     """
     Get a specific entry from a snapshot changelist.
 
@@ -7428,7 +7491,7 @@ def powerscale_snapshot_changelist_entry_get(changelist_id: str, entry_id: str) 
     - entry_id: The entry ID within the changelist
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         sc = SnapshotChangelists(cluster)
         return sc.get_entry(changelist_id, entry_id)
     except Exception as e:
@@ -7440,6 +7503,7 @@ def powerscale_snapshot_changelist_lins_get(
     changelist_id: str,
     resume: Optional[str] = None,
     limit: int = 100,
+    cluster_name: str = None,
 ) -> dict:
     """
     List LIN (Logical Inode Number) entries for a snapshot changelist.
@@ -7453,7 +7517,7 @@ def powerscale_snapshot_changelist_lins_get(
     """
     resume = None if resume in (None, "null", "None") else resume
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         sc = SnapshotChangelists(cluster)
         return sc.get_lins(changelist_id, resume=resume, limit=limit)
     except Exception as e:
@@ -7461,7 +7525,7 @@ def powerscale_snapshot_changelist_lins_get(
 
 
 @mcp.tool()
-def powerscale_snapshot_changelist_lin_get(changelist_id: str, lin_id: str) -> dict:
+def powerscale_snapshot_changelist_lin_get(changelist_id: str, lin_id: str, cluster_name: str = None) -> dict:
     """
     Get a specific LIN entry from a snapshot changelist.
 
@@ -7470,7 +7534,7 @@ def powerscale_snapshot_changelist_lin_get(changelist_id: str, lin_id: str) -> d
     - lin_id: The LIN (Logical Inode Number)
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         sc = SnapshotChangelists(cluster)
         return sc.get_lin(changelist_id, lin_id)
     except Exception as e:
@@ -7482,7 +7546,7 @@ def powerscale_snapshot_changelist_lin_get(changelist_id: str, lin_id: str) -> d
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_quota_report_about_get(report_id: str) -> dict:
+def powerscale_quota_report_about_get(report_id: str, cluster_name: str = None) -> dict:
     """
     Get metadata about a specific quota report.
 
@@ -7492,7 +7556,7 @@ def powerscale_quota_report_about_get(report_id: str) -> dict:
     - report_id: The quota report ID
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         qr = QuotaReports(cluster)
         return qr.get_report_about(report_id)
     except Exception as e:
@@ -7508,6 +7572,7 @@ def powerscale_id_resolution_users_get(
     zone_id: str,
     resume: Optional[str] = None,
     limit: int = 100,
+    cluster_name: str = None,
 ) -> dict:
     """
     List UID/SID to username mappings for an access zone.
@@ -7521,7 +7586,7 @@ def powerscale_id_resolution_users_get(
     """
     resume = None if resume in (None, "null", "None") else resume
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         idr = IdResolution(cluster)
         return idr.get_zone_users(zone_id, resume=resume, limit=limit)
     except Exception as e:
@@ -7529,7 +7594,7 @@ def powerscale_id_resolution_users_get(
 
 
 @mcp.tool()
-def powerscale_id_resolution_user_get(zone_id: str, user_id: str) -> dict:
+def powerscale_id_resolution_user_get(zone_id: str, user_id: str, cluster_name: str = None) -> dict:
     """
     Resolve a specific UID/SID to a username within an access zone.
 
@@ -7538,7 +7603,7 @@ def powerscale_id_resolution_user_get(zone_id: str, user_id: str) -> dict:
     - user_id: The user UID or SID to resolve
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         idr = IdResolution(cluster)
         return idr.get_zone_user(zone_id, user_id)
     except Exception as e:
@@ -7550,6 +7615,7 @@ def powerscale_id_resolution_groups_get(
     zone_id: str,
     resume: Optional[str] = None,
     limit: int = 100,
+    cluster_name: str = None,
 ) -> dict:
     """
     List GID/GSID to groupname mappings for an access zone.
@@ -7563,7 +7629,7 @@ def powerscale_id_resolution_groups_get(
     """
     resume = None if resume in (None, "null", "None") else resume
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         idr = IdResolution(cluster)
         return idr.get_zone_groups(zone_id, resume=resume, limit=limit)
     except Exception as e:
@@ -7571,7 +7637,7 @@ def powerscale_id_resolution_groups_get(
 
 
 @mcp.tool()
-def powerscale_id_resolution_group_get(zone_id: str, group_id: str) -> dict:
+def powerscale_id_resolution_group_get(zone_id: str, group_id: str, cluster_name: str = None) -> dict:
     """
     Resolve a specific GID/GSID to a groupname within an access zone.
 
@@ -7580,7 +7646,7 @@ def powerscale_id_resolution_group_get(zone_id: str, group_id: str) -> dict:
     - group_id: The group GID or GSID to resolve
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         idr = IdResolution(cluster)
         return idr.get_zone_group(zone_id, group_id)
     except Exception as e:
@@ -7592,7 +7658,7 @@ def powerscale_id_resolution_group_get(zone_id: str, group_id: str) -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_lfn_domains_get(resume: Optional[str] = None) -> dict:
+def powerscale_lfn_domains_get(resume: Optional[str] = None, cluster_name: str = None) -> dict:
     """
     List all Long File Name configuration domains.
 
@@ -7604,7 +7670,7 @@ def powerscale_lfn_domains_get(resume: Optional[str] = None) -> dict:
     """
     resume = None if resume in (None, "null", "None") else resume
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         l = LFN(cluster)
         return l.list_domains(resume=resume)
     except Exception as e:
@@ -7612,7 +7678,7 @@ def powerscale_lfn_domains_get(resume: Optional[str] = None) -> dict:
 
 
 @mcp.tool()
-def powerscale_lfn_path_get(path: str) -> dict:
+def powerscale_lfn_path_get(path: str, cluster_name: str = None) -> dict:
     """
     Get Long File Name configuration for a specific path.
 
@@ -7620,7 +7686,7 @@ def powerscale_lfn_path_get(path: str) -> dict:
     - path: The filesystem path to query (e.g. '/ifs/data')
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         l = LFN(cluster)
         return l.get_path(path)
     except Exception as e:
@@ -7632,7 +7698,7 @@ def powerscale_lfn_path_get(path: str) -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_metadataiq_settings_get() -> dict:
+def powerscale_metadataiq_settings_get(cluster_name: str = None) -> dict:
     """
     Get MetadataIQ configuration settings.
 
@@ -7640,7 +7706,7 @@ def powerscale_metadataiq_settings_get() -> dict:
     metadata for analytical querying.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         miq = MetadataIQ(cluster)
         return miq.get_settings()
     except Exception as e:
@@ -7648,7 +7714,7 @@ def powerscale_metadataiq_settings_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_metadataiq_status_get() -> dict:
+def powerscale_metadataiq_status_get(cluster_name: str = None) -> dict:
     """
     Get MetadataIQ current cycle status.
 
@@ -7656,7 +7722,7 @@ def powerscale_metadataiq_status_get() -> dict:
     idle, completing, etc.) and progress information.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         miq = MetadataIQ(cluster)
         return miq.get_status()
     except Exception as e:
@@ -7664,12 +7730,12 @@ def powerscale_metadataiq_status_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_metadataiq_certificate_get() -> dict:
+def powerscale_metadataiq_certificate_get(cluster_name: str = None) -> dict:
     """
     Get MetadataIQ CA certificate information.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         miq = MetadataIQ(cluster)
         return miq.get_certificate()
     except Exception as e:
@@ -7681,7 +7747,7 @@ def powerscale_metadataiq_certificate_get() -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_mpa_approvers_get() -> dict:
+def powerscale_mpa_approvers_get(cluster_name: str = None) -> dict:
     """
     List all Multi-Party Authorization (MPA) approvers on the cluster.
 
@@ -7692,7 +7758,7 @@ def powerscale_mpa_approvers_get() -> dict:
     - items: List of approver objects
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         m = MPA(cluster)
         return m.get_approvers()
     except Exception as e:
@@ -7700,7 +7766,7 @@ def powerscale_mpa_approvers_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_mpa_approver_get(approver_id: str) -> dict:
+def powerscale_mpa_approver_get(approver_id: str, cluster_name: str = None) -> dict:
     """
     Get details for a specific MPA approver.
 
@@ -7708,7 +7774,7 @@ def powerscale_mpa_approver_get(approver_id: str) -> dict:
     - approver_id: The approver identifier
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         m = MPA(cluster)
         return m.get_approver(approver_id)
     except Exception as e:
@@ -7716,7 +7782,7 @@ def powerscale_mpa_approver_get(approver_id: str) -> dict:
 
 
 @mcp.tool()
-def powerscale_mpa_requests_get() -> dict:
+def powerscale_mpa_requests_get(cluster_name: str = None) -> dict:
     """
     List all MPA (Multi-Party Authorization) requests.
 
@@ -7726,7 +7792,7 @@ def powerscale_mpa_requests_get() -> dict:
     - items: List of MPA request objects
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         m = MPA(cluster)
         return m.list_requests()
     except Exception as e:
@@ -7734,7 +7800,7 @@ def powerscale_mpa_requests_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_mpa_request_get(request_id: str) -> dict:
+def powerscale_mpa_request_get(request_id: str, cluster_name: str = None) -> dict:
     """
     Get details for a specific MPA request.
 
@@ -7742,7 +7808,7 @@ def powerscale_mpa_request_get(request_id: str) -> dict:
     - request_id: The MPA request identifier
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         m = MPA(cluster)
         return m.get_request(request_id)
     except Exception as e:
@@ -7750,7 +7816,7 @@ def powerscale_mpa_request_get(request_id: str) -> dict:
 
 
 @mcp.tool()
-def powerscale_mpa_settings_get() -> dict:
+def powerscale_mpa_settings_get(cluster_name: str = None) -> dict:
     """
     Get MPA global configuration settings.
 
@@ -7758,7 +7824,7 @@ def powerscale_mpa_settings_get() -> dict:
     global configuration parameters.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         m = MPA(cluster)
         return m.get_global_settings()
     except Exception as e:
@@ -7766,7 +7832,7 @@ def powerscale_mpa_settings_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_mpa_request_lifecycle_get() -> dict:
+def powerscale_mpa_request_lifecycle_get(cluster_name: str = None) -> dict:
     """
     Get MPA request lifecycle configuration.
 
@@ -7774,7 +7840,7 @@ def powerscale_mpa_request_lifecycle_get() -> dict:
     parameters for MPA authorization requests.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         m = MPA(cluster)
         return m.get_request_lifecycle()
     except Exception as e:
@@ -7782,7 +7848,7 @@ def powerscale_mpa_request_lifecycle_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_mpa_privilege_actions_get() -> dict:
+def powerscale_mpa_privilege_actions_get(cluster_name: str = None) -> dict:
     """
     Get MPA privileged action metadata.
 
@@ -7790,7 +7856,7 @@ def powerscale_mpa_privilege_actions_get() -> dict:
     and their associated metadata.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         m = MPA(cluster)
         return m.get_privilege_action_metadata()
     except Exception as e:
@@ -7798,7 +7864,7 @@ def powerscale_mpa_privilege_actions_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_mpa_trust_anchors_get() -> dict:
+def powerscale_mpa_trust_anchors_get(cluster_name: str = None) -> dict:
     """
     List trusted root CAs for MPA.
 
@@ -7806,7 +7872,7 @@ def powerscale_mpa_trust_anchors_get() -> dict:
     - items: List of trust anchor (CA certificate) objects
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         m = MPA(cluster)
         return m.list_trust_anchors()
     except Exception as e:
@@ -7818,7 +7884,7 @@ def powerscale_mpa_trust_anchors_get() -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_local_cluster_time_get() -> dict:
+def powerscale_local_cluster_time_get(cluster_name: str = None) -> dict:
     """
     Get the current time on the local cluster node.
 
@@ -7826,7 +7892,7 @@ def powerscale_local_cluster_time_get() -> dict:
     and time consistency across the cluster.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         li = LocalInfo(cluster)
         return li.get_cluster_time()
     except Exception as e:
@@ -7834,7 +7900,7 @@ def powerscale_local_cluster_time_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_local_network_interfaces_get() -> dict:
+def powerscale_local_network_interfaces_get(cluster_name: str = None) -> dict:
     """
     List network interfaces on the local cluster node.
 
@@ -7845,7 +7911,7 @@ def powerscale_local_network_interfaces_get() -> dict:
     - items: List of network interface objects
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         li = LocalInfo(cluster)
         return li.get_network_interfaces()
     except Exception as e:
@@ -7853,14 +7919,14 @@ def powerscale_local_network_interfaces_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_firmware_status_get() -> dict:
+def powerscale_firmware_status_get(cluster_name: str = None) -> dict:
     """
     Get firmware status for the cluster.
 
     Returns current firmware versions and upgrade status.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         li = LocalInfo(cluster)
         return li.get_firmware_status()
     except Exception as e:
@@ -7868,7 +7934,7 @@ def powerscale_firmware_status_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_firmware_device_get() -> dict:
+def powerscale_firmware_device_get(cluster_name: str = None) -> dict:
     """
     Get firmware device information for the cluster.
 
@@ -7878,7 +7944,7 @@ def powerscale_firmware_device_get() -> dict:
     - items: List of node firmware objects
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         li = LocalInfo(cluster)
         return li.get_firmware_device()
     except Exception as e:
@@ -7886,7 +7952,7 @@ def powerscale_firmware_device_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_node_internal_ip_get(node_lnn: int) -> dict:
+def powerscale_node_internal_ip_get(node_lnn: int, cluster_name: str = None) -> dict:
     """
     Get the internal IP address for a specific cluster node.
 
@@ -7894,7 +7960,7 @@ def powerscale_node_internal_ip_get(node_lnn: int) -> dict:
     - node_lnn: Logical Node Number (LNN) of the node
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         li = LocalInfo(cluster)
         return li.get_node_internal_ip(node_lnn)
     except Exception as e:
@@ -7902,7 +7968,7 @@ def powerscale_node_internal_ip_get(node_lnn: int) -> dict:
 
 
 @mcp.tool()
-def powerscale_os_security_get() -> dict:
+def powerscale_os_security_get(cluster_name: str = None) -> dict:
     """
     Get per-node OS security settings status.
 
@@ -7910,7 +7976,7 @@ def powerscale_os_security_get() -> dict:
     status, and other security posture information.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         li = LocalInfo(cluster)
         return li.get_os_security()
     except Exception as e:
@@ -7922,7 +7988,7 @@ def powerscale_os_security_get() -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_api_session_settings_get() -> dict:
+def powerscale_api_session_settings_get(cluster_name: str = None) -> dict:
     """
     Get HTTP API session settings.
 
@@ -7930,7 +7996,7 @@ def powerscale_api_session_settings_get() -> dict:
     configuration parameters for the Platform API.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         api_s = ApiSessions(cluster)
         return api_s.get_session_settings()
     except Exception as e:
@@ -7938,7 +8004,7 @@ def powerscale_api_session_settings_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_api_session_invalidations_get() -> dict:
+def powerscale_api_session_invalidations_get(cluster_name: str = None) -> dict:
     """
     List all Platform API session invalidations.
 
@@ -7946,7 +8012,7 @@ def powerscale_api_session_invalidations_get() -> dict:
     - items: List of session invalidation objects
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         api_s = ApiSessions(cluster)
         return api_s.list_invalidations()
     except Exception as e:
@@ -7954,7 +8020,7 @@ def powerscale_api_session_invalidations_get() -> dict:
 
 
 @mcp.tool()
-def powerscale_api_session_invalidation_get(invalidation_id: str) -> dict:
+def powerscale_api_session_invalidation_get(invalidation_id: str, cluster_name: str = None) -> dict:
     """
     Get a specific Platform API session invalidation.
 
@@ -7962,7 +8028,7 @@ def powerscale_api_session_invalidation_get(invalidation_id: str) -> dict:
     - invalidation_id: The invalidation identifier
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         api_s = ApiSessions(cluster)
         return api_s.get_invalidation(invalidation_id)
     except Exception as e:
@@ -7974,7 +8040,7 @@ def powerscale_api_session_invalidation_get(invalidation_id: str) -> dict:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_groupnets_summary_get() -> dict:
+def powerscale_groupnets_summary_get(cluster_name: str = None) -> dict:
     """
     Get groupnet summary information.
 
@@ -7983,7 +8049,7 @@ def powerscale_groupnets_summary_get() -> dict:
     powerscale_network_groupnets_get for quick topology overview.
     """
     try:
-        cluster = _get_reachable_cluster()
+        cluster = _get_cluster(cluster_name)
         gs = GroupnetsSummary(cluster)
         return gs.get()
     except Exception as e:

@@ -115,3 +115,24 @@ class Cluster:
             )
         # Fallback: use env vars (original behavior)
         return cls(debug_env_var=debug_env_var)
+
+    @classmethod
+    def from_vault_by_name(cls, name: str, debug_env_var: str = "DEBUG"):
+        """Create a Cluster from a specific named vault entry.
+        Raises ValueError if the cluster name is not found."""
+        from modules.ansible.vault_manager import VaultManager
+
+        vm = VaultManager()
+        creds = vm.get_credentials(name)
+        if not creds:
+            available = [c["name"] for c in vm.list_clusters()]
+            raise ValueError(f"Cluster '{name}' not found in vault. Available: {available}")
+        return cls(
+            host=creds.get("host"),
+            port=creds.get("port"),
+            username=creds.get("username"),
+            password=creds.get("password"),
+            verify_ssl=creds.get("verify_ssl"),
+            ca_bundle=creds.get("ca_bundle"),
+            debug_env_var=debug_env_var,
+        )

@@ -268,3 +268,10 @@ class VaultManager:
         if not self._selected or self._selected not in self._clusters:
             return None
         return dict(self._clusters[self._selected])
+
+    def get_credentials(self, name: str) -> dict | None:
+        """Return credentials dict for the named cluster, or None if not found."""
+        self._refresh_vault()
+        if name not in self._clusters:
+            return None
+        return dict(self._clusters[name])
