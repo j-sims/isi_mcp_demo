@@ -42,9 +42,11 @@ docker-compose run --rm isi_mcp ansible-vault edit /app/vault/vault.yml
 
 Delete the cluster entry and save.
 
-### Switching Clusters at Runtime
+### Cluster Operations
 
-The LLM can manage clusters using four always-available management tools:
+#### Sequential Cluster Switching (Session-Based)
+
+Use management tools to switch your active cluster and operate sequentially:
 
 - `powerscale_cluster_list` — lists all configured clusters and shows which is currently selected
 - `powerscale_cluster_select` — switches the active cluster by name; set `reload_vault=true` to pick up vault edits made while the server is running
@@ -52,7 +54,31 @@ The LLM can manage clusters using four always-available management tools:
 - `powerscale_cluster_remove` — remove a cluster from the vault at runtime
 - `powerscale_cluster_modify` — update one or more fields of an existing cluster (name, host, port, username, password, verify_ssl) without replacing the entire entry; only supply the fields you want to change
 
-All other PowerScale tools automatically operate against the currently selected cluster.
+#### Parallel Cross-Cluster Operations
+
+All PowerScale tools accept an optional `cluster_name` parameter. This allows you to:
+- **Operate on any cluster without changing session context** — run multiple operations across different clusters in a single request
+- **Execute parallel cluster commands** — query health, capacity, quotas across all clusters simultaneously without sequential switching
+
+Examples:
+```
+# Get capacity from prod and dr clusters in parallel
+powerscale_capacity(cluster_name="prod")
+powerscale_capacity(cluster_name="dr")
+
+# Check health on multiple clusters at once
+powerscale_cluster_verify(cluster_name="staging")
+powerscale_cluster_verify(cluster_name="prod")
+
+# Mix default cluster with explicit cluster_name calls
+powerscale_quota_get()  # Uses currently selected cluster
+powerscale_quota_get(cluster_name="prod")  # Explicitly targets prod
+```
+
+This approach is ideal for:
+- **Comparative analysis** — compare metrics across clusters (capacity, quotas, performance)
+- **Parallel verification** — health checks on multiple clusters simultaneously
+- **Multi-cluster operations** — replicate configurations or sync data across clusters
 
 ## Dynamic Tool Management
 

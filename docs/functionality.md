@@ -35,6 +35,9 @@ The following examples demonstrate the types of tasks you can accomplish with th
 - "Which licenses are installed and are any expiring soon?"
 - "What is the network topology — groupnets, subnets, and pools?"
 - "How many access zones are configured on this cluster?"
+- "Compare capacity across prod, dr, and staging clusters in parallel"
+- "Check health status on all configured clusters simultaneously"
+- "Show quota usage for /ifs/home on both prod and dr clusters"
 
 **Write operations (require enabling write tools first):**
 - "Enable write tools for NFS, then create an NFS export for /ifs/data/projects with read-write access for 10.0.0.0/24"
