@@ -1,5 +1,6 @@
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
+from modules.utils.timestamps import epoch_to_iso
 
 
 class Statistics:
@@ -98,6 +99,7 @@ class Statistics:
                 data[s.key] = _coerce(s.value)
             if sample_time is not None:
                 data["_sample_time"] = sample_time
+                data["_sample_time_iso"] = epoch_to_iso(sample_time)
             return data
 
         # Per-node grouping
@@ -111,6 +113,7 @@ class Statistics:
             nodes[devid][s.key] = _coerce(s.value)
         if sample_time is not None:
             nodes["_sample_time"] = sample_time
+            nodes["_sample_time_iso"] = epoch_to_iso(sample_time)
         return nodes
 
     def get_cpu(self):

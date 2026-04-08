@@ -2,6 +2,7 @@ import logging
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
 from modules.ansible.runner import AnsibleRunner
+from modules.utils.timestamps import add_iso_timestamps
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ class Snapshots:
             return {"items": [], "resume": None}
 
         items = [s.to_dict() for s in result.snapshots] if result.snapshots else []
+        add_iso_timestamps(items, ['created', 'expires'])
 
         return {
             "items": items,
@@ -116,6 +118,7 @@ class Snapshots:
             return {"items": [], "resume": None, "has_more": False}
 
         items = [p.to_dict() for p in result.pending] if result.pending else []
+        add_iso_timestamps(items, ['time'])
 
         return {
             "items": items,

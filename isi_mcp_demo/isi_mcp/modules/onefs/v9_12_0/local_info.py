@@ -1,5 +1,6 @@
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
+from modules.utils.timestamps import epoch_to_iso
 
 
 class LocalInfo:
@@ -24,7 +25,8 @@ class LocalInfo:
             result = api.get_cluster_time()
             if hasattr(result, "time") and result.time:
                 # time is already a numeric value (Unix timestamp), not an object
-                return {"time": result.time}
+                ts = result.time
+                return {"time": ts, "time_iso": epoch_to_iso(ts)}
             return {}
         except ApiException as e:
             return {"error": str(e)}

@@ -1,6 +1,7 @@
 import logging
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
+from modules.utils.timestamps import add_iso_timestamps
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +77,7 @@ class Events:
         items = [eg.to_dict() for eg in result.eventgroups] if result.eventgroups else []
         if severity_filter:
             items = [i for i in items if str(i.get("severity", "")).lower() in severity_filter]
+        add_iso_timestamps(items, ['begin', 'end', 'last_event_begin'])
         return {
             "items": items,
             "resume": getattr(result, "resume", None),

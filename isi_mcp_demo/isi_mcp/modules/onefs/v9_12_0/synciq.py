@@ -1,6 +1,7 @@
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
 from modules.ansible.runner import AnsibleRunner
+from modules.utils.timestamps import add_iso_timestamps
 
 class SyncIQ:
     """holds all functions related to SyncIQ replication on a powerscale cluster."""
@@ -14,6 +15,7 @@ class SyncIQ:
         result = sync_api.list_sync_policies()
 
         items = [p.to_dict() for p in result.policies] if result.policies else []
+        add_iso_timestamps(items, ['last_success', 'last_started'])
 
         return {
             "items": items

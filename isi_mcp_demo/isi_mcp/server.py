@@ -8112,6 +8112,88 @@ async def _call_tool_with_timeout(key: str, arguments: dict, **kwargs):
 
 mcp._tool_manager.call_tool = _call_tool_with_timeout
 
+import inspect as _inspect
+import re as _re
+
+
+def _parse_docstring_args(fn) -> dict:
+    """Parse the 'Arguments:' section of a docstring.
+
+    Returns {param_name: description_text} for all documented parameters.
+    Handles the '- param: description' format used throughout this file.
+    Multi-line descriptions (indented continuation lines) are concatenated.
+    Stops at the next section heading (a line ending in ':' that is not a
+    parameter entry).
+    """
+    doc = _inspect.getdoc(fn) or ""
+    params = {}
+    in_args = False
+    current_param = None
+    current_desc = []
+
+    for line in doc.split('\n'):
+        stripped = line.strip()
+        # Detect start of Arguments/Args/Parameters section
+        if _re.match(r'^(Arguments|Args|Parameters)\s*:', stripped, _re.IGNORECASE):
+            in_args = True
+            continue
+        if not in_args:
+            continue
+        # A non-empty line that ends with ':' and doesn't start with '-' marks
+        # the beginning of a new section (e.g. 'Returns:', 'Usage:')
+        if stripped and stripped.endswith(':') and not stripped.startswith('-'):
+            break
+        # New parameter entry: '- param_name: description ...'
+        m = _re.match(r'^-\s+(\w+)\s*:\s*(.*)', stripped)
+        if m:
+            if current_param:
+                params[current_param] = ' '.join(current_desc).strip()
+            current_param = m.group(1)
+            current_desc = [m.group(2)] if m.group(2) else []
+        elif current_param and stripped:
+            # Continuation of the current parameter's description
+            current_desc.append(stripped)
+        elif not stripped and current_param:
+            # Blank line terminates the current parameter entry
+            params[current_param] = ' '.join(current_desc).strip()
+            current_param = None
+            current_desc = []
+
+    if current_param:
+        params[current_param] = ' '.join(current_desc).strip()
+    return params
+
+
+# Inject per-parameter descriptions into FastMCP tool input schemas.
+#
+# FastMCP builds _tool.parameters as a mutable JSON-schema dict:
+#   {"type": "object", "properties": {"param": {"type": "integer"}, ...}}
+# The per-parameter "description" key is absent unless the function uses
+# Annotated[..., Field(description="...")] type hints.  Because these tools
+# use plain type hints with documentation only in the docstring, we parse
+# the "Arguments:" section at startup and inject descriptions here.  They
+# survive the first-line trimming below and are included in every MCP
+# tool/list response so the LLM always knows the correct format.
+_MAX_PARAM_DESC = 200  # characters — keeps schema compact while preserving format hints
+
+for _tool in mcp._tool_manager._tools.values():
+    _fn = getattr(_tool, 'fn', None)
+    if _fn is None:
+        continue
+    _param_docs = _parse_docstring_args(_fn)
+    if not _param_docs:
+        continue
+    _props = _tool.parameters.get("properties", {}) if isinstance(_tool.parameters, dict) else {}
+    for _pname, _pdesc in _param_docs.items():
+        if _pname in _props and _pdesc:
+            _props[_pname]["description"] = _pdesc[:_MAX_PARAM_DESC]
+
+
+# Trim tool descriptions to first line for context efficiency.
+# Per-parameter format info is now preserved in the inputSchema above.
+for _tool in mcp._tool_manager._tools.values():
+    if _tool.description:
+        _tool.description = _tool.description.split('\n')[0].strip()
 
 app = mcp.http_app()
 app.state.json_response = True

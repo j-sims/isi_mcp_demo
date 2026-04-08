@@ -2,6 +2,7 @@ import logging
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
 from modules.ansible.runner import AnsibleRunner
+from modules.utils.timestamps import add_iso_timestamps
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ class SnapshotSchedules:
             return {"items": [], "resume": None}
 
         items = [s.to_dict() for s in result.schedules] if result.schedules else []
+        add_iso_timestamps(items, ['next_run'])
 
         return {
             "items": items,
