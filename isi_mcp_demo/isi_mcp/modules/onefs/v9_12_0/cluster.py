@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Any, Dict, Optional
 import urllib3
 
 import isilon_sdk.v9_12_0 as isi_sdk
@@ -7,17 +8,33 @@ import isilon_sdk.v9_12_0 as isi_sdk
 logger = logging.getLogger(__name__)
 
 class Cluster:
+    """Manages API connection to a PowerScale cluster."""
 
     def __init__(
         self,
-        host: str = None,
-        port: int = None,
-        username: str = None,
-        password: str = None,
-        verify_ssl: bool = None,
-        ca_bundle: str = None,
+        host: Optional[str] = None,
+        port: Optional[int] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        verify_ssl: Optional[bool] = None,
+        ca_bundle: Optional[str] = None,
         debug_env_var: str = "DEBUG",
-        ):
+        connect_timeout: Optional[int] = None,
+        read_timeout: Optional[int] = None,
+    ) -> None:
+        """Initialize a Cluster connection.
+
+        Args:
+            host: Cluster hostname or IP. Falls back to HOST env var.
+            port: Cluster API port. Falls back to PORT env var (default 8080).
+            username: API username. Falls back to USERNAME env var.
+            password: API password. Falls back to PASSWORD env var.
+            verify_ssl: Whether to verify SSL certificates. Falls back to VERIFY_SSL env var.
+            ca_bundle: Path to CA bundle file for SSL verification.
+            debug_env_var: Environment variable to check for debug mode (default 'DEBUG').
+            connect_timeout: Connection timeout in seconds (default 30).
+            read_timeout: Read timeout in seconds (default 30).
+        """
 
         self.debug = False
         if os.environ.get(debug_env_var):
@@ -28,6 +45,8 @@ class Cluster:
         self.host = host or os.environ.get("HOST")
         self.username = username or os.environ.get("USERNAME")
         self.password = password or os.environ.get("PASSWORD")
+        self.connect_timeout = connect_timeout or int(os.environ.get("CONNECT_TIMEOUT", 30))
+        self.read_timeout = read_timeout or int(os.environ.get("READ_TIMEOUT", 30))
 
         # ca_bundle takes precedence for SSL verification
         # If provided, urllib3 will verify the cluster cert against this CA bundle file
@@ -90,8 +109,39 @@ class Cluster:
 
         self.api_client.call_api = _call_api_with_timeout
 
+    def verify(self) -> bool:
+        """
+        Verify cluster connectivity and authentication.
+        Returns True if the cluster is accessible with valid credentials, False otherwise.
+        May raise exceptions on connection errors.
+        """
+        try:
+            config = self.get_config()
+            return config is not None
+        except Exception:
+            return False
+
+    def get_config(self) -> Dict[str, Any]:
+        """
+        Get cluster configuration from the local/config endpoint.
+        Returns the configuration dict or raises an exception on failure.
+        """
+        try:
+            local_api = isi_sdk.LocalApi(self.api_client)
+            config_response = local_api.get_local_config()
+            # Handle both object and dict responses
+            if hasattr(config_response, 'to_dict'):
+                return config_response.to_dict()
+            elif isinstance(config_response, dict):
+                return config_response
+            else:
+                return config_response
+        except Exception as e:
+            logger.debug("Failed to get config: %s", e)
+            raise
+
     @classmethod
-    def from_vault(cls, debug_env_var: str = "DEBUG"):
+    def from_vault(cls, debug_env_var: str = "DEBUG") -> "Cluster":
         """Create a Cluster from the currently-selected vault credentials.
         Falls back to env vars if no vault is configured."""
         from modules.ansible.vault_manager import VaultManager
