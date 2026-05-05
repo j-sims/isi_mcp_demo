@@ -864,6 +864,7 @@ CLUSTER_CA_BUNDLE=""
 # Write plaintext vault.yml (will be encrypted in the next step)
 # ---------------------------------------------------------------------------
 if [[ "$SKIP_SETUP" == false ]]; then
+    mkdir -p "$VAULT_DIR"
     {
         cat << VAULT_EOF
 clusters:
