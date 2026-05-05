@@ -9,6 +9,7 @@ import time
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 from fastmcp import FastMCP
+from fastmcp.tools import Tool as _FMCPTool
 try:
     from fastmcp.server.auth import RemoteAuthProvider
     from fastmcp.server.auth.providers.jwt import JWTVerifier
@@ -184,6 +185,12 @@ for _grp, _tools in TOOL_GROUPS.items():
 
 # Stash for disabled tools so they can be re-enabled at runtime
 _disabled_tools: Dict[str, Any] = {}  # tool_name -> Tool object
+
+
+def _local_tools() -> Dict[str, Any]:
+    """Return {name: Tool} for all tools currently in the local provider (enabled + disabled)."""
+    return {t.name: t for t in mcp.local_provider._components.values() if isinstance(t, _FMCPTool)}
+
 
 # ---------------------------------------------------------------------------
 # Role-based access control middleware (Phase 2)
@@ -368,6 +375,50 @@ if _FASTMCP_AUTH_AVAILABLE:
     mcp.add_middleware(AuditMiddleware())
     logger.info("Audit middleware enabled (rotating NDJSON log at /app/audit/audit.log)")
 
+    class TimeoutMiddleware(Middleware):
+        """Enforce a hard wall-clock deadline on every tool call.
+
+        Registered last so it wraps the actual tool execution (innermost middleware).
+        Uses asyncio.shield so the underlying thread drains via the API_TIMEOUT
+        (urllib3 socket timeout) rather than being forcibly cancelled.
+        """
+
+        _thread_capacity_configured: bool = False
+
+        async def on_call_tool(self, context, call_next):
+            if not TimeoutMiddleware._thread_capacity_configured:
+                import anyio
+                limiter = anyio.to_thread.current_default_thread_limiter()
+                limiter.total_tokens = int(os.environ.get("TOOL_THREADS", 200))
+                TimeoutMiddleware._thread_capacity_configured = True
+                logger.info("anyio thread capacity set to %d", limiter.total_tokens)
+
+            tool_name = context.message.name
+            loop = asyncio.get_running_loop()
+            inner_task = loop.create_task(call_next(context))
+
+            def _drain(task):
+                if not task.cancelled():
+                    try:
+                        task.exception()
+                    except Exception:
+                        pass
+
+            try:
+                return await asyncio.wait_for(asyncio.shield(inner_task), timeout=TOOL_TIMEOUT)
+            except asyncio.TimeoutError:
+                inner_task.add_done_callback(_drain)
+                raise TimeoutError(
+                    f"Tool '{tool_name}' exceeded the {TOOL_TIMEOUT}s timeout. "
+                    "The cluster may be slow or unreachable."
+                )
+            except asyncio.CancelledError:
+                inner_task.add_done_callback(_drain)
+                raise
+
+    mcp.add_middleware(TimeoutMiddleware())
+    logger.info("Timeout middleware enabled (%ds wall-clock limit per tool call)", TOOL_TIMEOUT)
+
 
 def _resolve_names_to_tools(names: List[str]) -> List[str]:
     """Resolve group names, mode targets ("read"/"write"), or individual tool
@@ -408,21 +459,22 @@ def _refresh_tool_state() -> None:
         return
 
     config = _load_tools_config()
+    current_tools = _local_tools()
     for name, meta in config.items():
         if name in MANAGEMENT_TOOLS:
             continue
         should_be_enabled = meta.get("enabled", True)
-        is_enabled = name in mcp._tool_manager._tools
+        is_enabled = name in current_tools
 
         if should_be_enabled and not is_enabled and name in _disabled_tools:
             # Re-enable: tool was enabled on disk but disabled in this process
             tool_obj = _disabled_tools.pop(name)
-            mcp._tool_manager.add_tool(tool_obj)
+            mcp.add_tool(tool_obj)
             logger.debug("Refresh: re-enabled tool %s", name)
         elif not should_be_enabled and is_enabled:
             # Disable: tool was disabled on disk but enabled in this process
-            _disabled_tools[name] = mcp._tool_manager._tools[name]
-            mcp._tool_manager.remove_tool(name)
+            _disabled_tools[name] = current_tools[name]
+            mcp.local_provider.remove_tool(name)
             logger.debug("Refresh: disabled tool %s", name)
 
 
@@ -4414,7 +4466,7 @@ def powerscale_tools_list() -> List[Dict[str, Any]]:
     - mode: "read" (non-destructive) or "write" (modifies cluster state)
     - enabled: true if the tool is currently registered with the MCP server
     """
-    enabled_set = set(mcp._tool_manager._tools.keys())
+    enabled_set = set(_local_tools().keys())
     config = _load_tools_config()
     return sorted(
         [
@@ -4449,7 +4501,7 @@ def powerscale_tools_list_by_group() -> Dict[str, Any]:
     - total_enabled: Total number of currently enabled tools
     - total_disabled: Total number of currently disabled tools
     """
-    enabled_set = set(mcp._tool_manager._tools.keys())
+    enabled_set = set(_local_tools().keys())
     groups: Dict[str, List[Dict[str, Any]]] = {}
     for group_name, tool_names in TOOL_GROUPS.items():
         groups[group_name] = [
@@ -4487,7 +4539,7 @@ def powerscale_tools_list_by_mode() -> Dict[str, Any]:
     - read_count: Total number of read tools
     - write_count: Total number of write tools
     """
-    enabled_set = set(mcp._tool_manager._tools.keys())
+    enabled_set = set(_local_tools().keys())
     config = _load_tools_config()
     by_mode: Dict[str, List[Dict[str, Any]]] = {"read": [], "write": []}
     for name, meta in sorted(config.items()):
@@ -4550,14 +4602,15 @@ def powerscale_tools_toggle(names: List[str], action: str) -> Dict[str, Any]:
     toggled = []
     skipped = []
 
+    current_tools = _local_tools()
     if action == "disable":
         for name in tool_names:
             if name in MANAGEMENT_TOOLS:
                 skipped.append(name)
                 continue
-            if name in mcp._tool_manager._tools:
-                _disabled_tools[name] = mcp._tool_manager._tools[name]
-                mcp.remove_tool(name)
+            if name in current_tools:
+                _disabled_tools[name] = current_tools[name]
+                mcp.local_provider.remove_tool(name)
                 toggled.append(name)
             else:
                 skipped.append(name)
@@ -4578,7 +4631,7 @@ def powerscale_tools_toggle(names: List[str], action: str) -> Dict[str, Any]:
         "action": action,
         "toggled": toggled,
         "skipped": skipped,
-        "total_enabled": len(mcp._tool_manager._tools),
+        "total_enabled": len(_local_tools()),
         "total_disabled": len(_disabled_tools),
     }
 
@@ -4916,9 +4969,9 @@ def _apply_startup_config() -> None:
 
     Set ENABLE_ALL_TOOLS=true to skip disabling (used by test harness).
     """
+    current_tools = _local_tools()
     if os.environ.get("ENABLE_ALL_TOOLS", "").lower() == "true":
-        total = len(mcp._tool_manager._tools)
-        logger.info("ENABLE_ALL_TOOLS set — all %d tools enabled", total)
+        logger.info("ENABLE_ALL_TOOLS set — all %d tools enabled", len(current_tools))
         return
 
     config = _load_tools_config()
@@ -4927,12 +4980,12 @@ def _apply_startup_config() -> None:
             continue
         if name in MANAGEMENT_TOOLS:
             continue
-        if name in mcp._tool_manager._tools:
-            _disabled_tools[name] = mcp._tool_manager._tools[name]
-            mcp._tool_manager.remove_tool(name)
+        if name in current_tools:
+            _disabled_tools[name] = current_tools[name]
+            mcp.local_provider.remove_tool(name)
             logger.info("Disabled tool: %s", name)
 
-    enabled = len(mcp._tool_manager._tools)
+    enabled = len(_local_tools())
     disabled = len(_disabled_tools)
     logger.info("%d tools enabled, %d tools disabled", enabled, disabled)
 
@@ -8063,60 +8116,6 @@ def powerscale_groupnets_summary_get(cluster_name: str = None) -> dict:
 
 _apply_startup_config()
 
-# Apply a hard wall-clock deadline to every tool call.  This is a second
-# layer of defence on top of the HTTP-level _request_timeout set in cluster.py.
-# If the SDK timeout doesn't fire (e.g. firewall silently drops packets),
-# this asyncio.wait_for will still return an error to the client promptly.
-# Note: the underlying thread cannot be forcibly killed, but it will be
-# cleaned up once Layer 1 (urllib3 timeout) eventually fires.
-_orig_call_tool = mcp._tool_manager.call_tool
-_thread_capacity_configured = False
-
-
-async def _call_tool_with_timeout(key: str, arguments: dict, **kwargs):
-    global _thread_capacity_configured
-    if not _thread_capacity_configured:
-        import anyio
-        limiter = anyio.to_thread.current_default_thread_limiter()
-        target = int(os.environ.get("TOOL_THREADS", 200))
-        limiter.total_tokens = target
-        _thread_capacity_configured = True
-        logger.info("anyio thread capacity set to %d", target)
-
-    loop = asyncio.get_running_loop()
-    inner_task = loop.create_task(
-        _orig_call_tool(key=key, arguments=arguments, **kwargs)
-    )
-
-    def _drain_result(task):
-        # Prevent "Future exception was never retrieved" warnings for background tasks
-        # that completed after we stopped waiting for them.
-        if not task.cancelled():
-            try:
-                task.exception()
-            except Exception:
-                pass
-
-    try:
-        return await asyncio.wait_for(asyncio.shield(inner_task), timeout=TOOL_TIMEOUT)
-    except asyncio.TimeoutError:
-        # Return error to client immediately without cancelling inner_task.
-        # Do NOT cancel inner_task — that would block on anyio's run_sync cleanup,
-        # holding anyio capacity until the underlying thread finishes.
-        # Let it drain naturally once the API_TIMEOUT (urllib3 socket timeout) fires.
-        inner_task.add_done_callback(_drain_result)
-        raise TimeoutError(
-            f"Tool '{key}' exceeded the {TOOL_TIMEOUT}s timeout. "
-            "The cluster may be slow or unreachable."
-        )
-    except asyncio.CancelledError:
-        # Client disconnected; let inner_task drain in the background.
-        inner_task.add_done_callback(_drain_result)
-        raise
-
-
-mcp._tool_manager.call_tool = _call_tool_with_timeout
-
 import inspect as _inspect
 import re as _re
 
@@ -8181,7 +8180,7 @@ def _parse_docstring_args(fn) -> dict:
 # tool/list response so the LLM always knows the correct format.
 _MAX_PARAM_DESC = 200  # characters — keeps schema compact while preserving format hints
 
-for _tool in mcp._tool_manager._tools.values():
+for _tool in _local_tools().values():
     _fn = getattr(_tool, 'fn', None)
     if _fn is None:
         continue
@@ -8196,12 +8195,11 @@ for _tool in mcp._tool_manager._tools.values():
 
 # Trim tool descriptions to first line for context efficiency.
 # Per-parameter format info is now preserved in the inputSchema above.
-for _tool in mcp._tool_manager._tools.values():
+for _tool in _local_tools().values():
     if _tool.description:
         _tool.description = _tool.description.split('\n')[0].strip()
 
-app = mcp.http_app()
-app.state.json_response = True
+app = mcp.http_app(json_response=True)
 
 
 # ---------------------------------------------------------------------------
@@ -8213,7 +8211,7 @@ from starlette.routing import Route
 
 async def _health_handler(request):
     """Lightweight health check — confirms the server is running and tools are loaded."""
-    tool_count = len(mcp._tool_manager._tools)
+    tool_count = len(_local_tools())
     return JSONResponse({"status": "ok", "tools_loaded": tool_count})
 
 
