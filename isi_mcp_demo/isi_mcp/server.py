@@ -170,7 +170,7 @@ MANAGEMENT_TOOLS = {
     "powerscale_tools_list_by_mode",
     "powerscale_tools_toggle",
     "powerscale_cluster_list",
-    "powerscale_cluster_select",
+    "powerscale_cluster_setdefault",
     "powerscale_cluster_add",
     "powerscale_cluster_remove",
     "powerscale_cluster_modify",
@@ -430,7 +430,7 @@ def _get_cluster(cluster_name: str = None) -> Cluster:
     """Create a cluster from vault credentials.
 
     If cluster_name is provided, connects to that specific named cluster.
-    Otherwise uses the currently selected cluster.
+    Otherwise uses the default cluster.
     Raises RuntimeError if no cluster host is configured.
     Raises ValueError if the specified cluster_name is not found.
     """
@@ -4591,24 +4591,24 @@ def powerscale_tools_toggle(names: List[str], action: str) -> Dict[str, Any]:
 def powerscale_cluster_list() -> Dict[str, Any]:
     """
     List all PowerScale clusters configured in the vault and show which one
-    is currently selected.
+    is the default.
 
     Returns a list of clusters with their name, host, port, verify_ssl status,
-    and whether each is the currently selected target. Passwords are never
-    included in the response.
+    and whether each is the default target. Passwords are never included in
+    the response.
 
     Use this tool to:
     - See which clusters are available to manage
-    - Check which cluster is currently targeted by all other PowerScale tools
+    - Check which cluster is the default target for all other PowerScale tools
     - Verify cluster configuration before switching
     """
     try:
         vm = VaultManager()
         clusters = vm.list_clusters()
-        selected = vm.selected_cluster_name
+        default = vm.selected_cluster_name
         return {
             "clusters": clusters,
-            "selected": selected,
+            "default": default,
             "total": len(clusters),
         }
     except FileNotFoundError:
@@ -4618,25 +4618,30 @@ def powerscale_cluster_list() -> Dict[str, Any]:
 
 
 @mcp.tool()
-def powerscale_cluster_select(cluster_name: str, reload_vault: bool = False) -> Dict[str, Any]:
+def powerscale_cluster_setdefault(cluster_name: str, reload_vault: bool = False) -> Dict[str, Any]:
     """
-    Switch the active PowerScale cluster that all tools will operate against.
+    Set the default PowerScale cluster that tools will operate against when no
+    cluster_name is specified.
 
-    IMPORTANT: This is a MUTATING operation that changes which cluster all
-    subsequent tool calls will target. The change takes effect immediately.
+    IMPORTANT: This is a MUTATING operation that changes the default cluster for all
+    subsequent tool calls that omit cluster_name. The change takes effect immediately.
+
+    Note: You can target any cluster directly without changing the default by passing
+    cluster_name to any tool. Use this tool only when you want to change which cluster
+    is used implicitly for tool calls that do not specify cluster_name.
 
     Arguments:
     - cluster_name: The name of the cluster as defined in the vault file
       (e.g. "lab_cluster", "production"). Use powerscale_cluster_list to
       see available names.
     - reload_vault: If True, re-read and decrypt the vault file before
-      selecting. Use this if clusters were added/removed externally.
+      updating. Use this if clusters were added/removed externally.
       Default is False.
 
     Use this tool when:
-    - The user wants to manage a different PowerScale cluster
-    - The user wants to switch from lab to production (or vice versa)
-    - The user asks "switch to cluster X" or "target the production cluster"
+    - The user wants to change which cluster is targeted by default
+    - The user wants to switch the default from lab to production (or vice versa)
+    - The user asks "set default cluster to X" or "make production the default"
     """
     try:
         vm = VaultManager()
@@ -4646,8 +4651,8 @@ def powerscale_cluster_select(cluster_name: str, reload_vault: bool = False) -> 
         if vm.select_cluster(cluster_name):
             return {
                 "success": True,
-                "selected": cluster_name,
-                "message": f"Now targeting cluster '{cluster_name}'. All subsequent tools will operate against this cluster.",
+                "default": cluster_name,
+                "message": f"Default cluster set to '{cluster_name}'. Tools without an explicit cluster_name will now target this cluster.",
             }
         else:
             available = [c["name"] for c in vm.list_clusters()]
@@ -4678,7 +4683,7 @@ def powerscale_cluster_add(
     This tool automatically extracts the cluster's TLS certificate for SSL verification
     (useful for self-signed certificates), but falls back gracefully if extraction fails.
 
-    Use powerscale_cluster_select to switch to the new cluster.
+    Use powerscale_cluster_setdefault to change the default cluster.
 
     Arguments:
     - name: Cluster label used to identify it (e.g. "production", "lab")
@@ -4806,8 +4811,8 @@ def powerscale_cluster_remove(name: str) -> Dict[str, Any]:
 
     IMPORTANT: This is a MUTATING operation. Confirm with the user before executing.
 
-    Cannot remove the currently selected cluster — use powerscale_cluster_select
-    to switch to a different cluster first.
+    Cannot remove the default cluster — use powerscale_cluster_setdefault
+    to change the default to a different cluster first.
 
     Arguments:
     - name: The cluster label to remove (use powerscale_cluster_list to see available names)
@@ -4817,8 +4822,8 @@ def powerscale_cluster_remove(name: str) -> Dict[str, Any]:
         if vm.selected_cluster_name == name:
             return {
                 "success": False,
-                "error": f"Cannot remove the currently selected cluster '{name}'. "
-                         "Use powerscale_cluster_select to switch to a different cluster first.",
+                "error": f"Cannot remove the default cluster '{name}'. "
+                         "Use powerscale_cluster_setdefault to change the default to a different cluster first.",
             }
         removed = vm.remove_cluster(name)
         if not removed:

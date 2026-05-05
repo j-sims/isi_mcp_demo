@@ -737,7 +737,7 @@
     "enabled": true,
     "function": "none"
   },
-  "powerscale_cluster_select": {
+  "powerscale_cluster_setdefault": {
     "tool_group": "management",
     "tool_mode": "write",
     "enabled": true,

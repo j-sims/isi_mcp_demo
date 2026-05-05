@@ -109,6 +109,21 @@ class Cluster:
 
         self.api_client.call_api = _call_api_with_timeout
 
+        # The SDK's session authentication (POST /session/1/session) is called
+        # directly via rest_client.POST() without _request_timeout, bypassing the
+        # call_api wrapper above.  Patch rest_client.request (the central HTTP
+        # dispatch method that all REST verbs funnel through) to apply the same
+        # timeout to session auth calls so they fail fast when the cluster is
+        # unreachable rather than hanging indefinitely and exhausting the thread pool.
+        _orig_rest_request = self.api_client.rest_client.request
+
+        def _rest_request_with_timeout(*args, **kwargs):
+            if kwargs.get("_request_timeout") is None:
+                kwargs["_request_timeout"] = (_api_timeout, _api_timeout)
+            return _orig_rest_request(*args, **kwargs)
+
+        self.api_client.rest_client.request = _rest_request_with_timeout
+
     def verify(self) -> bool:
         """
         Verify cluster connectivity and authentication.

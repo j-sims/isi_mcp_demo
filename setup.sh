@@ -248,6 +248,7 @@ _extract_and_inspect_cert() {
     info "Extracting cluster TLS certificate for SSL verification..."
     if VAULT_PASSWORD="$VAULT_PASS" $COMPOSE_CMD -f "$COMPOSE_FILE" run --rm isi_mcp \
         sh -c "openssl s_client -connect ${host_bare}:${port} \
+               -connect_timeout 10 \
                -showcerts </dev/null 2>/dev/null \
                | openssl x509 -outform PEM \
                > /app/vault/${cluster_name}_cert.pem" 2>/dev/null \
@@ -956,6 +957,7 @@ if [[ "$SKIP_SETUP" == false ]]; then
     CERT_EXTRACTED=false
     if $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" run --rm isi_mcp \
         sh -c "openssl s_client -connect ${HOST_BARE}:${CLUSTER_PORT} \
+               -connect_timeout 10 \
                -showcerts </dev/null 2>/dev/null \
                | openssl x509 -outform PEM \
                > /app/vault/${CLUSTER_NAME}_cert.pem" 2>/dev/null \

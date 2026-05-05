@@ -257,7 +257,7 @@ class VaultManager:
                     "host": cfg.get("host", ""),
                     "port": cfg.get("port", 8080),
                     "verify_ssl": cfg.get("verify_ssl", False),
-                    "selected": name == self._selected,
+                    "default": name == self._selected,
                 }
             )
         return result

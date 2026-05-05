@@ -157,5 +157,9 @@ if [[ "$REBOOT" == true ]]; then
 fi
 
 echo "Starting services..."
+# Remove any stopped containers before starting to avoid a docker-compose 1.29.2
+# bug where it looks up 'ContainerConfig' from old container image metadata —
+# a field dropped in newer Docker Engine versions.
+docker-compose -f "$COMPOSE_FILE" $COMPOSE_PROFILES rm -sf 2>/dev/null || true
 docker-compose -f "$COMPOSE_FILE" $COMPOSE_PROFILES up -d --build
 echo "Done. Services are running."

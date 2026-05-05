@@ -81,7 +81,11 @@ class Users:
         if role_state:
             variables["role_state"] = role_state
 
-        # Pass password via extravars to keep it out of rendered playbook files
+        # Pass password placeholder into template vars so Jinja2 preserves it as
+        # an Ansible variable reference (same pattern as api_user/api_password).
+        # The real value is injected at ansible-runner runtime via extra_extravars
+        # so it never appears in the rendered playbook file.
+        variables["user_password"] = "{{ user_password }}"
         extra_extravars = {"user_password": password}
         return runner.execute("user_create.yml.j2", variables, extra_extravars=extra_extravars)
 
