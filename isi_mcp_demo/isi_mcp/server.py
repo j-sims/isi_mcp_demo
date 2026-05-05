@@ -7,9 +7,11 @@ import re
 import subprocess
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, Any, Optional, List
 from fastmcp import FastMCP
 from fastmcp.tools import Tool as _FMCPTool
+from fastmcp.server.providers.skills import SkillsDirectoryProvider
 try:
     from fastmcp.server.auth import RemoteAuthProvider
     from fastmcp.server.auth.providers.jwt import JWTVerifier
@@ -418,6 +420,20 @@ if _FASTMCP_AUTH_AVAILABLE:
 
     mcp.add_middleware(TimeoutMiddleware())
     logger.info("Timeout middleware enabled (%ds wall-clock limit per tool call)", TOOL_TIMEOUT)
+
+# ---------------------------------------------------------------------------
+# Skills provider — expose skill templates for LLM client discovery
+# ---------------------------------------------------------------------------
+
+_skills_dir = Path(__file__).parent / "skills"
+if _skills_dir.exists():
+    try:
+        mcp.add_provider(SkillsDirectoryProvider(roots=_skills_dir, reload=True))
+        logger.info("Skills provider enabled (loaded from %s)", _skills_dir)
+    except Exception as e:
+        logger.warning("Failed to load skills from %s: %s", _skills_dir, e)
+else:
+    logger.debug("Skills directory not found at %s (optional)", _skills_dir)
 
 
 def _resolve_names_to_tools(names: List[str]) -> List[str]:
@@ -8114,6 +8130,46 @@ def powerscale_groupnets_summary_get(cluster_name: str = None) -> dict:
         return {"error": str(e)}
 
 
+@mcp.tool()
+def powerscale_mcp_resources_list() -> dict:
+    """
+    List all available MCP resources (including skills) exposed by this server.
+
+    This diagnostic tool shows what resources are available for MCP clients to
+    read. Resources include:
+    - Skills (skill://name/SKILL.md) — instruction templates for the LLM
+    - Manifests (skill://name/_manifest) — file listings for each skill
+
+    Use this to verify that skills have been properly loaded and exposed.
+
+    Response fields:
+    - resources: List of available resources with uri, name, and description
+    - total: Total number of resources
+    """
+    import asyncio
+
+    async def _list_resources():
+        return await mcp.list_resources()
+
+    try:
+        # Use a new event loop to run async code (we're in a sync context)
+        resources = asyncio.new_event_loop().run_until_complete(_list_resources())
+        return {
+            "resources": [
+                {
+                    "uri": str(r.uri),
+                    "name": r.name,
+                    "description": r.description or "",
+                    "mime_type": r.mime_type or "text/plain",
+                }
+                for r in resources
+            ],
+            "total": len(resources),
+        }
+    except Exception as e:
+        return {"error": str(e), "resources": [], "total": 0}
+
+
 _apply_startup_config()
 
 import inspect as _inspect
@@ -8192,12 +8248,6 @@ for _tool in _local_tools().values():
         if _pname in _props and _pdesc:
             _props[_pname]["description"] = _pdesc[:_MAX_PARAM_DESC]
 
-
-# Trim tool descriptions to first line for context efficiency.
-# Per-parameter format info is now preserved in the inputSchema above.
-for _tool in _local_tools().values():
-    if _tool.description:
-        _tool.description = _tool.description.split('\n')[0].strip()
 
 app = mcp.http_app(json_response=True)
 
