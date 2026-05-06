@@ -65,6 +65,7 @@ Optional for setup:
   --user USER         Cluster username (prompted with 'root' as default)
   --name NAME         Cluster label in vault.yml (default: isilon)
   --auth true|false   Enable OAuth authentication via Keycloak (default: false)
+  --no-cache          Force rebuild Docker image without using cached layers
   -h, --help          Show this help message
 
 Environment Variables (for non-interactive use — avoid shell history):
@@ -634,6 +635,7 @@ CLUSTER_PASS=""
 CLUSTER_NAME="powerscale"
 VAULT_PASS="${VAULT_PASSWORD:-}"
 AUTH_ARG=""
+NO_CACHE=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -643,6 +645,7 @@ while [[ $# -gt 0 ]]; do
         --pass)       CLUSTER_PASS="$2"; shift 2 ;;
         --name)       CLUSTER_NAME="$2"; shift 2 ;;
         --auth)       AUTH_ARG="$2"; shift 2 ;;
+        --no-cache)   NO_CACHE=true; shift ;;
         -h|--help)    show_help; exit 0 ;;
         *)            fail "Unknown argument: $1"; echo "Run ./setup.sh --help for usage."; exit 1 ;;
     esac
@@ -904,7 +907,9 @@ fi
 # Build the Docker image (required so Ansible is available for encryption)
 # ---------------------------------------------------------------------------
 info "Building Docker image..."
-$COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" build
+BUILD_FLAG=""
+[[ "$NO_CACHE" == true ]] && BUILD_FLAG="--no-cache" && info "Cache disabled — forcing full rebuild"
+$COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" build $BUILD_FLAG
 ok "Image built"
 
 # ---------------------------------------------------------------------------
