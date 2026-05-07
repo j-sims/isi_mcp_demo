@@ -1,5 +1,4 @@
 import isilon_sdk.v9_12_0 as isi_sdk
-from isilon_sdk.v9_12_0.rest import ApiException
 from modules.ansible.runner import AnsibleRunner
 
 class S3:
@@ -11,9 +10,11 @@ class S3:
 
     def get(self, limit=1000, resume=None):
         protocols_api = isi_sdk.ProtocolsApi(self.cluster.api_client)
-        kwargs = {"limit": limit}
+        kwargs = {}
         if resume:
             kwargs["resume"] = resume
+        else:
+            kwargs["limit"] = limit
         result = protocols_api.list_s3_buckets(**kwargs)
 
         items = [b.to_dict() for b in result.buckets] if result.buckets else []

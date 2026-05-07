@@ -1,5 +1,4 @@
 import isilon_sdk.v9_12_0 as isi_sdk
-from isilon_sdk.v9_12_0.rest import ApiException
 from modules.ansible.runner import AnsibleRunner
 from modules.utils.timestamps import add_iso_timestamps
 

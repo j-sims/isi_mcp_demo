@@ -93,11 +93,8 @@ class Events:
             dict representation of the eventgroup, or dict with 'error' key.
         """
         event_api = isi_sdk.EventApi(self.cluster.api_client)
-        try:
-            result = event_api.get_event_eventgroup_occurrence(event_id)
-            eventgroups = getattr(result, "eventgroups", None)
-            if eventgroups:
-                return eventgroups[0].to_dict()
-            return {"error": f"Event group '{event_id}' not found"}
-        except ApiException as e:
-            return {"error": str(e)}
+        result = event_api.get_event_eventgroup_occurrence(event_id)
+        eventgroups = getattr(result, "eventgroups", None)
+        if eventgroups:
+            return eventgroups[0].to_dict()
+        return {"error": f"Event group '{event_id}' not found"}

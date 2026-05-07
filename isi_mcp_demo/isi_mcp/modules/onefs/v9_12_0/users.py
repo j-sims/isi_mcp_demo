@@ -1,5 +1,4 @@
 import isilon_sdk.v9_12_0 as isi_sdk
-from isilon_sdk.v9_12_0.rest import ApiException
 from modules.ansible.runner import AnsibleRunner
 
 
@@ -14,35 +13,34 @@ class Users:
             limit=1000, resume=None):
         """List users or retrieve a specific user via the Auth API."""
         auth_api = isi_sdk.AuthApi(self.cluster.api_client)
-        try:
-            if user_name:
-                # Fetch a single user by name
-                auth_user_id = f"user:{user_name}"
-                kwargs = {}
-                if provider_type:
-                    kwargs["provider"] = provider_type
-                if access_zone:
-                    kwargs["zone"] = access_zone
-                result = auth_api.get_auth_user(auth_user_id, **kwargs)
-                users = result.users if result.users else []
-                return {"items": [u.to_dict() for u in users], "resume": None}
+        if user_name:
+            # Fetch a single user by name
+            auth_user_id = f"user:{user_name}"
+            kwargs = {}
+            if provider_type:
+                kwargs["provider"] = provider_type
+            if access_zone:
+                kwargs["zone"] = access_zone
+            result = auth_api.get_auth_user(auth_user_id, **kwargs)
+            users = result.users if result.users else []
+            return {"items": [u.to_dict() for u in users], "resume": None}
+        else:
+            # List all users with optional filters
+            if resume:
+                # When resume provided, only pass resume — API rejects other params
+                kwargs = {"resume": resume}
             else:
-                # List all users with optional filters
                 kwargs = {"limit": limit}
-                if resume:
-                    kwargs["resume"] = resume
                 if provider_type:
                     kwargs["provider"] = provider_type
                 if access_zone:
                     kwargs["zone"] = access_zone
-                result = auth_api.list_auth_users(**kwargs)
-                users = result.users if result.users else []
-                return {
-                    "items": [u.to_dict() for u in users],
-                    "resume": result.resume,
-                }
-        except ApiException as e:
-            return {"error": str(e)}
+            result = auth_api.list_auth_users(**kwargs)
+            users = result.users if result.users else []
+            return {
+                "items": [u.to_dict() for u in users],
+                "resume": result.resume,
+            }
 
     def add(self, user_name: str, password: str,
             access_zone: str = None, provider_type: str = None,

@@ -57,15 +57,12 @@ class Statistics:
             On error: {"error": str(e)}
         """
         stats_api = isi_sdk.StatisticsApi(self.cluster.api_client)
-        try:
-            result = stats_api.get_statistics_current(
-                keys=keys,
-                degraded=False,
-                show_nodes=show_nodes,
-                timeout=15,
-            )
-        except ApiException as e:
-            return {"error": str(e)}
+        result = stats_api.get_statistics_current(
+            keys=keys,
+            degraded=False,
+            show_nodes=show_nodes,
+            timeout=15,
+        )
 
         def _coerce(value):
             """Convert stat values to JSON-serializable Python types."""
@@ -290,9 +287,11 @@ class Statistics:
         """
         stats_api = isi_sdk.StatisticsApi(self.cluster.api_client)
         try:
-            kwargs = {"limit": limit}
+            kwargs = {}
             if resume:
                 kwargs["resume"] = resume
+            else:
+                kwargs["limit"] = limit
             if queryable:
                 kwargs["queryable"] = True
             result = stats_api.get_statistics_keys(**kwargs)

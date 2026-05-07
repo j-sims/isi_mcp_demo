@@ -1,5 +1,4 @@
 import isilon_sdk.v9_12_0 as isi_sdk
-from isilon_sdk.v9_12_0.rest import ApiException
 
 class Config:
 
@@ -29,12 +28,9 @@ class Config:
         cluster_api = isi_sdk.ClusterApi(self.cluster.api_client)
         storagepool_api = isi_sdk.StoragepoolApi(self.cluster.api_client)
 
-        try:
-            nodes = cluster_api.get_cluster_nodes()
-            node_pools = storagepool_api.list_storagepool_nodepools()
-            tiers = storagepool_api.list_storagepool_tiers()
-        except ApiException as e:
-            return {"error": str(e)}
+        nodes = cluster_api.get_cluster_nodes()
+        node_pools = storagepool_api.list_storagepool_nodepools()
+        tiers = storagepool_api.list_storagepool_tiers()
 
         return {
             "nodes": nodes.to_dict().get("nodes", []),

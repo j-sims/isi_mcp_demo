@@ -26,9 +26,11 @@ class SnapshotSchedules:
         """
         snapshot_api = isi_sdk.SnapshotApi(self.cluster.api_client)
         try:
-            kwargs = {"limit": limit}
+            kwargs = {}
             if resume:
                 kwargs["resume"] = resume
+            else:
+                kwargs["limit"] = limit
             result = snapshot_api.list_snapshot_schedules(**kwargs)
         except ApiException as e:
             logger.error("API error: %s", e)

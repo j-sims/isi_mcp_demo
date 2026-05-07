@@ -41,7 +41,7 @@ COPY server.py .
 COPY modules modules
 COPY Templates Templates
 COPY config config
-COPY skills skills
+COPY tools tools
 
 # Create writable directories: playbooks (audit trail) + .ansible (Ansible temp files)
 RUN mkdir -p playbooks .ansible/tmp && chown -R mcp:mcp /app

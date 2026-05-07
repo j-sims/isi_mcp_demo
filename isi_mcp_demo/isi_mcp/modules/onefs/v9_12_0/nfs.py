@@ -1,7 +1,7 @@
 import re
 import isilon_sdk.v9_12_0 as isi_sdk
-from isilon_sdk.v9_12_0.rest import ApiException
 from modules.ansible.runner import AnsibleRunner
+from modules.utils.kwargs import drop_none
 
 class Nfs:
     """holds all functions related to NFS exports on a powerscale cluster."""
@@ -92,9 +92,11 @@ class Nfs:
 
     def get(self, limit=1000, resume=None):
         protocols_api = isi_sdk.ProtocolsApi(self.cluster.api_client)
-        kwargs = {"limit": limit}
+        kwargs = {}
         if resume:
             kwargs["resume"] = resume
+        else:
+            kwargs["limit"] = limit
         result = protocols_api.list_nfs_exports(**kwargs)
 
         items = [e.to_dict() for e in result.exports] if result.exports else []
@@ -128,53 +130,34 @@ class Nfs:
                 return {"success": False, "status": "failed", "error": error}
 
         runner = AnsibleRunner(self.cluster)
-        variables = {
-            "path": path,
-            "access_zone": access_zone,
-        }
-        if description:
-            variables["description"] = description
-        if clients:
-            variables["clients"] = clients
-        if read_only is not None:
-            variables["read_only"] = str(read_only).lower()
+        variables = {"path": path, "access_zone": access_zone}
+        variables.update(drop_none(
+            description=description,
+            clients=clients,
+            client_state=client_state,
+            read_only_clients=read_only_clients,
+            read_write_clients=read_write_clients,
+            root_clients=root_clients,
+            security_flavors=security_flavors,
+            map_root=map_root,
+            map_non_root=map_non_root,
+        ))
 
-        # Phase 1 - Client Management
-        if client_state:
-            variables["client_state"] = client_state
-        if read_only_clients:
-            variables["read_only_clients"] = read_only_clients
-        if read_write_clients:
-            variables["read_write_clients"] = read_write_clients
-        if root_clients:
-            variables["root_clients"] = root_clients
-
-        # Phase 2 - Security & Configuration
-        if security_flavors:
-            variables["security_flavors"] = security_flavors
-        if sub_directories_mountable is not None:
-            variables["sub_directories_mountable"] = str(sub_directories_mountable).lower()
-
-        # Phase 3 - Root Mapping
-        if map_root:
-            variables["map_root"] = map_root
-
-        # Phase 4 - Advanced Features
-        if map_non_root:
-            variables["map_non_root"] = map_non_root
-        if ignore_unresolvable_hosts is not None:
-            variables["ignore_unresolvable_hosts"] = str(ignore_unresolvable_hosts).lower()
+        # Bools are stringified for the Jinja2 template
+        bool_strs = drop_none(
+            read_only=read_only,
+            sub_directories_mountable=sub_directories_mountable,
+            ignore_unresolvable_hosts=ignore_unresolvable_hosts,
+        )
+        variables.update({k: str(v).lower() for k, v in bool_strs.items()})
 
         return runner.execute("nfs_create.yml.j2", variables)
 
     def get_global_settings(self) -> dict:
         """Retrieve NFS global settings via SDK."""
         protocols_api = isi_sdk.ProtocolsApi(self.cluster.api_client)
-        try:
-            result = protocols_api.get_nfs_settings_global()
-            return result.to_dict()
-        except ApiException as e:
-            return {"error": str(e)}
+        result = protocols_api.get_nfs_settings_global()
+        return result.to_dict()
 
     def set_global_settings(self, service: bool = None,
                             nfsv3: dict = None,
@@ -185,23 +168,15 @@ class Nfs:
                             nfs_rdma_enabled: bool = None) -> dict:
         """Update NFS global settings via Ansible."""
         runner = AnsibleRunner(self.cluster)
-        variables = {}
-
-        if service is not None:
-            variables["service"] = service
-        if nfsv3 is not None:
-            variables["nfsv3"] = nfsv3
-        if nfsv4 is not None:
-            variables["nfsv4"] = nfsv4
-        if rpc_maxthreads is not None:
-            variables["rpc_maxthreads"] = rpc_maxthreads
-        if rpc_minthreads is not None:
-            variables["rpc_minthreads"] = rpc_minthreads
-        if rquota_enabled is not None:
-            variables["rquota_enabled"] = rquota_enabled
-        if nfs_rdma_enabled is not None:
-            variables["nfs_rdma_enabled"] = nfs_rdma_enabled
-
+        variables = drop_none(
+            service=service,
+            nfsv3=nfsv3,
+            nfsv4=nfsv4,
+            rpc_maxthreads=rpc_maxthreads,
+            rpc_minthreads=rpc_minthreads,
+            rquota_enabled=rquota_enabled,
+            nfs_rdma_enabled=nfs_rdma_enabled,
+        )
         return runner.execute("nfs_global_settings.yml.j2", variables)
 
     def remove(self, path: str, access_zone: str = "System") -> dict:

@@ -833,18 +833,9 @@ if grep -qE '^AUTH_ENABLED=true' "$APP_CONFIG" 2>/dev/null; then
             exit 1
         fi
     else
-        # Existing vault — passwords optional (may already be in vault)
-        info "Authentication is enabled. Enter keycloak credentials to add to vault, or press Enter if already configured."
-        if [[ -z "${KEYCLOAK_DB_PASSWORD:-}" ]]; then
-            read -rsp "Keycloak database password (Enter to skip): " KEYCLOAK_DB_PASSWORD
-            echo
-            export KEYCLOAK_DB_PASSWORD
-        fi
-        if [[ -z "${KEYCLOAK_ADMIN_PASSWORD:-}" ]]; then
-            read -rsp "Keycloak admin password (Enter to skip): " KEYCLOAK_ADMIN_PASSWORD
-            echo
-            export KEYCLOAK_ADMIN_PASSWORD
-        fi
+        # Existing vault — Keycloak credentials will be read from the vault after the
+        # image is built. No prompts needed; only the vault password is required.
+        info "Authentication is enabled — Keycloak credentials will be read from vault."
     fi
     COMPOSE_PROFILES="--profile auth"
 fi
@@ -911,6 +902,37 @@ BUILD_FLAG=""
 [[ "$NO_CACHE" == true ]] && BUILD_FLAG="--no-cache" && info "Cache disabled — forcing full rebuild"
 $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" build $BUILD_FLAG
 ok "Image built"
+
+# ---------------------------------------------------------------------------
+# If keeping an existing vault with auth enabled, read Keycloak credentials
+# from the vault using the vault password already collected above.
+# ---------------------------------------------------------------------------
+if [[ "$SKIP_SETUP" == true ]] && grep -qE '^AUTH_ENABLED=true' "$APP_CONFIG" 2>/dev/null \
+        && [[ -z "${KEYCLOAK_DB_PASSWORD:-}" ]]; then
+    info "Reading Keycloak credentials from vault..."
+    _KC_CREDS=$(VAULT_PASSWORD="$VAULT_PASS" $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" \
+        run --rm --no-deps isi_mcp python3 -c "
+import os, yaml, sys
+from ansible.parsing.vault import VaultLib, VaultSecret
+pwd = os.environ.get('VAULT_PASSWORD', '').encode()
+vault = VaultLib([('default', VaultSecret(pwd))])
+with open('/app/vault/vault.yml') as f:
+    data = yaml.safe_load(vault.decrypt(f.read()))
+kc = data.get('keycloak', {})
+print(kc.get('db_password', ''))
+print(kc.get('admin_password', ''))
+" 2>/dev/null) || true
+    KEYCLOAK_DB_PASSWORD=$(printf '%s\n' "$_KC_CREDS" | sed -n '1p')
+    KEYCLOAK_ADMIN_PASSWORD=$(printf '%s\n' "$_KC_CREDS" | sed -n '2p')
+    export KEYCLOAK_DB_PASSWORD KEYCLOAK_ADMIN_PASSWORD
+    unset _KC_CREDS
+    if [[ -n "$KEYCLOAK_DB_PASSWORD" ]]; then
+        ok "Keycloak credentials loaded from vault."
+    else
+        warn "Keycloak credentials not found in vault — Keycloak may fail to start."
+        warn "Re-run './setup.sh' without an existing vault to reconfigure if needed."
+    fi
+fi
 
 # ---------------------------------------------------------------------------
 # If keeping an existing vault but auth is now enabled, inject keycloak section

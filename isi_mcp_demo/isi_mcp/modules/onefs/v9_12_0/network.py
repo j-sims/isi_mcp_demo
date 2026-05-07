@@ -15,11 +15,7 @@ class Network:
     def get_groupnets(self) -> list:
         """List all groupnets with DNS configuration."""
         network_api = isi_sdk.NetworkApi(self.cluster.api_client)
-        try:
-            result = network_api.list_network_groupnets()
-        except ApiException as e:
-            logger.error("API error: %s", e)
-            return {"error": str(e)}
+        result = network_api.list_network_groupnets()
 
         items = []
         for g in (result.groupnets or []):
@@ -38,14 +34,10 @@ class Network:
     def get_subnets(self, groupnet: str = None) -> list:
         """List subnets, optionally filtered by groupnet name."""
         network_api = isi_sdk.NetworkApi(self.cluster.api_client)
-        try:
-            kwargs = {}
-            if groupnet:
-                kwargs["groupnet"] = groupnet
-            result = network_api.get_network_subnets(**kwargs)
-        except ApiException as e:
-            logger.error("API error: %s", e)
-            return {"error": str(e)}
+        kwargs = {}
+        if groupnet:
+            kwargs["groupnet"] = groupnet
+        result = network_api.get_network_subnets(**kwargs)
 
         items = []
         for s in (result.subnets or []):
@@ -78,18 +70,14 @@ class Network:
                   access_zone: str = None) -> list:
         """List network pools with IP ranges and SmartConnect settings."""
         network_api = isi_sdk.NetworkApi(self.cluster.api_client)
-        try:
-            kwargs = {}
-            if groupnet:
-                kwargs["groupnet"] = groupnet
-            if subnet:
-                kwargs["subnet"] = subnet
-            if access_zone:
-                kwargs["access_zone"] = access_zone
-            result = network_api.get_network_pools(**kwargs)
-        except ApiException as e:
-            logger.error("API error: %s", e)
-            return {"error": str(e)}
+        kwargs = {}
+        if groupnet:
+            kwargs["groupnet"] = groupnet
+        if subnet:
+            kwargs["subnet"] = subnet
+        if access_zone:
+            kwargs["access_zone"] = access_zone
+        result = network_api.get_network_pools(**kwargs)
 
         items = []
         for p in (result.pools or []):
@@ -132,14 +120,10 @@ class Network:
     def get_interfaces(self, lnn: int = None) -> list:
         """List node network interfaces, optionally filtered by logical node number."""
         network_api = isi_sdk.NetworkApi(self.cluster.api_client)
-        try:
-            kwargs = {}
-            if lnn is not None:
-                kwargs["lnn"] = [lnn]
-            result = network_api.get_network_interfaces(**kwargs)
-        except ApiException as e:
-            logger.error("API error: %s", e)
-            return {"error": str(e)}
+        kwargs = {}
+        if lnn is not None:
+            kwargs["lnn"] = [lnn]
+        result = network_api.get_network_interfaces(**kwargs)
 
         items = []
         for iface in (result.interfaces or []):
@@ -167,11 +151,7 @@ class Network:
     def get_external(self) -> dict:
         """Get global external network settings."""
         network_api = isi_sdk.NetworkApi(self.cluster.api_client)
-        try:
-            result = network_api.get_network_external()
-        except ApiException as e:
-            logger.error("API error: %s", e)
-            return {"error": str(e)}
+        result = network_api.get_network_external()
 
         d = result.to_dict() if hasattr(result, "to_dict") else {}
         # The result may have a nested 'settings' key
@@ -194,11 +174,7 @@ class Network:
     def get_dns_cache(self) -> dict:
         """Get DNS cache configuration and TTL settings."""
         network_api = isi_sdk.NetworkApi(self.cluster.api_client)
-        try:
-            result = network_api.get_network_dnscache()
-        except ApiException as e:
-            logger.error("API error: %s", e)
-            return {"error": str(e)}
+        result = network_api.get_network_dnscache()
 
         d = result.to_dict() if hasattr(result, "to_dict") else {}
         settings = d.get("settings", d)
@@ -221,11 +197,7 @@ class Network:
     def get_zones(self) -> list:
         """List all access zones with groupnet association and auth providers."""
         zones_api = isi_sdk.ZonesApi(self.cluster.api_client)
-        try:
-            result = zones_api.list_zones()
-        except ApiException as e:
-            logger.error("API error: %s", e)
-            return {"error": str(e)}
+        result = zones_api.list_zones()
 
         items = []
         for z in (result.zones or []):

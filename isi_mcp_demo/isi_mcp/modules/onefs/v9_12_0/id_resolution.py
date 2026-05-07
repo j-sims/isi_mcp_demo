@@ -1,5 +1,4 @@
 import isilon_sdk.v9_12_0 as isi_sdk
-from isilon_sdk.v9_12_0.rest import ApiException
 
 
 class IdResolution:
@@ -22,20 +21,17 @@ class IdResolution:
         - limit: Maximum number of results (default 100)
         """
         api = isi_sdk.IdResolutionZonesApi(self.cluster.api_client)
-        try:
-            kwargs = {}
-            if resume:
-                kwargs["resume"] = resume
-            else:
-                kwargs["limit"] = limit
-            result = api.get_zone_users(zone_id, **kwargs)
-            users = result.users if hasattr(result, "users") and result.users else []
-            return {
-                "items": [u.to_dict() for u in users],
-                "resume": getattr(result, "resume", None),
-            }
-        except ApiException as e:
-            return {"error": str(e)}
+        kwargs = {}
+        if resume:
+            kwargs["resume"] = resume
+        else:
+            kwargs["limit"] = limit
+        result = api.get_zone_users(zone_id, **kwargs)
+        users = result.users if hasattr(result, "users") and result.users else []
+        return {
+            "items": [u.to_dict() for u in users],
+            "resume": getattr(result, "resume", None),
+        }
 
     def get_zone_user(self, zone_id: str, user_id: str):
         """Get a specific UID/SID to username mapping.
@@ -45,14 +41,11 @@ class IdResolution:
         - user_id: The user UID or SID to resolve
         """
         api = isi_sdk.IdResolutionZonesApi(self.cluster.api_client)
-        try:
-            result = api.get_zone_user(zone_id, user_id)
-            users = result.users if hasattr(result, "users") and result.users else []
-            if users:
-                return users[0].to_dict()
-            return {"error": f"User '{user_id}' not found in zone '{zone_id}'"}
-        except ApiException as e:
-            return {"error": str(e)}
+        result = api.get_zone_user(zone_id, user_id)
+        users = result.users if hasattr(result, "users") and result.users else []
+        if users:
+            return users[0].to_dict()
+        return {"error": f"User '{user_id}' not found in zone '{zone_id}'"}
 
     def get_zone_groups(self, zone_id: str, resume: str = None, limit: int = 100):
         """List GID/GSID to groupname mappings for an access zone.
@@ -63,20 +56,17 @@ class IdResolution:
         - limit: Maximum number of results (default 100)
         """
         api = isi_sdk.IdResolutionZonesApi(self.cluster.api_client)
-        try:
-            kwargs = {}
-            if resume:
-                kwargs["resume"] = resume
-            else:
-                kwargs["limit"] = limit
-            result = api.get_zone_groups(zone_id, **kwargs)
-            groups = result.groups if hasattr(result, "groups") and result.groups else []
-            return {
-                "items": [g.to_dict() for g in groups],
-                "resume": getattr(result, "resume", None),
-            }
-        except ApiException as e:
-            return {"error": str(e)}
+        kwargs = {}
+        if resume:
+            kwargs["resume"] = resume
+        else:
+            kwargs["limit"] = limit
+        result = api.get_zone_groups(zone_id, **kwargs)
+        groups = result.groups if hasattr(result, "groups") and result.groups else []
+        return {
+            "items": [g.to_dict() for g in groups],
+            "resume": getattr(result, "resume", None),
+        }
 
     def get_zone_group(self, zone_id: str, group_id: str):
         """Get a specific GID/GSID to groupname mapping.
@@ -86,11 +76,8 @@ class IdResolution:
         - group_id: The group GID or GSID to resolve
         """
         api = isi_sdk.IdResolutionZonesApi(self.cluster.api_client)
-        try:
-            result = api.get_zone_group(zone_id, group_id)
-            groups = result.groups if hasattr(result, "groups") and result.groups else []
-            if groups:
-                return groups[0].to_dict()
-            return {"error": f"Group '{group_id}' not found in zone '{zone_id}'"}
-        except ApiException as e:
-            return {"error": str(e)}
+        result = api.get_zone_group(zone_id, group_id)
+        groups = result.groups if hasattr(result, "groups") and result.groups else []
+        if groups:
+            return groups[0].to_dict()
+        return {"error": f"Group '{group_id}' not found in zone '{zone_id}'"}

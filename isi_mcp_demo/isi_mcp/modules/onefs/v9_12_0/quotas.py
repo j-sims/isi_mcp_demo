@@ -1,8 +1,8 @@
 import re
 import isilon_sdk.v9_12_0 as isi_sdk
-from isilon_sdk.v9_12_0.rest import ApiException
 from isilon_sdk.v9_12_0.models.quota_quota import QuotaQuota
 from modules.ansible.runner import AnsibleRunner
+from modules.utils.kwargs import drop_none
 from isilon_sdk.v9_12_0.models.quota_quotas_extended import QuotaQuotasExtended
 from isilon_sdk.v9_12_0.models.quota_quota_thresholds import QuotaQuotaThresholds
 
@@ -58,83 +58,50 @@ class Quotas:
             "resume": quotas.resume
         }
         
-    def increment_hard_quota(self, PATH, INCREMENT):
-        quota_api = isi_sdk.QuotaApi(self.cluster.api_client)
+    def _update_hard_quota(self, path, new_limit_fn):
+        """Look up the single quota at `path` and update its hard limit.
 
-        quotas = quota_api.list_quota_quotas(path=PATH).quotas
+        new_limit_fn receives the current hard limit and returns the new one
+        (or a string starting with 'Error:' to abort with that message).
+        """
+        quota_api = isi_sdk.QuotaApi(self.cluster.api_client)
+        quotas = quota_api.list_quota_quotas(path=path).quotas
         if not quotas:
-            return(f"Error: No quota found on {PATH}")
-        
+            return f"Error: No quota found on {path}"
         if len(quotas) > 1:
-            return(f"Error: More than one quota on {PATH}")
+            return f"Error: More than one quota on {path}"
 
         quota = quotas[0]
-        new_hard_limit = quota.thresholds.hard + INCREMENT
+        new_limit = new_limit_fn(quota.thresholds.hard)
+        if isinstance(new_limit, str) and new_limit.startswith("Error:"):
+            return new_limit
 
-        new_thresholds = QuotaQuotaThresholds(
-            hard=new_hard_limit
+        quota_api.update_quota_quota(
+            QuotaQuota(thresholds=QuotaQuotaThresholds(hard=new_limit)),
+            quota.id,
         )
+        return new_limit
 
-        quota_update = QuotaQuota(
-            thresholds=new_thresholds
-        )
-
-        quota_api.update_quota_quota(quota_update, quota.id)
-
-        return(f"Quota on {PATH} increased by {INCREMENT}")
+    def increment_hard_quota(self, PATH, INCREMENT):
+        result = self._update_hard_quota(PATH, lambda current: current + INCREMENT)
+        if isinstance(result, str):
+            return result
+        return f"Quota on {PATH} increased by {INCREMENT}"
 
     def decrement_hard_quota(self, PATH, INCREMENT):
-        quota_api = isi_sdk.QuotaApi(self.cluster.api_client)
-
-        quotas = quota_api.list_quota_quotas(path=PATH).quotas
-        if not quotas:
-            return(f"Error: No quota found on {PATH}")
-        
-        if len(quotas) > 1:
-            return(f"Error: More than one quota on {PATH}")
-
-        quota = quotas[0]
-        new_hard_limit = quota.thresholds.hard - INCREMENT
-        
-        if new_hard_limit <=0:
-            return(f"Error: Quota must be greater than zero")
-
-        new_thresholds = QuotaQuotaThresholds(
-            hard=new_hard_limit
-        )
-
-        quota_update = QuotaQuota(
-            thresholds=new_thresholds
-        )
-
-        quota_api.update_quota_quota(quota_update, quota.id)
-
-        return(f"Quota on {PATH} decreased by {INCREMENT}")
+        def new_limit(current):
+            value = current - INCREMENT
+            return value if value > 0 else "Error: Quota must be greater than zero"
+        result = self._update_hard_quota(PATH, new_limit)
+        if isinstance(result, str):
+            return result
+        return f"Quota on {PATH} decreased by {INCREMENT}"
 
     def set_hard_quota(self, PATH, SIZE):
-        quota_api = isi_sdk.QuotaApi(self.cluster.api_client)
-
-        quotas = quota_api.list_quota_quotas(path=PATH).quotas
-        if not quotas:
-            return(f"Error: No quota found on {PATH}")
-        
-        if len(quotas) > 1:
-            return(f"Error: More than one quota on {PATH}")
-
-        quota = quotas[0]
-        new_hard_limit = SIZE
-
-        new_thresholds = QuotaQuotaThresholds(
-            hard=new_hard_limit
-        )
-
-        quota_update = QuotaQuota(
-            thresholds=new_thresholds
-        )
-
-        quota_api.update_quota_quota(quota_update, quota.id)
-
-        return(f"Quota on {PATH} set to {SIZE}")
+        result = self._update_hard_quota(PATH, lambda _current: SIZE)
+        if isinstance(result, str):
+            return result
+        return f"Quota on {PATH} set to {SIZE}"
 
     def add_quota(self, path: str, quota_type: str, limit_size: str,
                   soft_grace_period: str = None, soft_grace_period_unit: str = "days",
@@ -176,8 +143,7 @@ class Quotas:
             return {"success": False, "status": "failed",
                     "error": f"Invalid quota_type: {quota_type}. Must be 'hard', 'soft', or 'advisory'."}
 
-        if persona:
-            variables["user_name"] = persona
+        variables.update(drop_none(user_name=persona))
         return runner.execute("quota_create.yml.j2", variables)
 
     def remove_quota(self, path: str, quota_type: str, persona: str = None) -> dict:

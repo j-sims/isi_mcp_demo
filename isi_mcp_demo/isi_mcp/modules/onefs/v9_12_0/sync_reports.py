@@ -1,5 +1,4 @@
 import isilon_sdk.v9_12_0 as isi_sdk
-from isilon_sdk.v9_12_0.rest import ApiException
 
 
 class SyncReports:
@@ -24,24 +23,21 @@ class SyncReports:
         - dir: Sort direction ('ASC' or 'DESC')
         """
         api = isi_sdk.SyncReportsApi(self.cluster.api_client)
-        try:
-            kwargs = {"report_id": report_id}
-            if resume:
-                kwargs["resume"] = resume
-            else:
-                kwargs["limit"] = limit
-                if sort:
-                    kwargs["sort"] = sort
-                if dir:
-                    kwargs["dir"] = dir
-            result = api.get_report_subreports(**kwargs)
-            subreports = result.subreports if hasattr(result, "subreports") and result.subreports else []
-            return {
-                "items": [s.to_dict() for s in subreports],
-                "resume": getattr(result, "resume", None),
-            }
-        except ApiException as e:
-            return {"error": str(e)}
+        kwargs = {"report_id": report_id}
+        if resume:
+            kwargs["resume"] = resume
+        else:
+            kwargs["limit"] = limit
+            if sort:
+                kwargs["sort"] = sort
+            if dir:
+                kwargs["dir"] = dir
+        result = api.get_report_subreports(**kwargs)
+        subreports = result.subreports if hasattr(result, "subreports") and result.subreports else []
+        return {
+            "items": [s.to_dict() for s in subreports],
+            "resume": getattr(result, "resume", None),
+        }
 
     def get_subreport(self, report_id: str, subreport_id: str):
         """Get a specific subreport from a SyncIQ report.
@@ -51,11 +47,8 @@ class SyncReports:
         - subreport_id: The subreport ID
         """
         api = isi_sdk.SyncReportsApi(self.cluster.api_client)
-        try:
-            result = api.get_report_subreport(report_id, subreport_id)
-            subreports = result.subreports if hasattr(result, "subreports") and result.subreports else []
-            if subreports:
-                return subreports[0].to_dict()
-            return {"error": f"Subreport '{subreport_id}' not found in report '{report_id}'"}
-        except ApiException as e:
-            return {"error": str(e)}
+        result = api.get_report_subreport(report_id, subreport_id)
+        subreports = result.subreports if hasattr(result, "subreports") and result.subreports else []
+        if subreports:
+            return subreports[0].to_dict()
+        return {"error": f"Subreport '{subreport_id}' not found in report '{report_id}'"}

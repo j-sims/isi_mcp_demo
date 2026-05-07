@@ -24,9 +24,11 @@ class DataMover:
         """
         datamover_api = isi_sdk.DatamoverApi(self.cluster.api_client)
         try:
-            kwargs = {"limit": limit}
+            kwargs = {}
             if resume:
                 kwargs["resume"] = resume
+            else:
+                kwargs["limit"] = limit
             result = datamover_api.list_datamover_policies(**kwargs)
         except ApiException as e:
             logger.error("API error: %s", e)
@@ -176,9 +178,11 @@ class DataMover:
         """
         datamover_api = isi_sdk.DatamoverApi(self.cluster.api_client)
         try:
-            kwargs = {"limit": limit}
+            kwargs = {}
             if resume:
                 kwargs["resume"] = resume
+            else:
+                kwargs["limit"] = limit
             result = datamover_api.list_datamover_accounts(**kwargs)
         except ApiException as e:
             logger.error("API error: %s", e)
@@ -318,9 +322,11 @@ class DataMover:
         """
         datamover_api = isi_sdk.DatamoverApi(self.cluster.api_client)
         try:
-            kwargs = {"limit": limit}
+            kwargs = {}
             if resume:
                 kwargs["resume"] = resume
+            else:
+                kwargs["limit"] = limit
             result = datamover_api.list_datamover_base_policies(**kwargs)
         except ApiException as e:
             logger.error("API error: %s", e)

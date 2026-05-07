@@ -26,9 +26,11 @@ class Snapshots:
         """
         snapshot_api = isi_sdk.SnapshotApi(self.cluster.api_client)
         try:
-            kwargs = {"limit": limit}
+            kwargs = {}
             if resume:
                 kwargs["resume"] = resume
+            else:
+                kwargs["limit"] = limit
             result = snapshot_api.list_snapshot_snapshots(**kwargs)
         except ApiException as e:
             logger.error("API error: %s", e)
@@ -103,15 +105,17 @@ class Snapshots:
         """
         snapshot_api = isi_sdk.SnapshotApi(self.cluster.api_client)
         try:
-            kwargs = {"limit": limit}
             if resume:
-                kwargs["resume"] = resume
-            if begin is not None:
-                kwargs["begin"] = begin
-            if end is not None:
-                kwargs["end"] = end
-            if schedule:
-                kwargs["schedule"] = schedule
+                # When resume provided, only pass resume — API rejects other params
+                kwargs = {"resume": resume}
+            else:
+                kwargs = {"limit": limit}
+                if begin is not None:
+                    kwargs["begin"] = begin
+                if end is not None:
+                    kwargs["end"] = end
+                if schedule:
+                    kwargs["schedule"] = schedule
             result = snapshot_api.get_snapshot_pending(**kwargs)
         except ApiException as e:
             logger.error("API error: %s", e)

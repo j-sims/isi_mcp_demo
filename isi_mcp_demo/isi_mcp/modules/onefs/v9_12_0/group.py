@@ -1,6 +1,5 @@
 import json
 import isilon_sdk.v9_12_0 as isi_sdk
-from isilon_sdk.v9_12_0.rest import ApiException
 from modules.ansible.runner import AnsibleRunner
 
 
@@ -15,38 +14,37 @@ class Group:
             access_zone=None, limit=1000, resume=None):
         """List groups or retrieve a specific group via the Auth API."""
         auth_api = isi_sdk.AuthApi(self.cluster.api_client)
-        try:
-            if group_name or group_id is not None:
-                # Fetch a single group by name or GID
-                if group_name:
-                    auth_group_id = f"group:{group_name}"
-                else:
-                    auth_group_id = f"GID:{group_id}"
-                kwargs = {}
-                if provider_type:
-                    kwargs["provider"] = provider_type
-                if access_zone:
-                    kwargs["zone"] = access_zone
-                result = auth_api.get_auth_group(auth_group_id, **kwargs)
-                groups = result.groups if result.groups else []
-                return {"items": [g.to_dict() for g in groups], "resume": None}
+        if group_name or group_id is not None:
+            # Fetch a single group by name or GID
+            if group_name:
+                auth_group_id = f"group:{group_name}"
             else:
-                # List all groups with optional filters
+                auth_group_id = f"GID:{group_id}"
+            kwargs = {}
+            if provider_type:
+                kwargs["provider"] = provider_type
+            if access_zone:
+                kwargs["zone"] = access_zone
+            result = auth_api.get_auth_group(auth_group_id, **kwargs)
+            groups = result.groups if result.groups else []
+            return {"items": [g.to_dict() for g in groups], "resume": None}
+        else:
+            # List all groups with optional filters
+            if resume:
+                # When resume provided, only pass resume — API rejects other params
+                kwargs = {"resume": resume}
+            else:
                 kwargs = {"limit": limit}
-                if resume:
-                    kwargs["resume"] = resume
                 if provider_type:
                     kwargs["provider"] = provider_type
                 if access_zone:
                     kwargs["zone"] = access_zone
-                result = auth_api.list_auth_groups(**kwargs)
-                groups = result.groups if result.groups else []
-                return {
-                    "items": [g.to_dict() for g in groups],
-                    "resume": result.resume,
-                }
-        except ApiException as e:
-            return {"error": str(e)}
+            result = auth_api.list_auth_groups(**kwargs)
+            groups = result.groups if result.groups else []
+            return {
+                "items": [g.to_dict() for g in groups],
+                "resume": result.resume,
+            }
 
     def add(self, group_name: str,
             group_id: int = None,

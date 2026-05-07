@@ -1,6 +1,5 @@
 import logging
 import isilon_sdk.v9_12_0 as isi_sdk
-from isilon_sdk.v9_12_0.rest import ApiException
 from modules.network.utils import pingable
 
 logger = logging.getLogger(__name__)
