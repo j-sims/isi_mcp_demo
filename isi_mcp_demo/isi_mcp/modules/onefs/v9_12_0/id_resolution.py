@@ -1,4 +1,5 @@
 import isilon_sdk.v9_12_0 as isi_sdk
+from modules.utils.paging import page_kwargs
 
 
 class IdResolution:
@@ -21,12 +22,7 @@ class IdResolution:
         - limit: Maximum number of results (default 100)
         """
         api = isi_sdk.IdResolutionZonesApi(self.cluster.api_client)
-        kwargs = {}
-        if resume:
-            kwargs["resume"] = resume
-        else:
-            kwargs["limit"] = limit
-        result = api.get_zone_users(zone_id, **kwargs)
+        result = api.get_zone_users(zone_id, **page_kwargs(limit, resume))
         users = result.users if hasattr(result, "users") and result.users else []
         return {
             "items": [u.to_dict() for u in users],
@@ -56,12 +52,7 @@ class IdResolution:
         - limit: Maximum number of results (default 100)
         """
         api = isi_sdk.IdResolutionZonesApi(self.cluster.api_client)
-        kwargs = {}
-        if resume:
-            kwargs["resume"] = resume
-        else:
-            kwargs["limit"] = limit
-        result = api.get_zone_groups(zone_id, **kwargs)
+        result = api.get_zone_groups(zone_id, **page_kwargs(limit, resume))
         groups = result.groups if hasattr(result, "groups") and result.groups else []
         return {
             "items": [g.to_dict() for g in groups],

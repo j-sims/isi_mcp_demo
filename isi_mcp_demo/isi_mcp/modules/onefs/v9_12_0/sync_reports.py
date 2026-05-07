@@ -1,4 +1,5 @@
 import isilon_sdk.v9_12_0 as isi_sdk
+from modules.utils.paging import page_kwargs
 
 
 class SyncReports:
@@ -23,16 +24,7 @@ class SyncReports:
         - dir: Sort direction ('ASC' or 'DESC')
         """
         api = isi_sdk.SyncReportsApi(self.cluster.api_client)
-        kwargs = {"report_id": report_id}
-        if resume:
-            kwargs["resume"] = resume
-        else:
-            kwargs["limit"] = limit
-            if sort:
-                kwargs["sort"] = sort
-            if dir:
-                kwargs["dir"] = dir
-        result = api.get_report_subreports(**kwargs)
+        result = api.get_report_subreports(report_id=report_id, **page_kwargs(limit, resume, sort=sort, dir=dir))
         subreports = result.subreports if hasattr(result, "subreports") and result.subreports else []
         return {
             "items": [s.to_dict() for s in subreports],

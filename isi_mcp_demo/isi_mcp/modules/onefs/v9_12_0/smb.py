@@ -2,6 +2,7 @@ import logging
 import isilon_sdk.v9_12_0 as isi_sdk
 from modules.ansible.runner import AnsibleRunner
 from modules.utils.kwargs import drop_none, drop_falsy, parse_json_kwargs
+from modules.utils.paging import page_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -14,12 +15,7 @@ class Smb:
 
     def get(self, limit=1000, resume=None):
         protocols_api = isi_sdk.ProtocolsApi(self.cluster.api_client)
-        kwargs = {}
-        if resume:
-            kwargs["resume"] = resume
-        else:
-            kwargs["limit"] = limit
-        result = protocols_api.list_smb_shares(**kwargs)
+        result = protocols_api.list_smb_shares(**page_kwargs(limit, resume))
 
         items = [s.to_dict() for s in result.shares] if result.shares else []
 
@@ -161,16 +157,7 @@ class Smb:
                      lnn_skip: str = None, resume: str = None) -> dict:
         """List all open SMB sessions across cluster nodes."""
         protocols_api = isi_sdk.ProtocolsApi(self.cluster.api_client)
-        kwargs = {}
-        if resume:
-            kwargs["resume"] = resume
-        else:
-            kwargs["limit"] = limit
-            if lnn:
-                kwargs["lnn"] = lnn
-            if lnn_skip:
-                kwargs["lnn_skip"] = lnn_skip
-        result = protocols_api.get_smb_sessions(**kwargs)
+        result = protocols_api.get_smb_sessions(**page_kwargs(limit, resume, lnn=lnn, lnn_skip=lnn_skip))
 
         nodes = [n.to_dict() for n in result.nodes] if result.nodes else []
         return {
@@ -195,16 +182,7 @@ class Smb:
                       sort: str = None, dir: str = None) -> dict:
         """List all open files on the SMB server."""
         protocols_api = isi_sdk.ProtocolsApi(self.cluster.api_client)
-        kwargs = {}
-        if resume:
-            kwargs["resume"] = resume
-        else:
-            kwargs["limit"] = limit
-            if sort:
-                kwargs["sort"] = sort
-            if dir:
-                kwargs["dir"] = dir
-        result = protocols_api.get_smb_openfiles(**kwargs)
+        result = protocols_api.get_smb_openfiles(**page_kwargs(limit, resume, sort=sort, dir=dir))
 
         items = [f.to_dict() for f in result.openfiles] if result.openfiles else []
         return {

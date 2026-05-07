@@ -3,6 +3,7 @@ import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
 from modules.ansible.runner import AnsibleRunner
 from modules.utils.timestamps import add_iso_timestamps
+from modules.utils.paging import page_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +27,7 @@ class Snapshots:
         """
         snapshot_api = isi_sdk.SnapshotApi(self.cluster.api_client)
         try:
-            kwargs = {}
-            if resume:
-                kwargs["resume"] = resume
-            else:
-                kwargs["limit"] = limit
-            result = snapshot_api.list_snapshot_snapshots(**kwargs)
+            result = snapshot_api.list_snapshot_snapshots(**page_kwargs(limit, resume))
         except ApiException as e:
             logger.error("API error: %s", e)
             return {"items": [], "resume": None}
@@ -105,18 +101,7 @@ class Snapshots:
         """
         snapshot_api = isi_sdk.SnapshotApi(self.cluster.api_client)
         try:
-            if resume:
-                # When resume provided, only pass resume — API rejects other params
-                kwargs = {"resume": resume}
-            else:
-                kwargs = {"limit": limit}
-                if begin is not None:
-                    kwargs["begin"] = begin
-                if end is not None:
-                    kwargs["end"] = end
-                if schedule:
-                    kwargs["schedule"] = schedule
-            result = snapshot_api.get_snapshot_pending(**kwargs)
+            result = snapshot_api.get_snapshot_pending(**page_kwargs(limit, resume, begin=begin, end=end, schedule=schedule))
         except ApiException as e:
             logger.error("API error: %s", e)
             return {"items": [], "resume": None, "has_more": False}

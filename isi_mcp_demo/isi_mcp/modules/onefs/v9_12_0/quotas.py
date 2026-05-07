@@ -3,6 +3,7 @@ import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.models.quota_quota import QuotaQuota
 from modules.ansible.runner import AnsibleRunner
 from modules.utils.kwargs import drop_none
+from modules.utils.paging import page_kwargs
 from isilon_sdk.v9_12_0.models.quota_quotas_extended import QuotaQuotasExtended
 from isilon_sdk.v9_12_0.models.quota_quota_thresholds import QuotaQuotaThresholds
 
@@ -42,14 +43,7 @@ class Quotas:
 
     def get(self, qpath=None, limit=1000, resume=None):
         quota_api = isi_sdk.QuotaApi(self.cluster.api_client)
-        # When resume is provided, only pass resume (API doesn't allow other params)
-        if resume:
-            kwargs = {"resume": resume}
-        else:
-            kwargs = {"limit": limit}
-            if qpath:
-                kwargs["path"] = qpath
-        quotas = quota_api.list_quota_quotas(**kwargs)
+        quotas = quota_api.list_quota_quotas(**page_kwargs(limit, resume, path=qpath))
 
         items = [q.to_dict() for q in quotas.quotas] if quotas.quotas else []
 

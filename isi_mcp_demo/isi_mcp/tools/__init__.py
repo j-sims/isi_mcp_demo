@@ -1,5 +1,6 @@
 """Domain tool registrations — each submodule registers its @safe_tool functions."""
 from tools import (
+    utils,
     capacity,
     quotas,
     snapshots,

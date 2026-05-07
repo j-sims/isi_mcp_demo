@@ -1,4 +1,5 @@
 import isilon_sdk.v9_12_0 as isi_sdk
+from modules.utils.paging import page_kwargs
 
 
 class Jobs:
@@ -85,16 +86,7 @@ class Jobs:
         - job_type: Filter events by job type name
         """
         api = isi_sdk.JobApi(self.cluster.api_client)
-        kwargs = {}
-        if resume:
-            kwargs["resume"] = resume
-        else:
-            kwargs["limit"] = limit
-            if job_id is not None:
-                kwargs["job_id"] = job_id
-            if job_type is not None:
-                kwargs["job_type"] = job_type
-        result = api.get_job_events(**kwargs)
+        result = api.get_job_events(**page_kwargs(limit, resume, job_id=job_id, job_type=job_type))
         events = result.events if hasattr(result, "events") and result.events else []
         return {
             "items": [e.to_dict() for e in events],
@@ -112,16 +104,7 @@ class Jobs:
         - job_type: Filter reports by job type name
         """
         api = isi_sdk.JobApi(self.cluster.api_client)
-        kwargs = {}
-        if resume:
-            kwargs["resume"] = resume
-        else:
-            kwargs["limit"] = limit
-            if job_id is not None:
-                kwargs["job_id"] = job_id
-            if job_type is not None:
-                kwargs["job_type"] = job_type
-        result = api.get_job_reports(**kwargs)
+        result = api.get_job_reports(**page_kwargs(limit, resume, job_id=job_id, job_type=job_type))
         reports = result.reports if hasattr(result, "reports") and result.reports else []
         return {
             "items": [r.to_dict() for r in reports],

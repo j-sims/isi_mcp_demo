@@ -2,6 +2,7 @@ import re
 import isilon_sdk.v9_12_0 as isi_sdk
 from modules.ansible.runner import AnsibleRunner
 from modules.utils.kwargs import drop_none
+from modules.utils.paging import page_kwargs
 
 class Nfs:
     """holds all functions related to NFS exports on a powerscale cluster."""
@@ -92,12 +93,7 @@ class Nfs:
 
     def get(self, limit=1000, resume=None):
         protocols_api = isi_sdk.ProtocolsApi(self.cluster.api_client)
-        kwargs = {}
-        if resume:
-            kwargs["resume"] = resume
-        else:
-            kwargs["limit"] = limit
-        result = protocols_api.list_nfs_exports(**kwargs)
+        result = protocols_api.list_nfs_exports(**page_kwargs(limit, resume))
 
         items = [e.to_dict() for e in result.exports] if result.exports else []
 

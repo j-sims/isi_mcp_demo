@@ -1,6 +1,7 @@
 import logging
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
+from modules.utils.paging import page_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -24,12 +25,7 @@ class DataMover:
         """
         datamover_api = isi_sdk.DatamoverApi(self.cluster.api_client)
         try:
-            kwargs = {}
-            if resume:
-                kwargs["resume"] = resume
-            else:
-                kwargs["limit"] = limit
-            result = datamover_api.list_datamover_policies(**kwargs)
+            result = datamover_api.list_datamover_policies(**page_kwargs(limit, resume))
         except ApiException as e:
             logger.error("API error: %s", e)
             return {"items": [], "resume": None}
@@ -178,12 +174,7 @@ class DataMover:
         """
         datamover_api = isi_sdk.DatamoverApi(self.cluster.api_client)
         try:
-            kwargs = {}
-            if resume:
-                kwargs["resume"] = resume
-            else:
-                kwargs["limit"] = limit
-            result = datamover_api.list_datamover_accounts(**kwargs)
+            result = datamover_api.list_datamover_accounts(**page_kwargs(limit, resume))
         except ApiException as e:
             logger.error("API error: %s", e)
             return {"items": [], "resume": None}
@@ -322,12 +313,7 @@ class DataMover:
         """
         datamover_api = isi_sdk.DatamoverApi(self.cluster.api_client)
         try:
-            kwargs = {}
-            if resume:
-                kwargs["resume"] = resume
-            else:
-                kwargs["limit"] = limit
-            result = datamover_api.list_datamover_base_policies(**kwargs)
+            result = datamover_api.list_datamover_base_policies(**page_kwargs(limit, resume))
         except ApiException as e:
             logger.error("API error: %s", e)
             return {"items": [], "resume": None}

@@ -86,6 +86,7 @@ def safe_tool(*, group: str, mode: str) -> Callable:
             try:
                 return fn(*args, **kwargs)
             except Exception as e:
+                logger.exception("Tool %s failed", fn.__name__)
                 return {"error": str(e)}
 
         if _mcp_instance is None:

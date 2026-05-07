@@ -1,6 +1,17 @@
-"""Pagination helpers shared across tools."""
+"""Pagination helpers shared across tools and domain modules."""
 
-from typing import Optional
+from typing import Any, Dict, Optional
+
+
+def page_kwargs(limit: int, resume: Optional[str], **extra: Any) -> Dict[str, Any]:
+    """Build the kwargs dict for a paginated SDK list call.
+
+    When resuming, only the resume token is passed (limit and extras are ignored
+    by the API). On the first page, limit and any non-None extra filters are included.
+    """
+    if resume:
+        return {"resume": resume}
+    return {"limit": limit, **{k: v for k, v in extra.items() if v is not None}}
 
 
 def normalize_resume(resume) -> Optional[str]:

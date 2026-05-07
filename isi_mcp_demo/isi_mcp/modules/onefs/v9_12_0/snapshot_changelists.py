@@ -1,4 +1,5 @@
 import isilon_sdk.v9_12_0 as isi_sdk
+from modules.utils.paging import page_kwargs
 
 
 class SnapshotChangelists:
@@ -21,12 +22,7 @@ class SnapshotChangelists:
         - limit: Maximum number of results (default 100)
         """
         api = isi_sdk.SnapshotChangelistsApi(self.cluster.api_client)
-        kwargs = {}
-        if resume:
-            kwargs["resume"] = resume
-        else:
-            kwargs["limit"] = limit
-        result = api.get_changelist_entries(changelist_id, **kwargs)
+        result = api.get_changelist_entries(changelist_id, **page_kwargs(limit, resume))
         entries = result.entries if hasattr(result, "entries") and result.entries else []
         return {
             "items": [e.to_dict() for e in entries],
@@ -56,12 +52,7 @@ class SnapshotChangelists:
         - limit: Maximum number of results (default 100)
         """
         api = isi_sdk.SnapshotChangelistsApi(self.cluster.api_client)
-        kwargs = {}
-        if resume:
-            kwargs["resume"] = resume
-        else:
-            kwargs["limit"] = limit
-        result = api.get_changelist_lins(changelist_id, **kwargs)
+        result = api.get_changelist_lins(changelist_id, **page_kwargs(limit, resume))
         lins = result.lins if hasattr(result, "lins") and result.lins else []
         return {
             "items": [ln.to_dict() for ln in lins],

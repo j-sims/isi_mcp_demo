@@ -3,6 +3,7 @@ import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
 from modules.ansible.runner import AnsibleRunner
 from modules.utils.timestamps import add_iso_timestamps
+from modules.utils.paging import page_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +27,7 @@ class SnapshotSchedules:
         """
         snapshot_api = isi_sdk.SnapshotApi(self.cluster.api_client)
         try:
-            kwargs = {}
-            if resume:
-                kwargs["resume"] = resume
-            else:
-                kwargs["limit"] = limit
-            result = snapshot_api.list_snapshot_schedules(**kwargs)
+            result = snapshot_api.list_snapshot_schedules(**page_kwargs(limit, resume))
         except ApiException as e:
             logger.error("API error: %s", e)
             return {"items": [], "resume": None}
