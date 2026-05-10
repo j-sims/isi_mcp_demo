@@ -15,7 +15,7 @@ Nginx Reverse Proxy (nginx/nginx.conf)
     v
 FastMCP Server (server.py) — stateless HTTP mode
     |
-    |--- VaultManager (modules/vault_manager.py)
+    |--- VaultManager (modules/ansible/vault_manager.py)
     |       |--- Ansible Vault decryption & caching
     |       |--- Multi-cluster credential registry
     |       |--- Runtime cluster selection
@@ -29,10 +29,10 @@ FastMCP Server (server.py) — stateless HTTP mode
     |       |--- Users, Groups, Events, Statistics
     |       |--- Network (groupnets, subnets, pools, interfaces, DNS, zones)
     |       |--- ClusterNodes, StoragepoolNodetypes, License, ZonesSummary
-    |       |--- Phase 8: Hardware, Jobs, Performance, Hardening, SupportAssist
-    |       |           Connectivity, DebugStats, FSA, SyncReports, SnapshotChangelists
-    |       |           QuotaReports, IdResolution, LFN, MetadataIQ, MPA, LocalInfo
-    |       |           ApiSessions, GroupnetsSummary
+    |       |--- Hardware, Jobs, Performance, Hardening, SupportAssist
+    |       |--- Connectivity, DebugStats, FSA, SyncReports, SnapshotChangelists
+    |       |--- QuotaReports, IdResolution, LFN, MetadataIQ, MPA, LocalInfo
+    |       |--- ApiSessions, GroupnetsSummary
     |
     |--- Ansible Automation (modules/ansible/)
     |       |--- AnsibleRunner (template rendering + execution)
@@ -45,7 +45,7 @@ FastMCP Server (server.py) — stateless HTTP mode
 ## Core Components
 
 ### MCP Server Layer
-The server exposes MCP tools using the FastMCP framework. Each tool is decorated with `@mcp.tool()` and provides cluster operations. Tools handle user-facing operations and coordinate with domain modules.
+`server.py` bootstraps the FastMCP instance, configures auth, middleware, and the skills provider, then imports the `tools/` package (which registers all domain tool functions) and builds the group/mode metadata indexes. Management and cluster tools are registered separately via `tools/management.py` and `tools/clusters.py`. Domain tool functions live in `tools/*.py` and use the `@safe_tool(group, mode)` decorator; all tool logic delegates to domain modules.
 
 ### Domain Modules
 Located in `modules/onefs/v9_12_0/`, these modules provide business logic for cluster operations:
@@ -72,7 +72,7 @@ Located in `modules/onefs/v9_12_0/`, these modules provide business logic for cl
 - **License**: Feature license status and expiry for all installed OneFS licenses (read-only via LicenseApi)
 - **ZonesSummary**: Lightweight access zone count and path summary (read-only via ZonesSummaryApi)
 
-**Phase 8 Analytics & Diagnostics Modules** (18 read-only modules):
+**Analytics & Diagnostics Modules** (18 read-only modules):
 - **Hardware**: FC ports and tape/changer device inventory
 - **Jobs**: Job engine with running/recent jobs, types, policies, events, reports, and statistics
 - **Performance**: Performance datasets, metrics catalog, and settings
@@ -112,7 +112,7 @@ Write/mutating operations use Ansible playbooks via the `dellemc.powerscale` col
 1. LLM client connects to nginx at `https://host/mcp` (TLS)
 2. Nginx terminates TLS, applies rate limiting, and proxies to backend
 3. LLM invokes an MCP tool with parameters
-4. Tool function in `server.py` is executed
+4. Tool function in `tools/*.py` is executed (registered by `server.py` at startup)
 5. Tool creates a `Cluster` instance from vault credentials
 6. Tool calls domain module methods passing the cluster instance
 7. Domain module uses either:

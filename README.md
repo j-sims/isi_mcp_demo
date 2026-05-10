@@ -9,7 +9,7 @@ The server translates plain English into cluster operations, eliminating manual 
 
 **Why?** Storage cluster management spreads across CLIs, APIs, and spreadsheets. This MCP (Model Context Protocol) server abstracts that friction, letting you manage infrastructure through conversation while maintaining full audit trails for compliance.
 
-**What's Included:** 212 tools across 41 functional groups—health checks, capacity analysis, quotas, snapshots, replication, file operations, NFS/SMB/S3 configuration, user management, performance metrics, and advanced analytics. All operations are audited through rendered Ansible playbooks. Credentials are encrypted and support multi-cluster management—seamlessly operate on any cluster via optional `cluster_name` parameter for parallel cross-cluster operations, or use runtime cluster switching for sequential operations. Two control modes: simple tool toggles or fine-grained Keycloak RBAC for production deployments.
+**What's Included:** 213 tools across 41 functional groups—health checks, capacity analysis, quotas, snapshots, replication, file operations, NFS/SMB/S3 configuration, user management, performance metrics, and advanced analytics. All operations are audited through rendered Ansible playbooks. Credentials are encrypted and support multi-cluster management—seamlessly operate on any cluster via optional `cluster_name` parameter for parallel cross-cluster operations, or use runtime cluster switching for sequential operations. Two control modes: simple tool toggles or fine-grained Keycloak RBAC for production deployments.
 
 ## Example Usage
 

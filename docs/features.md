@@ -5,7 +5,7 @@
 The PowerScale MCP server provides comprehensive automation and management capabilities for PowerScale clusters:
 
 - **Multi-cluster support** with parallel operations via `cluster_name` parameter, or sequential switching via management tools
-- **212 MCP tools** organized into 41 groups (157 read + 55 write), all enabled by default
+- **213 MCP tools** organized into 41 groups (158 read + 55 write), all enabled by default
 - **Two access control models**: tool toggle via `tools.json`/`powerscale_tools_toggle` (without auth), or Keycloak RBAC with mode + group roles (with auth)
 - **Dynamic tool management** to keep LLM context efficient
 - **Health checks** including quorum, service lights, critical events, network, and capacity
@@ -46,14 +46,14 @@ The PowerScale MCP server provides comprehensive automation and management capab
 | Groups | 4 | 1 | 3 | Local group management |
 | Events | 2 | 2 | 0 | Event and alert browsing |
 | Statistics | 9 | 9 | 0 | Performance metrics |
-| Networking | 8 | 8 | 0 | Network topology (groupnets, subnets, pools, interfaces, DNS, zones, map) |
+| Networking | 9 | 9 | 0 | Network topology (groupnets, subnets, pools, interfaces, DNS, zones, access zones, map) |
 | ClusterNodes | 2 | 2 | 0 | Node inventory with hardware, drives, sensors, and state |
 | StoragepoolNodetypes | 2 | 2 | 0 | Storage pool node type listings |
 | Licensing | 2 | 2 | 0 | Feature license status and expiry |
 | ZonesSummary | 2 | 2 | 0 | Lightweight access zone count and path summary |
 | Utils | 3 | 3 | 0 | Utilities (time, unit conversion) |
 | Management | 8 | 4 | 4 | Tool listing/toggling and cluster switching (always enabled) |
-| **Phase 8 — Read-Only Analytics & Diagnostics** | | | | |
+| **Analytics & Diagnostics (Read-Only)** | | | | |
 | Hardware | 3 | 3 | 0 | FC ports and tape/changer device inventory |
 | Jobs | 12 | 12 | 0 | Job engine: running/recent jobs, types, policies, events, reports, statistics |
 | Performance | 9 | 9 | 0 | Performance datasets, metrics catalog, and settings |
@@ -73,7 +73,7 @@ The PowerScale MCP server provides comprehensive automation and management capab
 | ApiSessions | 3 | 3 | 0 | Platform API session settings and invalidations |
 | GroupnetsSummary | 1 | 1 | 0 | GroupNet summary information |
 
-**Total: 212 tools across 41 groups (157 read + 55 write), all enabled by default**
+**Total: 213 tools across 41 groups (158 read + 55 write), all enabled by default**
 
 **Access control**: Without auth, use `powerscale_tools_toggle` to disable tools by group or mode. With auth (`AUTH_ENABLED=true`), Keycloak RBAC controls per-user access via mode and group roles. Runtime toggle examples:
 
@@ -215,7 +215,7 @@ Real-time performance metrics collection:
 
 All metrics are averaged over 30 seconds to smooth out spikes and provide reliable baselines.
 
-### Networking (8 tools)
+### Networking (9 tools)
 Network topology inspection across the full groupnet hierarchy:
 - **Groupnets**: list all groupnets with DNS server and search domain configuration
 - **Subnets**: list subnets with gateway, prefix length, VLAN, and SmartConnect service details
@@ -223,7 +223,8 @@ Network topology inspection across the full groupnet hierarchy:
 - **Interfaces**: list physical and virtual network interfaces per node with link and MTU details
 - **External settings**: global external network configuration including IPv6 and SmartConnect defaults
 - **DNS cache**: DNS resolver cache configuration
-- **Access zones**: list zones with groupnet association and authentication providers
+- **Access zones (summary)**: list zones with groupnet association and authentication providers (lightweight)
+- **Access zones (full)**: list all access zones with complete details — auth providers, SMB settings, user mapping rules, home directory umask, IFS restrictions, and zone root paths
 - **Network map**: composite topology view assembling the full groupnets → subnets → pools → zones → SMB shares hierarchy in a single response
 
 ### ClusterNodes (2 tools)

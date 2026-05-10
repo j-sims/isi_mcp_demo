@@ -30,7 +30,7 @@ clusters:
     verify_ssl: true
 ```
 
-Save and close. If the server is running, use the `powerscale_cluster_select` tool with `reload_vault=true` to pick up the changes.
+Save and close. If the server is running, use the `powerscale_cluster_setdefault` tool with `reload_vault=true` to pick up the changes.
 
 ### Removing a Cluster
 
@@ -49,7 +49,7 @@ Delete the cluster entry and save.
 Use management tools to switch your active cluster and operate sequentially:
 
 - `powerscale_cluster_list` — lists all configured clusters and shows which is currently selected
-- `powerscale_cluster_select` — switches the active cluster by name; set `reload_vault=true` to pick up vault edits made while the server is running
+- `powerscale_cluster_setdefault` — switches the active cluster by name; set `reload_vault=true` to pick up vault edits made while the server is running
 - `powerscale_cluster_add` — add a new cluster to the vault at runtime (also handles TLS cert extraction)
 - `powerscale_cluster_remove` — remove a cluster from the vault at runtime
 - `powerscale_cluster_modify` — update one or more fields of an existing cluster (name, host, port, username, password, verify_ssl) without replacing the entire entry; only supply the fields you want to change
@@ -82,18 +82,18 @@ This approach is ideal for:
 
 ## Dynamic Tool Management
 
-Each MCP tool has a **mode** (`read` or `write`) and an **enabled** flag. All 212 tools ship enabled by default. Tool access can be controlled in two ways:
+Each MCP tool has a **mode** (`read` or `write`) and an **enabled** flag. All 213 tools ship enabled by default. Tool access can be controlled in two ways:
 
 - **Without auth** (`AUTH_ENABLED=false`): Use `powerscale_tools_toggle` and `config/tools.json` to enable/disable tools by group, mode, or name. This is the primary access control mechanism for single-user or trusted-network deployments.
 - **With auth** (`AUTH_ENABLED=true`): Keycloak RBAC provides per-user access control via mode roles and group roles. The tool toggle mechanism still works alongside RBAC — it controls which tools are registered, while RBAC controls which registered tools each user can see.
 
 Tool state is persisted in `config/tools.json` across container restarts.
 
-**Important**: The 5 management write tools (`powerscale_tools_toggle`, `powerscale_cluster_select`, `powerscale_cluster_add`, `powerscale_cluster_remove`, `powerscale_cluster_modify`) cannot be disabled and are always available, regardless of their `enabled` flag in `config/tools.json`.
+**Important**: The 5 management write tools (`powerscale_tools_toggle`, `powerscale_cluster_setdefault`, `powerscale_cluster_add`, `powerscale_cluster_remove`, `powerscale_cluster_modify`) cannot be disabled and are always available, regardless of their `enabled` flag in `config/tools.json`.
 
 ### Inspecting Tool State
 
-Three always-available listing tools show the current state of all 212 tools:
+Three always-available listing tools show the current state of all 213 tools:
 
 - `powerscale_tools_list` — flat alphabetical list with name, group, mode, and enabled status for every tool
 - `powerscale_tools_list_by_group` — tools grouped by functional area
@@ -129,5 +129,5 @@ These tools cannot be disabled and are always accessible to the LLM:
 
 - `powerscale_tools_list` / `powerscale_tools_list_by_group` / `powerscale_tools_list_by_mode` — inspect tool state
 - `powerscale_tools_toggle` — enable or disable tools by mode, group, or name
-- `powerscale_cluster_list` / `powerscale_cluster_select` — view and switch target clusters
+- `powerscale_cluster_list` / `powerscale_cluster_setdefault` — view and switch target clusters
 - `powerscale_cluster_add` / `powerscale_cluster_remove` / `powerscale_cluster_modify` — add, remove, or update clusters in the vault

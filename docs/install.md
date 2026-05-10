@@ -168,7 +168,7 @@ After making changes, either restart the server:
 VAULT_PASSWORD='your-vault-password' docker-compose restart
 ```
 
-Or use the `powerscale_cluster_select` MCP tool with `reload_vault=true` to reload without restarting.
+Or use the `powerscale_cluster_setdefault` MCP tool with `reload_vault=true` to reload without restarting.
 
 ### Changing the Vault Password
 

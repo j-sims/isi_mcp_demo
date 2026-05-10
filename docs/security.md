@@ -9,7 +9,7 @@
 
 ## Access Control
 
-All 212 tools ship enabled by default. There are two approaches to controlling tool access:
+All 213 tools ship enabled by default. There are two approaches to controlling tool access:
 
 ### Without Authentication (`AUTH_ENABLED=false`)
 
@@ -26,7 +26,7 @@ Use `config/tools.json` and the `powerscale_tools_toggle` management tool to ena
 
 Both mechanisms can be used together — tool toggle controls which tools are registered with the server, while RBAC controls which registered tools each authenticated user can see and call.
 
-Four **management write tools** (`powerscale_tools_toggle`, `powerscale_cluster_select`, `powerscale_cluster_add`, `powerscale_cluster_remove`) cannot be disabled and are always available
+Five **management write tools** (`powerscale_tools_toggle`, `powerscale_cluster_setdefault`, `powerscale_cluster_add`, `powerscale_cluster_remove`, `powerscale_cluster_modify`) cannot be disabled and are always available
 
 ## Mutating Operations
 

@@ -1,6 +1,6 @@
 # Capabilities and Functionality
 
-The server provides comprehensive cluster management through 212 MCP tools organized into 41 groups. All tools ship enabled by default. Tool access can be controlled in two ways:
+The server provides comprehensive cluster management through 213 MCP tools organized into 41 groups. All tools ship enabled by default. Tool access can be controlled in two ways:
 
 - **Without auth** (`AUTH_ENABLED=false`): Use `config/tools.json` and the `powerscale_tools_toggle` management tool to enable/disable tools by group, mode, or name
 - **With auth** (`AUTH_ENABLED=true`): Keycloak RBAC provides per-user access control — mode roles (`mcp-read`/`mcp-write`/`mcp-admin`) control read vs write access, and group roles (`mcp-group-{name}`) restrict visibility to specific tool groups
