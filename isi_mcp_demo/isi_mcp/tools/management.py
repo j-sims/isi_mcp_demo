@@ -33,15 +33,16 @@ def register(mcp, local_tools_fn, load_config_fn, update_enabled_fn,
         """
         enabled_set = set(local_tools_fn().keys())
         config = load_config_fn()
+        _tool_to_group = {t: g for g, ts in tool_groups.items() for t in ts}
         return sorted(
             [
                 {
                     "name": name,
-                    "group": meta["tool_group"],
-                    "mode": meta["tool_mode"],
+                    "group": _tool_to_group.get(name, "management"),
+                    "mode": tool_to_mode.get(name, "read"),
                     "enabled": name in enabled_set,
                 }
-                for name, meta in config.items()
+                for name in config
             ],
             key=lambda x: x["name"],
         )
@@ -104,13 +105,14 @@ def register(mcp, local_tools_fn, load_config_fn, update_enabled_fn,
         """
         enabled_set = set(local_tools_fn().keys())
         config = load_config_fn()
+        _tool_to_group = {t: g for g, ts in tool_groups.items() for t in ts}
         by_mode: Dict[str, List[Dict[str, Any]]] = {"read": [], "write": []}
-        for name, meta in sorted(config.items()):
-            mode = meta["tool_mode"]
+        for name in sorted(config):
+            mode = tool_to_mode.get(name, "read")
             by_mode[mode].append(
                 {
                     "name": name,
-                    "group": meta["tool_group"],
+                    "group": _tool_to_group.get(name, "management"),
                     "enabled": name in enabled_set,
                 }
             )

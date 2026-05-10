@@ -241,6 +241,25 @@ _mgmt_tools.register(
 )
 _cluster_tools.register(mcp, VaultManager)
 
+# Populate group/mode metadata for management and cluster tools so the tool
+# listing functions (powerscale_tools_list, powerscale_tools_list_by_mode) can
+# report accurate group and mode without reading them from tools.json.
+_MGMT_TOOL_MODES = {
+    "powerscale_tools_list": "read",
+    "powerscale_tools_list_by_group": "read",
+    "powerscale_tools_list_by_mode": "read",
+    "powerscale_tools_toggle": "write",
+    "powerscale_cluster_list": "read",
+    "powerscale_cluster_setdefault": "write",
+    "powerscale_cluster_add": "write",
+    "powerscale_cluster_remove": "write",
+    "powerscale_cluster_modify": "write",
+}
+TOOL_GROUPS.setdefault("management", []).extend(_MGMT_TOOL_MODES.keys())
+for _n, _m in _MGMT_TOOL_MODES.items():
+    _TOOL_TO_MODE[_n] = _m
+    _TOOL_TO_GROUP[_n] = "management"
+
 # ---------------------------------------------------------------------------
 # Resources list tool (stays in server.py — references the mcp instance directly)
 # ---------------------------------------------------------------------------
