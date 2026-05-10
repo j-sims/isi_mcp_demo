@@ -74,13 +74,8 @@ schedules we created during testing so we can start fresh"
 - **[Client Integration](docs/clients.md)** — Connecting Claude Desktop, Claude Code, Cursor, and other LLM clients
 - **[Security](docs/security.md)** — Credential management, SSL/TLS, and production best practices
 - **[TLS Certificates](docs/tls.md)** — Auto-generated dev certs, bring-your-own CA-signed certs, rotation, and client trust
-- **[Kubernetes Deployment](docs/kubernetes.md)** — Deploying on Kubernetes (k3s, minikube, EKS, etc.)
 
 ## Quick Start
-
-**For Kubernetes deployment**, see **[Kubernetes Deployment](docs/kubernetes.md)** instead.
-
-**For Docker/Docker Compose deployment:**
 
 ```bash
 # Clone and setup
@@ -121,7 +116,6 @@ See **[Features & Tools](docs/features.md)** for the complete feature list, tool
 | **uvicorn** | >=0.30.0, <1.0.0 | Required | ASGI server |
 | **Docker** | 20.10+ | Recommended | For containerized deployment |
 | **Docker Compose** | 1.29+ | Recommended | Standalone tool (not docker compose plugin) |
-| **Kubernetes** | 1.20+ | Optional | For K8s deployment (k3s, minikube, EKS, etc.) |
 | **Node.js** | 14+ | Optional | For MCP client (Claude Code, Claude Desktop) |
 
 **Version Policy**: Patch versions (e.g., 0.7.0 → 0.7.1) are automatically compatible. Major/minor version changes may introduce breaking changes—test thoroughly before upgrading production deployments.

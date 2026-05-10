@@ -1,9 +1,5 @@
 # Installation and Setup (Docker)
 
-> **For Kubernetes deployment**, see **[Kubernetes Deployment Guide](kubernetes.md)** instead.
->
-> This guide covers Docker and Docker Compose deployment only.
-
 ## Quick Start
 
 ### 1. Prerequisites
