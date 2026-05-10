@@ -2,45 +2,52 @@
 
 ## Cluster Management
 
-Cluster credentials are managed outside the LLM using the `ansible-vault` CLI. Runtime cluster switching is done via MCP tools.
+Cluster credentials are managed via `setup.sh` subcommands or directly through MCP tools. Runtime cluster switching is done via MCP tools.
 
 ### Adding a Cluster
 
-Edit the vault and add a new entry under `clusters:`:
+Use the `setup.sh add-cluster` subcommand — it handles TLS certificate extraction automatically and never exposes credentials to the shell history:
 
 ```bash
-docker-compose run --rm isi_mcp ansible-vault edit /app/vault/vault.yml
+# Interactive (prompts for name, host, user, and password)
+./setup.sh add-cluster
+
+# Non-interactive
+./setup.sh add-cluster --name dr --host 10.0.1.50 --user admin
 ```
 
-Add a new cluster entry:
+The running server reloads the vault within 5 seconds — no restart needed.
 
-```yaml
-clusters:
-  prod:
-    host: "https://192.168.0.33"
-    port: 8080
-    username: root
-    password: secret
-    verify_ssl: false
-  dr:
-    host: "https://10.0.1.50"
-    port: 8080
-    username: admin
-    password: secret
-    verify_ssl: true
-```
-
-Save and close. If the server is running, use the `powerscale_cluster_setdefault` tool with `reload_vault=true` to pick up the changes.
+Alternatively, use the `powerscale_cluster_add` MCP tool to add a cluster directly from an LLM session.
 
 ### Removing a Cluster
 
-Edit the vault and delete the cluster entry:
-
 ```bash
-docker-compose run --rm isi_mcp ansible-vault edit /app/vault/vault.yml
+./setup.sh remove-cluster --name dr
 ```
 
-Delete the cluster entry and save.
+The script prompts for confirmation before making any changes. The running server reloads the vault within 5 seconds.
+
+Alternatively, use the `powerscale_cluster_remove` MCP tool from an LLM session.
+
+### Modifying a Cluster
+
+To update individual fields of an existing cluster without replacing the entire entry:
+
+```bash
+./setup.sh modify-cluster --name dr --host 10.0.1.51     # update host
+./setup.sh modify-cluster --name dr --pass                # update password (prompted)
+./setup.sh modify-cluster --name dr --new-name dr2        # rename
+./setup.sh modify-cluster --name dr --verify-ssl false    # change SSL setting
+```
+
+Alternatively, use the `powerscale_cluster_modify` MCP tool from an LLM session.
+
+### Listing Clusters
+
+```bash
+./setup.sh list-clusters
+```
 
 ### Cluster Operations
 

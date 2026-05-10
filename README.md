@@ -98,7 +98,7 @@ See **[Features & Tools](docs/features.md)** for the complete feature list, tool
 
 ## System Requirements
 
-- **Docker and Docker Compose** (standalone `docker-compose` tool, not the `docker compose` plugin)
+- **Docker and Docker Compose** (both the `docker compose` plugin v2 and standalone `docker-compose` v1 are supported)
 - PowerScale cluster with OneFS v9.12.0 (only this version has been tested)
 - LLM client supporting MCP protocol (Claude, Cursor, Windsurf, etc.)
 
@@ -115,7 +115,7 @@ See **[Features & Tools](docs/features.md)** for the complete feature list, tool
 | **fastmcp** | >=2.0.0, <3.0.0 | Required | MCP server framework |
 | **uvicorn** | >=0.30.0, <1.0.0 | Required | ASGI server |
 | **Docker** | 20.10+ | Recommended | For containerized deployment |
-| **Docker Compose** | 1.29+ | Recommended | Standalone tool (not docker compose plugin) |
+| **Docker Compose** | 1.29+ (v1) or 2.x (plugin) | Recommended | Both standalone and plugin are supported |
 | **Node.js** | 14+ | Optional | For MCP client (Claude Code, Claude Desktop) |
 
 **Version Policy**: Patch versions (e.g., 0.7.0 → 0.7.1) are automatically compatible. Major/minor version changes may introduce breaking changes—test thoroughly before upgrading production deployments.

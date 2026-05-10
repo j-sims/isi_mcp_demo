@@ -4,9 +4,9 @@
 
 ### 1. Prerequisites
 
-- **Docker Compose**: This deployment requires the standalone `docker-compose` tool (v1.x), **not** the `docker compose` plugin (v2).
-  - Check your version: `docker-compose --version` (should show `docker-compose` not `Docker Compose`)
-  - Install standalone version from https://docs.docker.com/compose/install/standalone/ if needed
+- **Docker and Docker Compose**: Both the standalone `docker-compose` tool (v1.x) and the `docker compose` plugin (v2) are supported. The scripts detect which is available automatically.
+  - Verify Docker is installed: `docker --version`
+  - Verify Compose is available: `docker compose version` or `docker-compose --version`
 
 ### 2. Clone the Repository
 
@@ -22,36 +22,35 @@ cd isi_mcp_demo
 ```
 
 The script prompts for your cluster host, credentials, and a vault encryption password, then:
-- Creates `vault.yml` with your cluster credentials
-- Encrypts the vault using Ansible inside the Docker image (no Ansible needed on your host)
-- The vault password is never stored on disk — provide it only at runtime via the `VAULT_PASSWORD` environment variable
-- Builds the Docker image and starts the MCP server
+- Creates and encrypts `vault.yml` with your cluster credentials (Ansible runs inside Docker — no Ansible needed on the host)
+- Extracts the cluster's TLS certificate automatically for SSL verification
+- Generates self-signed TLS certificates for the nginx reverse proxy
+- Builds the Docker image and starts the MCP server in the background
+
+The MCP server will be available at `https://localhost/mcp` via nginx.
 
 **Non-interactive (for scripting — use env vars to avoid shell history):**
 
 ```bash
-export VAULT_PASSWORD=$(read -s -p 'Vault password: ' pwd && echo $pwd)
+read -s -p 'Vault password: ' VAULT_PASSWORD && export VAULT_PASSWORD
 ./setup.sh --host 192.168.0.33 --user root --pass secret
 ```
-
-**Start in the foreground (for debugging):**
-
-```bash
-export VAULT_PASSWORD=$(read -s -p 'Vault password: ' pwd && echo $pwd)
-./setup.sh --host 192.168.0.33 --pass secret --detach false
-```
-
-By default, `setup.sh` starts the MCP server in the background. Use `--detach false` or omit the flag to run in foreground instead.
-
-The setup script also generates self-signed TLS certificates (in `nginx/certs/`) for the nginx reverse proxy. The MCP server will be available at `https://localhost/mcp` via nginx.
 
 **Optionally set debug mode** by exporting `DEBUG=1` before running setup.
 
 **Optionally enable IaC mode** by exporting `IAC_MODE=true` before running setup (see [IaC Workflow Integration](#iac-workflow-integration) below).
 
+**To enable OAuth authentication during first-time setup**, pass `--auth true`:
+
+```bash
+./setup.sh --host 192.168.0.33 --auth true
+```
+
+This sets `AUTH_ENABLED=true` in `config/isi_mcp.env` and prompts for Keycloak passwords, which are stored in the encrypted vault. See [Enabling Authentication](#enabling-authentication-optional) for details.
+
 ## Running the Server
 
-After initial setup, use `start.sh` and `stop.sh` to manage the server. These scripts read `config/isi_mcp.env` to detect whether authentication is enabled, prompt for the required passwords, and handle the `--profile auth` flag automatically.
+After initial setup, use `start.sh` and `stop.sh` to manage the server. These scripts read `config/isi_mcp.env` to detect whether authentication is enabled and handle the `--profile auth` flag automatically. Keycloak passwords (when auth is enabled) are read from the encrypted vault — you only need to provide the vault password at startup.
 
 > **Upgrading?** See **[Upgrading](upgrading.md)** for how to check your version against the repository and upgrade safely.
 
@@ -61,7 +60,7 @@ After initial setup, use `start.sh` and `stop.sh` to manage the server. These sc
 ./start.sh
 ```
 
-Prompts for the vault password (and Keycloak passwords if `AUTH_ENABLED=true`) then starts all services in the background.
+Prompts for the vault password, then starts all services in the background. When `AUTH_ENABLED=true`, Keycloak passwords are read automatically from the vault — no additional prompts.
 
 **Stopping the server:**
 
@@ -83,7 +82,7 @@ Stops existing containers, then starts fresh. Volumes (Keycloak database, playbo
 ./stop.sh --clean
 ```
 
-> **Warning**: `--clean` deletes the Keycloak database volume. All users, clients, and realm configuration will be lost and re-imported from `keycloak/realm-export.json` on next start.
+> **Warning**: `--clean` is a full reset — it deletes the `vault/` directory (your encrypted credentials), `nginx/certs/` (TLS certificates), rendered playbooks, and the Keycloak database volume. You will need to run `./setup.sh` again from scratch to re-create the vault. Do not use `--clean` unless you intend to start over completely.
 
 **Viewing logs:**
 
@@ -144,27 +143,43 @@ For full details on all certificate options — including auto-generated develop
 
 Credentials are stored in an Ansible Vault encrypted file (`vault.yml`). The vault is excluded from git via `.gitignore`.
 
-**Edit or add clusters after initial setup:**
+### Cluster operations via setup.sh (recommended)
 
-First, view the encrypted vault to see the current structure:
-
-```bash
-echo -n 'your-vault-password' | docker-compose run --rm isi_mcp ansible-vault view /app/vault/vault.yml
-```
-
-Then edit it:
+`setup.sh` provides subcommands that decrypt, modify, and re-encrypt the vault safely without exposing secrets to the shell history:
 
 ```bash
-echo -n 'your-vault-password' | docker-compose run --rm isi_mcp ansible-vault edit /app/vault/vault.yml
+# List all clusters in the vault
+./setup.sh list-clusters
+
+# Add a new cluster (TLS cert extracted automatically)
+./setup.sh add-cluster --name dr --host 10.0.1.50 --user root
+
+# Remove a cluster
+./setup.sh remove-cluster --name dr
+
+# Modify specific fields of an existing cluster
+./setup.sh modify-cluster --name dr --host 10.0.1.51
+./setup.sh modify-cluster --name dr --pass          # prompts for new password
+./setup.sh modify-cluster --name dr --new-name dr2  # rename
 ```
 
-After making changes, either restart the server:
+Each subcommand prompts for the vault password (or reads it from `VAULT_PASSWORD`). The running MCP server reloads the vault automatically within 5 seconds — no restart needed.
+
+### Direct vault editing (advanced)
+
+To view or edit the raw vault YAML:
 
 ```bash
-VAULT_PASSWORD='your-vault-password' docker-compose restart
+# View
+VAULT_PASSWORD='your-vault-password' docker compose run --rm --no-deps isi_mcp \
+  ansible-vault view /app/vault/vault.yml
+
+# Edit
+VAULT_PASSWORD='your-vault-password' docker compose run --rm --no-deps isi_mcp \
+  ansible-vault edit /app/vault/vault.yml
 ```
 
-Or use the `powerscale_cluster_setdefault` MCP tool with `reload_vault=true` to reload without restarting.
+After direct edits, the server picks up the changes within 5 seconds via its vault TTL cache, or use the `powerscale_cluster_setdefault` MCP tool with `reload_vault=True` for an immediate reload.
 
 ### Changing the Vault Password
 
@@ -197,34 +212,36 @@ For a full explanation of the authentication architecture and security model, se
 - Docker Compose (same as the base install)
 - The Keycloak container and its PostgreSQL database are included in `docker-compose.yml` under the `auth` profile — no extra software required
 
-### Step 1: Enable Auth in config/isi_mcp.env
+### Step 1: Enable Auth
 
-Open `config/isi_mcp.env` and change the `AUTH_ENABLED` line:
+The simplest way is to pass `--auth true` to `setup.sh` — it sets `AUTH_ENABLED=true` in `config/isi_mcp.env` for you. Alternatively, open `config/isi_mcp.env` and change the line manually:
 
 ```
 AUTH_ENABLED=true
 ```
 
-That's the only file change needed. Passwords are never stored in files.
-
 ### Step 2: Run Setup
 
 ```bash
-./setup.sh
+./setup.sh --host 192.168.0.33 --auth true
 ```
 
-`setup.sh` reads `config/isi_mcp.env`, detects `AUTH_ENABLED=true`, and prompts for the two Keycloak passwords in addition to the usual cluster credentials and vault password.
-
-For non-interactive setup with auth, pass all three passwords via environment variables:
+Or if you already edited `config/isi_mcp.env` manually:
 
 ```bash
-export VAULT_PASSWORD=$(read -s -p 'Vault password: ' pwd && echo $pwd)
-export KEYCLOAK_DB_PASSWORD=$(read -s -p 'Keycloak DB password: ' pwd && echo $pwd)
-export KEYCLOAK_ADMIN_PASSWORD=$(read -s -p 'Keycloak admin password: ' pwd && echo $pwd)
-./setup.sh --host 192.168.0.33 --user root --pass secret
+./setup.sh --host 192.168.0.33
 ```
 
-All passwords are handled in memory only — nothing is written to disk. `setup.sh` automatically adds `--profile auth` to start the Keycloak services.
+`setup.sh` detects `AUTH_ENABLED=true` in `config/isi_mcp.env` and prompts for the Keycloak database and admin passwords. These are stored in the encrypted vault (alongside the cluster credentials) so you only need to provide the vault password on subsequent starts.
+
+For fully non-interactive setup, export all passwords before running:
+
+```bash
+read -s -p 'Vault password: ' VAULT_PASSWORD && export VAULT_PASSWORD
+read -s -p 'Keycloak DB password: ' KEYCLOAK_DB_PASSWORD && export KEYCLOAK_DB_PASSWORD
+read -s -p 'Keycloak admin password: ' KEYCLOAK_ADMIN_PASSWORD && export KEYCLOAK_ADMIN_PASSWORD
+./setup.sh --host 192.168.0.33 --user root --pass secret --auth true
+```
 
 **Subsequent starts** (vault already exists):
 
@@ -232,9 +249,9 @@ All passwords are handled in memory only — nothing is written to disk. `setup.
 ./start.sh
 ```
 
-`start.sh` detects `AUTH_ENABLED=true` in `config/isi_mcp.env` and prompts for all three passwords automatically.
+`start.sh` detects `AUTH_ENABLED=true` in `config/isi_mcp.env`, prompts for the vault password, then reads the Keycloak passwords directly from the vault — no additional prompts needed.
 
-> **Tip**: A password manager or secrets manager (e.g., `pass`, Vault, AWS Secrets Manager) can pre-export the password variables before calling `start.sh` to avoid typing them each time.
+> **Tip**: Export `VAULT_PASSWORD` before calling `start.sh` to skip all prompts entirely (useful in automated environments).
 
 On first start, Keycloak initialises its database and imports the pre-configured `powerscale` realm from `keycloak/realm-export.json` (this takes ~30–60 seconds).
 
@@ -246,7 +263,7 @@ docker-compose ps
 
 # Confirm Keycloak OIDC discovery endpoint is responding
 curl -sk https://localhost/auth/realms/powerscale/.well-known/openid-configuration | jq .issuer
-# Expected: "http://keycloak:8080/realms/powerscale"
+# Expected: "http://keycloak:8080/auth/realms/powerscale"
 
 # Confirm MCP server advertises the auth server (RFC 9728)
 curl -sk https://localhost/mcp/.well-known/oauth-protected-resource | jq .

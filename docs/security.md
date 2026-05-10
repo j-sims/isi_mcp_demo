@@ -78,7 +78,7 @@ The server ships with an nginx reverse proxy that terminates TLS for all client 
 - Clients must trust `ca.crt` (not `server.crt`) — see [Client Integration](clients.md) for instructions. Node.js-based clients (Claude Code, VSCode extensions) require `NODE_EXTRA_CA_CERTS` pointing to `ca.crt`
 - For production, replace with certificates from your CA — clients will trust them automatically
 - nginx enforces TLS 1.2+ with strong cipher suites
-- HTTP requests are automatically redirected to HTTPS (301)
+- nginx only listens on port 443 (HTTPS) — there is no HTTP listener; clients must connect directly to HTTPS
 - For step-by-step procedures (regeneration, bring-your-own cert, rotation, client trust setup), see **[TLS Certificate Guide](tls.md)**
 
 ### Security Headers
