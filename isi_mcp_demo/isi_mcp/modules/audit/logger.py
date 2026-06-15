@@ -72,9 +72,10 @@ class AuditLogger:
     ) -> None:
         ts = time.time()
 
-        output_str = json.dumps(output, default=str)
-        if len(output_str) > _MAX_OUTPUT_CHARS:
-            output_str = output_str[:_MAX_OUTPUT_CHARS] + "...[truncated]"
+        output_json = json.dumps(output, default=str)
+        if len(output_json) > _MAX_OUTPUT_CHARS:
+            output_json = output_json[:_MAX_OUTPUT_CHARS] + "...[truncated]"
+            output = json.loads(output_json)
 
         entry = {
             "timestamp": datetime.fromtimestamp(ts, tz=timezone.utc).isoformat(),
@@ -84,7 +85,7 @@ class AuditLogger:
             "tool":      tool_name,
             "mode":      mode,
             "inputs":    inputs,
-            "output":    output_str,
+            "output":    output,
             "error":     error,
         }
         self._logger.info(json.dumps(entry, default=str))
