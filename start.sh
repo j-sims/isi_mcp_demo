@@ -60,6 +60,10 @@ for _sample in "${SCRIPT_DIR}/config/"*.env.sample; do
     fi
 done
 
+# Export PORT so docker-compose can substitute it in the nginx port binding
+PORT=$(grep '^PORT=' "${SCRIPT_DIR}/config/isi_mcp.env" 2>/dev/null | cut -d= -f2- | tr -d ' ')
+export PORT="${PORT:-443}"
+
 # ---------------------------------------------------------------------------
 # Detect whether authentication is enabled in config/isi_mcp.env
 # ---------------------------------------------------------------------------
