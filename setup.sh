@@ -693,10 +693,14 @@ KEYCLOAK_DB_VOLUME="isi_mcp_demo_keycloak-db-data"
 
 mkdir -p "$VAULT_DIR"
 
-# Pre-create playbooks dir as the current user so Docker doesn't create it as root.
-# The container runs as mcp (UID 1000); the host user running setup.sh must also be
-# UID 1000 (or the directory must be group/world writable) for writes to succeed.
-mkdir -p "${SCRIPT_DIR}/playbooks"
+# Pre-create bind-mounted writable dirs before Docker starts so Docker does not create
+# them as root. The container runs as mcp (UID 1000); when setup.sh is run with sudo
+# the mkdir produces root-owned dirs and the container cannot write. Transfer ownership
+# to UID 1000 whenever we are running as root.
+mkdir -p "${SCRIPT_DIR}/playbooks" "${SCRIPT_DIR}/audit"
+if [[ $EUID -eq 0 ]]; then
+    chown 1000:1000 "${SCRIPT_DIR}/playbooks" "${SCRIPT_DIR}/audit"
+fi
 
 # Check for existing vault and keycloak volume
 VAULT_EXISTS=false
