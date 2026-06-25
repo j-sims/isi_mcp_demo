@@ -65,7 +65,7 @@ Optional for setup:
   --user USER         Cluster username (prompted with 'root' as default)
   --name NAME         Cluster label in vault.yml (default: powerscale)
   --auth true|false   Enable OAuth authentication via Keycloak (default: false)
-  --ssl true|false    Enable HTTPS via nginx with TLS (default: false)
+  --ssl true|false    Enable HTTPS via nginx with TLS (default: false; auto-enabled when --auth true)
   --listen-port PORT  Server listen port (default: 80 for HTTP, 443 for HTTPS)
   --no-cache          Force rebuild Docker image without using cached layers
   -h, --help          Show this help message
@@ -96,12 +96,13 @@ Examples:
   # List all configured clusters
   ./setup.sh list-clusters
 
-After setup, restart the server with vault password:
-  read -s -p 'Vault password: ' VAULT_PASSWORD && export VAULT_PASSWORD
-  docker compose up -d
+After setup, restart the server:
+  ./start.sh
 
-To edit vault credentials later (requires vault password):
-  docker compose exec isi_mcp ansible-vault edit /app/vault/vault.yml
+To add or edit clusters later:
+  ./setup.sh add-cluster --name <name> --host <host>
+  ./setup.sh modify-cluster --name <name> --host <new-host>
+  ./setup.sh list-clusters
 HELP
 }
 
@@ -636,6 +637,7 @@ CLUSTER_NAME="powerscale"
 VAULT_PASS="${VAULT_PASSWORD:-}"
 AUTH_ARG="false"
 SSL_ARG="false"
+SSL_ARG_EXPLICIT=false
 LISTEN_PORT_ARG=""
 NO_CACHE=false
 
@@ -647,13 +649,20 @@ while [[ $# -gt 0 ]]; do
         --pass)         CLUSTER_PASS="$2"; shift 2 ;;
         --name)         CLUSTER_NAME="$2"; shift 2 ;;
         --auth)         AUTH_ARG="$2"; shift 2 ;;
-        --ssl)          SSL_ARG="$2"; shift 2 ;;
+        --ssl)          SSL_ARG="$2"; SSL_ARG_EXPLICIT=true; shift 2 ;;
         --listen-port)  LISTEN_PORT_ARG="$2"; shift 2 ;;
         --no-cache)     NO_CACHE=true; shift ;;
         -h|--help)      show_help; exit 0 ;;
         *)              fail "Unknown argument: $1"; echo "Run ./setup.sh --help for usage."; exit 1 ;;
     esac
 done
+
+# Auto-enable SSL when auth is requested and --ssl was not explicitly set.
+# Keycloak auth requires nginx, which is only started with the ssl profile.
+if [[ "$AUTH_ARG" == "true" && "$SSL_ARG_EXPLICIT" == "false" ]]; then
+    SSL_ARG="true"
+    info "Auto-enabling SSL: Keycloak authentication requires nginx (use --ssl false to override)"
+fi
 
 # When --listen-port is not given, default the port for the selected mode
 # (443 for HTTPS, 80 for HTTP). User can override with --listen-port.
@@ -1276,10 +1285,12 @@ info "To restart the server later:"
 echo "  ./start.sh"
 echo ""
 info "To add or edit clusters later:"
-echo "  $COMPOSE_CMD exec isi_mcp ansible-vault edit /app/vault/vault.yml"
+echo "  ./setup.sh add-cluster --name <name> --host <host>"
+echo "  ./setup.sh modify-cluster --name <name> --host <new-host>"
+echo "  ./setup.sh list-clusters"
 echo ""
 info "To stop the server:"
-echo "  $COMPOSE_CMD down"
+echo "  ./stop.sh"
 echo ""
 info "To start claude with the Powerscale Agent:"
 echo "claude --agent PowerscaleAgent --agents '{
