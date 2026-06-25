@@ -8,6 +8,9 @@
   "human_to_bytes": {
     "enabled": true
   },
+  "get_mcp_version": {
+    "enabled": true
+  },
   "powerscale_cluster_verify": {
     "enabled": true
   },

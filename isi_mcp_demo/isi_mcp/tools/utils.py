@@ -102,3 +102,17 @@ def human_to_bytes(human_value: str) -> dict:
     value = float(match.group(1))
     unit = match.group(2)
     return {"human_readable": human_value, "bytes": int(value * (1024 ** units[unit]))}
+
+
+@safe_tool(group="utils", mode="read")
+def get_mcp_version() -> dict:
+    """
+    Return the current version of the PowerScale MCP server.
+
+    Use this tool to check which version of the MCP server is running.
+
+    Response fields:
+    - version: The server version string (e.g. "1.2.3")
+    """
+    with open("/app/VERSION", "r") as f:
+        return {"version": f.read().strip()}
