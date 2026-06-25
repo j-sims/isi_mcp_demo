@@ -15,6 +15,38 @@ Nginx Reverse Proxy (nginx/nginx.conf)
     v
 FastMCP Server (server.py) — stateless HTTP mode
     |
+    |--- Tool Layer (tools/)
+    |       |--- tools/__init__.py  (imports all domain tool modules)
+    |       |--- tools/management.py     (tool toggle, list tools)
+    |       |--- tools/clusters.py       (cluster selection)
+    |       |--- tools/capacity.py       (storage capacity)
+    |       |--- tools/cluster_info.py   (cluster info & health)
+    |       |--- tools/connectivity.py   (connectivity settings)
+    |       |--- tools/datamover.py      (data movement policies)
+    |       |--- tools/events.py         (events & alerts)
+    |       |--- tools/filemgmt.py       (namespace, files, ACLs)
+    |       |--- tools/filepool.py       (file pool policies)
+    |       |--- tools/fsa.py            (File System Analytics)
+    |       |--- tools/hardening.py      (security hardening)
+    |       |--- tools/id_resolution.py  (UID/GID/SID mapping)
+    |       |--- tools/jobs.py           (job engine)
+    |       |--- tools/local_info.py     (node time, interfaces, firmware)
+    |       |--- tools/metadataiq.py     (MetadataIQ)
+    |       |--- tools/mpa.py            (Multi-Party Authorization)
+    |       |--- tools/networking.py     (groupnets, subnets, pools, zones)
+    |       |--- tools/nfs.py            (NFS exports & settings)
+    |       |--- tools/performance.py    (performance metrics)
+    |       |--- tools/quota_reports.py  (quota report metadata)
+    |       |--- tools/quotas.py         (quota lifecycle)
+    |       |--- tools/s3.py             (S3 buckets)
+    |       |--- tools/smb.py            (SMB shares & settings)
+    |       |--- tools/snapshots.py      (snapshots & schedules)
+    |       |--- tools/statistics.py     (real-time stats)
+    |       |--- tools/supportassist.py  (SupportAssist)
+    |       |--- tools/synciq.py         (SyncIQ replication)
+    |       |--- tools/users.py          (local users & groups)
+    |       |--- tools/utils.py          (unit conversion helpers)
+    |
     |--- VaultManager (modules/ansible/vault_manager.py)
     |       |--- Ansible Vault decryption & caching
     |       |--- Multi-cluster credential registry
@@ -45,7 +77,10 @@ FastMCP Server (server.py) — stateless HTTP mode
 ## Core Components
 
 ### MCP Server Layer
-`server.py` bootstraps the FastMCP instance, configures auth, middleware, and the skills provider, then imports the `tools/` package (which registers all domain tool functions) and builds the group/mode metadata indexes. Management and cluster tools are registered separately via `tools/management.py` and `tools/clusters.py`. Domain tool functions live in `tools/*.py` and use the `@safe_tool(group, mode)` decorator; all tool logic delegates to domain modules.
+`server.py` bootstraps the FastMCP instance, configures auth, middleware, and the skills provider, then imports the `tools/` package (which registers all domain tool functions) and builds the group/mode metadata indexes. Management and cluster tools are registered separately via `tools/management.py` and `tools/clusters.py`.
+
+### Tool Layer
+Domain tool functions are organized into one file per functional domain under `tools/` (e.g. `tools/smb.py`, `tools/quotas.py`, `tools/filemgmt.py`). Each file uses the `@safe_tool(group, mode)` decorator; all tool logic delegates to the corresponding domain module in `modules/onefs/v9_12_0/`. `tools/__init__.py` imports all domain tool modules, triggering registration at startup. `tools/management.py` and `tools/clusters.py` use a `register(mcp, ...)` pattern instead because they reference server-level state.
 
 ### Domain Modules
 Located in `modules/onefs/v9_12_0/`, these modules provide business logic for cluster operations:
