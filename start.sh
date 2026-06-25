@@ -138,10 +138,12 @@ pwd = os.environ.get('VAULT_PASSWORD', '').encode()
 vault = VaultLib([('default', VaultSecret(pwd))])
 try:
     data = yaml.safe_load(vault.decrypt(open('/app/vault/vault.yml').read()))
-    print('__VAULT__' + str(data.get('keycloak', {}).get('$key', '')), end='')
+    kc = data.get('keycloak') if isinstance(data, dict) else None
+    val = kc.get('$key') if isinstance(kc, dict) else None
+    print('__VAULT__' + str(val) if val else '__VAULT__', end='')
 except Exception:
     print('__VAULT__', end='')
-") || true
+" 2>/dev/null) || true
     printf '%s' "$_raw" | grep -o '__VAULT__.*' | sed 's/^__VAULT__//'
 }
 

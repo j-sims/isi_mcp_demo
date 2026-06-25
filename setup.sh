@@ -972,21 +972,25 @@ if [[ "$SKIP_SETUP" == true ]] && grep -qE '^AUTH_ENABLED=true' "$APP_CONFIG" 2>
     # docker compose prints container lifecycle messages to stdout on this platform.
     _KC_CREDS=$(VAULT_PASSWORD="$VAULT_PASS" $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" \
         run --rm --no-deps isi_mcp python3 -c "
-import os, yaml, sys
+import os, yaml
 from ansible.parsing.vault import VaultLib, VaultSecret
 pwd = os.environ.get('VAULT_PASSWORD', '').encode()
 vault = VaultLib([('default', VaultSecret(pwd))])
 with open('/app/vault/vault.yml') as f:
     data = yaml.safe_load(vault.decrypt(f.read()))
-kc = data.get('keycloak', {})
-print('__KC_DB__' + str(kc.get('db_password', '')))
-print('__KC_ADMIN__' + str(kc.get('admin_password', '')))
-") || true
-    KEYCLOAK_DB_PASSWORD=$(printf '%s\n' "$_KC_CREDS" | grep '^__KC_DB__' | head -1 | sed 's/^__KC_DB__//')
-    KEYCLOAK_ADMIN_PASSWORD=$(printf '%s\n' "$_KC_CREDS" | grep '^__KC_ADMIN__' | head -1 | sed 's/^__KC_ADMIN__//')
-    export KEYCLOAK_DB_PASSWORD KEYCLOAK_ADMIN_PASSWORD
-    unset _KC_CREDS
-    if [[ -n "$KEYCLOAK_DB_PASSWORD" ]]; then
+kc = data.get('keycloak') if isinstance(data, dict) else None
+db_pass = kc.get('db_password') if isinstance(kc, dict) else None
+admin_pass = kc.get('admin_password') if isinstance(kc, dict) else None
+if db_pass:
+    print('__KC_DB__' + str(db_pass))
+    print('__KC_ADMIN__' + str(admin_pass or ''))
+else:
+    print('__KC_NOTFOUND__')
+" 2>/dev/null) || true
+    if printf '%s\n' "$_KC_CREDS" | grep -q '^__KC_DB__'; then
+        KEYCLOAK_DB_PASSWORD=$(printf '%s\n' "$_KC_CREDS" | grep '^__KC_DB__' | head -1 | sed 's/^__KC_DB__//')
+        KEYCLOAK_ADMIN_PASSWORD=$(printf '%s\n' "$_KC_CREDS" | grep '^__KC_ADMIN__' | head -1 | sed 's/^__KC_ADMIN__//')
+        export KEYCLOAK_DB_PASSWORD KEYCLOAK_ADMIN_PASSWORD
         ok "Keycloak credentials loaded from vault."
     else
         warn "Keycloak credentials not found in vault (auth was added after initial setup)."
@@ -1006,6 +1010,7 @@ print('__KC_ADMIN__' + str(kc.get('admin_password', '')))
             exit 1
         fi
     fi
+    unset _KC_CREDS
 fi
 
 # ---------------------------------------------------------------------------
