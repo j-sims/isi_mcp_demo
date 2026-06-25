@@ -1,5 +1,18 @@
 # Installation and Setup (Docker)
 
+## Deployment Modes
+
+Choose the combination of SSL and authentication that fits your environment:
+
+| Mode | SSL | Auth | Client URL | Use when |
+|---|---|---|---|---|
+| **HTTP, no auth** (default) | `false` | `false` | `http://localhost/mcp` | Local dev, trusted private network |
+| **HTTPS, no auth** | `true` | `false` | `https://localhost/mcp` | Multi-user on a private LAN |
+| **HTTPS + auth** | `true` | `true` | `https://localhost/mcp` | Production / internet-exposed |
+| No SSL + auth | — | — | — | **Not supported** — Keycloak requires nginx (`SSL=true`) |
+
+All modes are set via `./setup.sh` flags or by editing `config/isi_mcp.env`. The default is HTTP with no auth.
+
 ## Quick Start
 
 ### 1. Prerequisites
@@ -39,7 +52,7 @@ The script prompts for your cluster host, credentials, and a vault encryption pa
 - Extracts the cluster's TLS certificate automatically for SSL verification
 - Builds the Docker image and starts the MCP server in the background
 
-By default the server runs in **HTTP mode** (no nginx, no TLS certs required). The MCP server is available at `http://localhost:80/mcp`.
+By default the server runs in **HTTP mode** (no nginx, no TLS certs required). The MCP server is available at `http://localhost/mcp`.
 
 **To enable HTTPS (SSL=true):**
 
@@ -75,13 +88,13 @@ read -s -p 'Vault password: ' VAULT_PASSWORD && export VAULT_PASSWORD
 
 **Optionally enable IaC mode** by exporting `IAC_MODE=true` before running setup (see [IaC Workflow Integration](#iac-workflow-integration) below).
 
-**To enable OAuth authentication during first-time setup**, pass `--auth true`:
+**To enable OAuth authentication during first-time setup**, pass `--auth true --ssl true` (auth requires SSL):
 
 ```bash
-./setup.sh --host 192.168.0.33 --auth true
+./setup.sh --host 192.168.0.33 --ssl true --auth true
 ```
 
-This sets `AUTH_ENABLED=true` in `config/isi_mcp.env` and prompts for Keycloak passwords, which are stored in the encrypted vault. See [Enabling Authentication](#enabling-authentication-optional) for details.
+This sets `AUTH_ENABLED=true` and `SSL=true` in `config/isi_mcp.env` and prompts for Keycloak passwords, which are stored in the encrypted vault. See [Enabling Authentication](#enabling-authentication-optional) for details.
 
 ## Running the Server
 
@@ -122,10 +135,12 @@ Stops existing containers, then starts fresh. Volumes (Keycloak database, playbo
 **Viewing logs:**
 
 ```bash
-docker-compose logs -f isi_mcp
-docker-compose logs -f nginx
-docker-compose logs -f keycloak
+docker compose logs -f isi_mcp
+docker compose logs -f nginx
+docker compose logs -f keycloak
 ```
+
+(Use `docker-compose` if you have the standalone v1 tool.)
 
 ## Configuration Files
 
@@ -246,7 +261,7 @@ To rekey the vault (change its encryption password), use Docker to run the ansib
 # Prompt for old password and new password (never stored on disk)
 export OLD_VAULT_PASSWORD=$(read -s -p 'Enter current vault password: ' pwd && echo $pwd)
 export NEW_VAULT_PASSWORD=$(read -s -p 'Enter new vault password: ' pwd && echo $pwd)
-docker-compose run --rm -e VAULT_PASSWORD="$OLD_VAULT_PASSWORD" isi_mcp \
+docker compose run --rm -e VAULT_PASSWORD="$OLD_VAULT_PASSWORD" isi_mcp \
   ansible-vault rekey /app/vault/vault.yml --vault-password-file /dev/stdin <<< "$NEW_VAULT_PASSWORD"
 unset OLD_VAULT_PASSWORD NEW_VAULT_PASSWORD
 ```
@@ -254,8 +269,7 @@ unset OLD_VAULT_PASSWORD NEW_VAULT_PASSWORD
 Then restart the server with the new vault password:
 
 ```bash
-export VAULT_PASSWORD=$(read -s -p 'Enter your password: ' pwd && echo $pwd)
-docker-compose restart
+./start.sh
 ```
 
 ## Enabling Authentication (Optional)
@@ -264,23 +278,27 @@ By default the server runs without client authentication. The steps below add OA
 
 For a full explanation of the authentication architecture and security model, see [Security — Client Authentication](security.md#client-authentication-oauth-21--oidc).
 
+> **Authentication requires SSL=true.** Keycloak is only accessible through the nginx reverse proxy (at `/auth/`), which runs only when `SSL=true`. Auth combined with `SSL=false` is not supported.
+
 ### Prerequisites
 
 - Docker Compose (same as the base install)
+- `SSL=true` must be set in `config/isi_mcp.env` (or pass `--ssl true` to `setup.sh`)
 - The Keycloak container and its PostgreSQL database are included in `docker-compose.yml` under the `auth` profile — no extra software required
 
-### Step 1: Enable Auth
+### Step 1: Enable Auth and SSL
 
-The simplest way is to pass `--auth true` to `setup.sh` — it sets `AUTH_ENABLED=true` in `config/isi_mcp.env` for you. Alternatively, open `config/isi_mcp.env` and change the line manually:
+The simplest way is to pass `--ssl true --auth true` to `setup.sh` — it sets both `SSL=true` and `AUTH_ENABLED=true` in `config/isi_mcp.env`. Alternatively, edit `config/isi_mcp.env` directly:
 
 ```
+SSL=true
 AUTH_ENABLED=true
 ```
 
 ### Step 2: Run Setup
 
 ```bash
-./setup.sh --host 192.168.0.33 --auth true
+./setup.sh --host 192.168.0.33 --ssl true --auth true
 ```
 
 Or if you already edited `config/isi_mcp.env` manually:
@@ -297,7 +315,7 @@ For fully non-interactive setup, export all passwords before running:
 read -s -p 'Vault password: ' VAULT_PASSWORD && export VAULT_PASSWORD
 read -s -p 'Keycloak DB password: ' KEYCLOAK_DB_PASSWORD && export KEYCLOAK_DB_PASSWORD
 read -s -p 'Keycloak admin password: ' KEYCLOAK_ADMIN_PASSWORD && export KEYCLOAK_ADMIN_PASSWORD
-./setup.sh --host 192.168.0.33 --user root --pass secret --auth true
+./setup.sh --host 192.168.0.33 --user root --pass secret --ssl true --auth true
 ```
 
 **Subsequent starts** (vault already exists):
@@ -316,15 +334,15 @@ On first start, Keycloak initialises its database and imports the pre-configured
 
 ```bash
 # Check all services are healthy
-docker-compose ps
+docker compose ps
 
-# Confirm Keycloak OIDC discovery endpoint is responding
+# Confirm Keycloak OIDC discovery endpoint is responding (requires SSL=true)
 curl -sk https://localhost/auth/realms/powerscale/.well-known/openid-configuration | jq .issuer
-# Expected: "http://keycloak:8080/auth/realms/powerscale"
+# Expected: "https://localhost/auth/realms/powerscale"
 
 # Confirm MCP server advertises the auth server (RFC 9728)
 curl -sk https://localhost/mcp/.well-known/oauth-protected-resource | jq .
-# Expected: { "resource": "...", "authorization_servers": [...] }
+# Expected: { "resource": "...", "authorization_servers": ["https://localhost/auth/realms/powerscale"] }
 
 # Confirm unauthenticated requests are rejected
 curl -sk -o /dev/null -w "%{http_code}" -X POST https://localhost/mcp \
@@ -343,7 +361,7 @@ Create at least one user before configuring MCP clients — you'll need credenti
 
 #### Local Users
 
-In the Keycloak admin console (https://localhost/auth/admin/):
+In the Keycloak admin console at `https://localhost/auth/admin/` (SSL=true — the required mode for auth):
 
 1. Select the **powerscale** realm
 2. Go to **Users → Add user** → fill in username → **Save**
@@ -443,16 +461,13 @@ The `playbooks/` directory is already bind-mounted to the host (`./playbooks` in
 **Starting the server in IaC mode:**
 
 ```bash
-export VAULT_PASSWORD=$(read -s -p 'Enter your password: ' pwd && echo $pwd)
 export IAC_MODE=true
-docker-compose up -d
+./start.sh
 ```
 
-Or set it permanently in a `.env` file at the repository root:
+`start.sh` passes `IAC_MODE` to the container and handles SSL/auth profiles automatically.
 
-```bash
-echo "IAC_MODE=true" >> .env
-```
+To make IaC mode permanent, add it to the `environment:` block in `docker-compose.yml` (it is already listed there, defaulting to empty):
 
 > **Security note**: Rendered playbooks contain connection parameters (host, port, SSL setting) but never credentials. API credentials are injected by `ansible-runner` at execution time via `extravars` and never written to disk.
 

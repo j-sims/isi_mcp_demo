@@ -1,12 +1,29 @@
 # Connecting to LLM Clients
 
-The PowerScale MCP server is accessed via an nginx reverse proxy at `https://localhost`. The proxy provides TLS termination, rate limiting, and security headers. Configuration varies by client.
+## Server URL
 
-## Trusting the Server Certificate
+The URL to use depends on whether SSL is enabled in `config/isi_mcp.env`:
 
-The server uses a local CA to sign its TLS certificate. MCP clients will refuse to connect until the CA certificate is trusted on the client machine. This is a one-time setup step.
+| Mode | Default port | Client URL |
+|---|---|---|
+| `SSL=false` (default) | 80 | `http://localhost/mcp` |
+| `SSL=true` | 443 | `https://localhost/mcp` |
 
-`generate-certs.sh` (run by `setup.sh`) creates two files in `nginx/certs/`:
+When `SSL=false`, connect directly to the MCP server over HTTP — no nginx, no certificates, no trust setup. This is the default mode and requires no additional steps beyond running `./setup.sh`.
+
+When `SSL=true`, traffic flows through an nginx reverse proxy with TLS. Clients must trust the CA certificate before they can connect (see below).
+
+---
+
+## SSL=false (Default) — No Certificate Setup Needed
+
+Connect your client using `http://localhost/mcp` (or `http://<server-ip>/mcp` if accessing remotely). Skip the certificate trust section below.
+
+## SSL=true — Trusting the Server Certificate
+
+When SSL is enabled, the server uses a local CA to sign its TLS certificate. MCP clients will refuse to connect until the CA certificate is trusted on the client machine. This is a one-time setup step.
+
+`setup.sh --ssl true` (or `nginx/generate-certs.sh`) creates two files in `nginx/certs/`:
 - `ca.crt` — the local CA certificate (what clients must trust)
 - `server.crt` — the server certificate signed by that CA (used by nginx only)
 
@@ -47,6 +64,8 @@ sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keyc
 
 > **Port conflict**: If running k3s or other services that bind port 443 via iptables (e.g., Traefik), they will intercept connections before nginx receives them. Stop those services before starting this stack, or change the nginx port mapping in `docker-compose.yml`.
 
+---
+
 ## Claude Desktop
 
 Add to your Claude Desktop configuration file:
@@ -58,17 +77,22 @@ Add to your Claude Desktop configuration file:
 {
   "mcpServers": {
     "powerscale": {
-      "url": "https://localhost/mcp"
+      "url": "http://localhost/mcp"
     }
   }
 }
 ```
 
+Replace `http://localhost/mcp` with `https://localhost/mcp` if `SSL=true`.
+
 ## Claude Code (CLI)
 
 ```bash
+# HTTP (default)
+claude mcp add --transport http powerscale http://localhost/mcp
+
+# HTTPS (SSL=true)
 claude mcp add --transport http powerscale https://localhost/mcp
-claude --agent PowerscaleAgent --agents '{"PowerscaleAgent": {"description": "Interacts with the MCP server using detailed context", "prompt": "You are a knowledgeable assistant for managing a Powerscale Cluster.", "context": "CONTEXT.md"}}'
 ```
 
 ## Cursor
@@ -77,7 +101,7 @@ Open **Settings > MCP** and add a new server:
 
 - **Name**: `powerscale`
 - **Type**: `sse`
-- **URL**: `https://localhost/sse`
+- **URL**: `http://localhost/sse` (or `https://localhost/sse` if SSL=true)
 
 ## Windsurf
 
@@ -87,11 +111,13 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 {
   "mcpServers": {
     "powerscale": {
-      "serverUrl": "https://localhost/sse"
+      "serverUrl": "http://localhost/sse"
     }
   }
 }
 ```
+
+Replace `http://localhost/sse` with `https://localhost/sse` if `SSL=true`.
 
 ## Continue.dev (VS Code / JetBrains)
 
@@ -100,18 +126,22 @@ Add to your Continue configuration (`~/.continue/config.yaml`):
 ```yaml
 mcpServers:
   - name: powerscale
-    url: https://localhost/mcp
+    url: http://localhost/mcp
 ```
+
+Replace `http://localhost/mcp` with `https://localhost/mcp` if `SSL=true`.
 
 ## Open WebUI
 
 Navigate to **Workspace > Tools > Add MCP Server**:
 
-- **URL**: `https://localhost/sse`
+- **URL**: `http://localhost/sse` (or `https://localhost/sse` if SSL=true)
 
 ## Generic MCP Client
 
 Any MCP-compatible client can connect using the server's HTTP+SSE transport:
 
-- **SSE endpoint**: `https://localhost/sse`
-- **MCP endpoint**: `https://localhost/mcp`
+| Mode | MCP endpoint | SSE endpoint |
+|---|---|---|
+| `SSL=false` (default) | `http://localhost/mcp` | `http://localhost/sse` |
+| `SSL=true` | `https://localhost/mcp` | `https://localhost/sse` |

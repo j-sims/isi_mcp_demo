@@ -13,6 +13,10 @@ cat VERSION
 **Via the running server's HTTP endpoint:**
 
 ```bash
+# SSL=false (default)
+curl http://localhost/version
+
+# SSL=true
 curl -sk https://localhost/version
 ```
 
@@ -93,10 +97,12 @@ git pull
 After startup, confirm the server is running the new version:
 
 ```bash
-# Check the server is healthy
-curl -sk https://localhost/health
+# SSL=false (default)
+curl http://localhost/health
+curl http://localhost/version
 
-# Confirm the version
+# SSL=true
+curl -sk https://localhost/health
 curl -sk https://localhost/version
 ```
 

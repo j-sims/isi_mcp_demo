@@ -62,7 +62,7 @@ Regenerate after a hostname/IP change, or when the certificate is about to expir
 
 ```bash
 nginx/generate-certs.sh --force
-docker-compose restart nginx
+docker compose restart nginx
 ```
 
 `--force` overwrites existing certificates. Without it, the script exits immediately if certificates already exist.
@@ -101,7 +101,7 @@ For production deployments, replace the auto-generated certificates with certifi
 3. Restart nginx to pick up the new certificate:
 
    ```bash
-   docker-compose restart nginx
+   docker compose restart nginx
    ```
 
 4. Verify the certificate is being served:
@@ -140,7 +140,7 @@ nginx supports chained PEM certificates natively.
 2. Send nginx a reload signal (reloads configuration without dropping active connections):
 
    ```bash
-   docker-compose exec nginx nginx -s reload
+   docker compose exec nginx nginx -s reload
    ```
 
 3. Verify the new certificate is live:
@@ -154,7 +154,7 @@ nginx supports chained PEM certificates natively.
 - [ ] New certificate is valid (`-dates` shows future `notAfter`)
 - [ ] SANs cover all hostnames and IPs clients connect from
 - [ ] Clients trust the new issuing CA (update `NODE_EXTRA_CA_CERTS` if the CA changed)
-- [ ] nginx loaded the new certificate (`docker-compose logs nginx` shows no errors)
+- [ ] nginx loaded the new certificate (`docker compose logs nginx` shows no errors)
 
 ---
 
@@ -219,7 +219,7 @@ Fix: delete `nginx/certs/` and regenerate:
 ```bash
 rm -rf nginx/certs/
 nginx/generate-certs.sh
-docker-compose restart nginx
+docker compose restart nginx
 ```
 
 ### nginx fails to start / "no such file or directory" for cert
@@ -232,7 +232,7 @@ Development server certificates expire after 365 days. Regenerate:
 
 ```bash
 nginx/generate-certs.sh --force
-docker-compose restart nginx
+docker compose restart nginx
 ```
 
 ### SANs do not include the hostname I am connecting from
@@ -241,7 +241,7 @@ Regenerate the certificate on the server host so the new hostname or IP is detec
 
 ```bash
 nginx/generate-certs.sh --force
-docker-compose restart nginx
+docker compose restart nginx
 ```
 
 To add a specific hostname that `hostname -I` does not detect (e.g. a DNS alias), edit `nginx/generate-certs.sh` and append to the `SAN` variable before running:

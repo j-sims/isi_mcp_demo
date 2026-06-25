@@ -105,6 +105,8 @@ Nginx rate-limits requests to the MCP endpoints at 10 requests/second per client
 
 By default the server runs without client authentication (suitable for local or private-network deployments). For environments exposed beyond a trusted network, **FastMCP-native OAuth 2.1 authentication** can be enabled to require a valid identity before any MCP tool can be invoked.
 
+> **Authentication requires `SSL=true`.** Keycloak (the identity provider) is only reachable through the nginx reverse proxy at `/auth/`. nginx runs only when `SSL=true`. The combination `AUTH_ENABLED=true` + `SSL=false` is not supported.
+
 ### Architecture
 
 ```
