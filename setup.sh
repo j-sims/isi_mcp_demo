@@ -756,51 +756,65 @@ if docker volume ls 2>/dev/null | grep -q "$KEYCLOAK_DB_VOLUME"; then
     KEYCLOAK_VOLUME_EXISTS=true
 fi
 
-# If either exists, prompt user
-if [[ "$VAULT_EXISTS" == true ]] || [[ "$KEYCLOAK_VOLUME_EXISTS" == true ]]; then
-    EXISTING_STATE=""
-    [[ "$VAULT_EXISTS" == true ]] && EXISTING_STATE="${EXISTING_STATE}  • vault.yml (encrypted credentials)\n"
-    [[ "$KEYCLOAK_VOLUME_EXISTS" == true ]] && EXISTING_STATE="${EXISTING_STATE}  • keycloak-db-data (database volume)\n"
-
-    warn "Existing setup detected:\n${EXISTING_STATE}"
+# Prompt user based on what exists
+if [[ "$VAULT_EXISTS" == true && "$KEYCLOAK_VOLUME_EXISTS" == true ]]; then
+    # Both exist — offer to keep everything
+    warn "Existing setup detected:\n  • vault.yml (encrypted credentials)\n  • keycloak-db-data (database volume)\n"
     read -rp "Keep existing setup and skip credential setup? [Y/n]: " KEEP_SETUP
 
     if [[ "$KEEP_SETUP" != "n" && "$KEEP_SETUP" != "N" ]]; then
         ok "Keeping existing setup — skipping credential setup."
         SKIP_SETUP=true
     else
-        # User wants to overwrite — delete existing setup
         info "Removing existing setup..."
-
-        # Delete vault directory if it exists (removes vault.yml + any *.pem files)
-        if [[ "$VAULT_EXISTS" == true ]]; then
-            rm -rf "$VAULT_DIR"
-            ok "Removed vault directory"
-        fi
-
-        # Remove cluster cert PEM files (in case vault was deleted separately)
+        rm -rf "$VAULT_DIR"
         rm -f "${VAULT_DIR}"/*.pem 2>/dev/null || true
-
-        # Remove TLS certs so setup.sh generates fresh ones
         if [[ -d "${SCRIPT_DIR}/nginx/certs" ]]; then
             rm -rf "${SCRIPT_DIR}/nginx/certs"
             ok "Removed nginx/certs (will regenerate)"
         fi
-
-        # Remove rendered playbooks from prior run
         rm -f "${SCRIPT_DIR}/playbooks"/*.yml 2>/dev/null || true
-
-        # Stop containers and remove volume
-        if [[ "$KEYCLOAK_VOLUME_EXISTS" == true ]]; then
-            info "Stopping containers..."
-            $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" down 2>/dev/null || true
-
-            info "Removing keycloak database volume..."
-            docker volume rm "$KEYCLOAK_DB_VOLUME" 2>/dev/null || warn "Could not remove volume (may be in use)"
-            ok "Removed keycloak-db-data"
-        fi
-
+        info "Stopping containers..."
+        $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" down 2>/dev/null || true
+        info "Removing keycloak database volume..."
+        docker volume rm "$KEYCLOAK_DB_VOLUME" 2>/dev/null || warn "Could not remove volume (may be in use)"
         ok "Existing setup cleared — proceeding with fresh installation"
+    fi
+
+elif [[ "$VAULT_EXISTS" == true ]]; then
+    # Only vault exists — offer to keep it
+    warn "Existing setup detected:\n  • vault.yml (encrypted credentials)\n"
+    read -rp "Keep existing vault and skip credential setup? [Y/n]: " KEEP_SETUP
+
+    if [[ "$KEEP_SETUP" != "n" && "$KEEP_SETUP" != "N" ]]; then
+        ok "Keeping existing vault — skipping credential setup."
+        SKIP_SETUP=true
+    else
+        info "Removing existing vault..."
+        rm -rf "$VAULT_DIR"
+        rm -f "${VAULT_DIR}"/*.pem 2>/dev/null || true
+        if [[ -d "${SCRIPT_DIR}/nginx/certs" ]]; then
+            rm -rf "${SCRIPT_DIR}/nginx/certs"
+            ok "Removed nginx/certs (will regenerate)"
+        fi
+        rm -f "${SCRIPT_DIR}/playbooks"/*.yml 2>/dev/null || true
+        ok "Vault removed — proceeding with fresh installation"
+    fi
+
+elif [[ "$KEYCLOAK_VOLUME_EXISTS" == true ]]; then
+    # Volume exists but vault is missing — credentials must be reconfigured
+    warn "Keycloak database volume found but vault.yml is missing."
+    warn "Credentials must be configured again."
+    echo ""
+    read -rp "Keep the existing Keycloak database volume? [Y/n]: " KEEP_VOL
+
+    if [[ "$KEEP_VOL" != "n" && "$KEEP_VOL" != "N" ]]; then
+        ok "Keeping Keycloak volume — proceeding with credential setup."
+    else
+        info "Removing Keycloak database volume..."
+        $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" down 2>/dev/null || true
+        docker volume rm "$KEYCLOAK_DB_VOLUME" 2>/dev/null || warn "Could not remove volume (may be in use)"
+        ok "Removed keycloak-db-data — proceeding with fresh installation"
     fi
 fi
 
