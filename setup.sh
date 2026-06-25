@@ -61,12 +61,13 @@ Required for setup (prompted interactively if not provided):
   --pass PASS         Cluster admin password
 
 Optional for setup:
-  --port PORT         API port (default: 8080)
+  --port PORT         Server listen port (default: 80 for HTTP, 443 for HTTPS)
+  --api-port PORT     Cluster PAPI port (default: 8080)
   --user USER         Cluster username (prompted with 'root' as default)
   --name NAME         Cluster label in vault.yml (default: powerscale)
   --auth true|false   Enable OAuth authentication via Keycloak (default: false)
   --ssl true|false    Enable HTTPS via nginx with TLS (default: false; auto-enabled when --auth true)
-  --listen-port PORT  Server listen port (default: 80 for HTTP, 443 for HTTPS)
+  --listen-port PORT  Server listen port — alias for --port
   --no-cache          Force rebuild Docker image without using cached layers
   -h, --help          Show this help message
 
@@ -644,7 +645,8 @@ NO_CACHE=false
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --host)         CLUSTER_HOST="$2"; shift 2 ;;
-        --port)         CLUSTER_PORT="$2"; shift 2 ;;
+        --port)         LISTEN_PORT_ARG="$2"; shift 2 ;;
+        --api-port)     CLUSTER_PORT="$2"; shift 2 ;;
         --user)         CLUSTER_USER="$2"; shift 2 ;;
         --pass)         CLUSTER_PASS="$2"; shift 2 ;;
         --name)         CLUSTER_NAME="$2"; shift 2 ;;
