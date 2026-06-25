@@ -657,11 +657,14 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Auto-enable SSL when auth is requested and --ssl was not explicitly set.
-# Keycloak auth requires nginx, which is only started with the ssl profile.
-if [[ "$AUTH_ARG" == "true" && "$SSL_ARG_EXPLICIT" == "false" ]]; then
+# Auth requires nginx, which is only started with the ssl profile.
+if [[ "$AUTH_ARG" == "true" ]]; then
+    if [[ "$SSL_ARG_EXPLICIT" == "true" && "$SSL_ARG" == "false" ]]; then
+        fail "--auth true requires SSL (nginx). --ssl false is not compatible with --auth true."
+        exit 1
+    fi
     SSL_ARG="true"
-    info "Auto-enabling SSL: Keycloak authentication requires nginx (use --ssl false to override)"
+    [[ "$SSL_ARG_EXPLICIT" == "false" ]] && info "Auto-enabling SSL: Keycloak authentication requires nginx"
 fi
 
 # When --listen-port is not given, default the port for the selected mode
