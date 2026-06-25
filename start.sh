@@ -14,6 +14,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
 REBOOT=false
 
+# Detect docker compose command (v2 plugin preferred over standalone v1)
+if docker compose version &>/dev/null 2>&1; then
+    COMPOSE_CMD="docker compose"
+elif command -v docker-compose &>/dev/null; then
+    COMPOSE_CMD="docker-compose"
+else
+    echo "ERROR: docker-compose is not available."
+    echo "Install Docker Compose: https://docs.docker.com/compose/install/"
+    exit 1
+fi
+
 # ---------------------------------------------------------------------------
 # Parse arguments
 # ---------------------------------------------------------------------------
@@ -33,20 +44,10 @@ for arg in "$@"; do
 done
 
 # ---------------------------------------------------------------------------
-# Ensure TLS certificates exist before starting nginx
+# Ensure TLS certificates exist when SSL=true (checked after env init below)
 # ---------------------------------------------------------------------------
 CERT_SCRIPT="${SCRIPT_DIR}/nginx/generate-certs.sh"
 CERT_DIR="${SCRIPT_DIR}/nginx/certs"
-if [ ! -f "${CERT_DIR}/server.crt" ] || [ ! -f "${CERT_DIR}/server.key" ]; then
-    if [[ -x "$CERT_SCRIPT" ]]; then
-        echo "TLS certificates not found — generating..."
-        "$CERT_SCRIPT"
-    else
-        echo "ERROR: nginx/generate-certs.sh not found and TLS certs are missing."
-        echo "Run nginx/generate-certs.sh manually or place cert files in nginx/certs/."
-        exit 1
-    fi
-fi
 
 # ---------------------------------------------------------------------------
 # Initialize config env files from .env.sample if they don't exist yet
@@ -60,9 +61,30 @@ for _sample in "${SCRIPT_DIR}/config/"*.env.sample; do
     fi
 done
 
-# Export PORT so docker-compose can substitute it in the nginx port binding
+# Read PORT and SSL from config; export the right port var for docker-compose
 PORT=$(grep '^PORT=' "${SCRIPT_DIR}/config/isi_mcp.env" 2>/dev/null | cut -d= -f2- | tr -d ' ')
-export PORT="${PORT:-443}"
+PORT="${PORT:-80}"
+SSL=$(grep '^SSL=' "${SCRIPT_DIR}/config/isi_mcp.env" 2>/dev/null | cut -d= -f2- | tr -d ' ')
+SSL="${SSL:-false}"
+if [[ "$SSL" == "true" ]]; then
+    export HTTPS_PORT="$PORT"
+else
+    export PORT="$PORT"
+fi
+
+# Ensure TLS certificates exist when SSL=true
+if [[ "$SSL" == "true" ]]; then
+    if [ ! -f "${CERT_DIR}/server.crt" ] || [ ! -f "${CERT_DIR}/server.key" ]; then
+        if [[ -x "$CERT_SCRIPT" ]]; then
+            echo "TLS certificates not found — generating..."
+            "$CERT_SCRIPT"
+        else
+            echo "ERROR: nginx/generate-certs.sh not found and TLS certs are missing."
+            echo "Run nginx/generate-certs.sh manually or place cert files in nginx/certs/."
+            exit 1
+        fi
+    fi
+fi
 
 # ---------------------------------------------------------------------------
 # Detect whether authentication is enabled in config/isi_mcp.env
@@ -104,7 +126,10 @@ fi
 # Uses the already-built isi_mcp image so no host-side ansible is needed.
 _vault_get_keycloak() {
     local key="$1"
-    docker-compose -f "$COMPOSE_FILE" run --rm --no-deps \
+    local _raw
+    # Use a unique line-prefix marker so grep can isolate vault output even if
+    # docker compose prints container lifecycle messages to stdout on this platform.
+    _raw=$($COMPOSE_CMD -f "$COMPOSE_FILE" run --rm --no-deps \
         -e VAULT_PASSWORD \
         isi_mcp python3 -c "
 import os, yaml
@@ -113,10 +138,11 @@ pwd = os.environ.get('VAULT_PASSWORD', '').encode()
 vault = VaultLib([('default', VaultSecret(pwd))])
 try:
     data = yaml.safe_load(vault.decrypt(open('/app/vault/vault.yml').read()))
-    print(data.get('keycloak', {}).get('$key', ''), end='')
+    print('__VAULT__' + str(data.get('keycloak', {}).get('$key', '')), end='')
 except Exception:
-    pass
-" 2>/dev/null
+    print('__VAULT__', end='')
+") || true
+    printf '%s' "$_raw" | grep -o '__VAULT__.*' | sed 's/^__VAULT__//'
 }
 
 if [[ "$AUTH_ENABLED" == true ]]; then
@@ -151,12 +177,19 @@ else
     export KEYCLOAK_ADMIN_PASSWORD=""
 fi
 
+# Add ssl profile when SSL=true
+[[ "$SSL" == "true" ]] && COMPOSE_PROFILES="$COMPOSE_PROFILES --profile ssl"
+
+# Build compose file list: always base, plus http.yml overlay when SSL=false
+COMPOSE_FILES="-f ${SCRIPT_DIR}/docker-compose.yml"
+[[ "$SSL" == "false" ]] && COMPOSE_FILES="$COMPOSE_FILES -f ${SCRIPT_DIR}/docker-compose.http.yml"
+
 # ---------------------------------------------------------------------------
 # Start services
 # ---------------------------------------------------------------------------
 if [[ "$REBOOT" == true ]]; then
     echo "Stopping existing services..."
-    docker-compose -f "$COMPOSE_FILE" $COMPOSE_PROFILES down
+    $COMPOSE_CMD $COMPOSE_FILES $COMPOSE_PROFILES down
     echo
 fi
 
@@ -164,6 +197,6 @@ echo "Starting services..."
 # Remove any stopped containers before starting to avoid a docker-compose 1.29.2
 # bug where it looks up 'ContainerConfig' from old container image metadata —
 # a field dropped in newer Docker Engine versions.
-docker-compose -f "$COMPOSE_FILE" $COMPOSE_PROFILES rm -sf 2>/dev/null || true
-docker-compose -f "$COMPOSE_FILE" $COMPOSE_PROFILES up -d --build
+$COMPOSE_CMD $COMPOSE_FILES $COMPOSE_PROFILES rm -sf 2>/dev/null || true
+$COMPOSE_CMD $COMPOSE_FILES $COMPOSE_PROFILES up -d --build
 echo "Done. Services are running."

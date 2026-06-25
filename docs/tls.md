@@ -2,13 +2,29 @@
 
 ## Overview
 
-The PowerScale MCP Server always requires TLS. nginx listens on port 443 (HTTPS) and redirects all plain-HTTP traffic to HTTPS. There is no HTTP-only mode.
+The PowerScale MCP Server supports two transport modes, controlled by `SSL` in `config/isi_mcp.env`:
+
+| Mode | Default | How to set |
+|---|---|---|
+| `SSL=false` | **Yes** (default) | HTTP direct — no nginx, no certs required. isi_mcp listens on `PORT` (default 80). |
+| `SSL=true` | No | HTTPS via nginx — nginx terminates TLS on `PORT` (default 443), proxies to isi_mcp internally. |
+
+Switch modes via `setup.sh`:
+```bash
+./setup.sh --ssl true            # enable HTTPS (defaults to port 443)
+./setup.sh --ssl false           # revert to HTTP (defaults to port 80)
+./setup.sh --ssl true --listen-port 8443   # HTTPS on a non-standard port
+```
+
+Or edit `config/isi_mcp.env` directly and restart with `./start.sh`.
+
+**This guide covers the `SSL=true` (nginx/TLS) path.** If `SSL=false`, no certificates are needed and the sections below do not apply.
 
 There are two distinct TLS layers:
 
 | Layer | What it secures | Configured where |
 |---|---|---|
-| **Client → MCP server** (nginx) | Traffic between LLM clients and the server | `nginx/certs/` |
+| **Client → MCP server** (nginx) | Traffic between LLM clients and the server | `nginx/certs/` — only when `SSL=true` |
 | **MCP server → PowerScale cluster** (isilon SDK) | Traffic between the server and cluster APIs | `verify_ssl` in vault.yml |
 
 This guide covers the **client → MCP server** layer only. For cluster-side TLS, see `verify_ssl` in `vault.yml` (set `false` only for clusters with self-signed certificates).
@@ -32,8 +48,9 @@ All four files are gitignored — they are never committed to the repository.
 
 ### When certificates are generated
 
-- **`setup.sh`**: always calls `nginx/generate-certs.sh` during initial setup (skips if already present).
-- **`start.sh`**: checks for `server.crt` and `server.key` at startup and auto-generates if missing.
+- **`setup.sh`** (with `SSL=true`): calls `nginx/generate-certs.sh` during setup. If certificates already exist, you are prompted to regenerate or keep them. Pass `--ssl true` on the command line to enable SSL and trigger this flow.
+- **`start.sh`** (with `SSL=true`): checks for `server.crt` and `server.key` at startup and auto-generates if missing.
+- **`SSL=false`**: neither script generates certificates — nginx does not start.
 
 ### SANs included
 

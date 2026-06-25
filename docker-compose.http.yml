@@ -1,0 +1,4 @@
+services:
+  isi_mcp:
+    ports:
+      - "${PORT:-80}:8000"

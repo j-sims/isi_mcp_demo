@@ -39,6 +39,7 @@ class VaultManager:
         ).parent / "cluster_state.json"
 
         self._clusters: dict = {}
+        self._vault_extra: dict = {}
         self._selected: str | None = None
         self._selected_last_read: float = 0.0
         self._vault_last_mtime: float = 0.0
@@ -80,6 +81,7 @@ class VaultManager:
             data = yaml.safe_load(encrypted_data)
 
         self._clusters = data.get("clusters", {})
+        self._vault_extra = {k: v for k, v in data.items() if k != "clusters"}
 
         # Record mtime so _refresh_vault() can detect future changes
         try:
@@ -101,7 +103,7 @@ class VaultManager:
         Requires:
             VAULT_PASSWORD environment variable must be set.
         """
-        plaintext = yaml.dump({'clusters': self._clusters}, default_flow_style=False).encode()
+        plaintext = yaml.dump({'clusters': self._clusters, **self._vault_extra}, default_flow_style=False).encode()
         password_bytes = self._get_vault_password()
         vault = VaultLib(secrets=[("default", VaultSecret(password_bytes))])
         encrypted = vault.encrypt(plaintext)
@@ -195,6 +197,7 @@ class VaultManager:
     def reload(self):
         """Re-read and decrypt the vault file. Called when vault may have changed."""
         self._clusters = {}
+        self._vault_extra = {}
         self._selected = None
         self._vault_last_mtime = 0.0
         self._vault_last_check = 0.0

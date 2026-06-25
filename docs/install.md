@@ -4,9 +4,22 @@
 
 ### 1. Prerequisites
 
-- **Docker and Docker Compose**: Both the standalone `docker-compose` tool (v1.x) and the `docker compose` plugin (v2) are supported. The scripts detect which is available automatically.
-  - Verify Docker is installed: `docker --version`
-  - Verify Compose is available: `docker compose version` or `docker-compose --version`
+- **Docker and Docker Compose**: Two forms exist and either is acceptable:
+  - `docker compose` — the v2 Compose plugin, bundled with **Docker Desktop** and recent **Docker Engine** installs (recommended)
+  - `docker-compose` — the older standalone v1 tool, available via most OS package managers
+
+  The scripts in this repo (`setup.sh`, `start.sh`, `stop.sh`) detect which form is available automatically and use whichever is found.
+
+  > **If you have neither**, install Docker and Compose for your platform:
+  > - **Docker Desktop** (Mac / Windows / Linux): includes both Docker Engine and the `docker compose` plugin — https://docs.docker.com/desktop/
+  > - **Linux (engine only)**: install Docker Engine, then add the Compose plugin via your package manager (e.g. `apt install docker-compose-plugin`) or install the standalone tool (`apt install docker-compose`) — https://docs.docker.com/compose/install/
+
+  Verify what you have:
+  ```bash
+  docker --version            # Docker Engine
+  docker compose version      # v2 plugin (preferred)
+  docker-compose --version    # v1 standalone (also fine)
+  ```
 
 ### 2. Clone the Repository
 
@@ -24,10 +37,32 @@ cd isi_mcp_demo
 The script prompts for your cluster host, credentials, and a vault encryption password, then:
 - Creates and encrypts `vault.yml` with your cluster credentials (Ansible runs inside Docker — no Ansible needed on the host)
 - Extracts the cluster's TLS certificate automatically for SSL verification
-- Generates self-signed TLS certificates for the nginx reverse proxy
 - Builds the Docker image and starts the MCP server in the background
 
-The MCP server will be available at `https://localhost/mcp` via nginx.
+By default the server runs in **HTTP mode** (no nginx, no TLS certs required). The MCP server is available at `http://localhost:80/mcp`.
+
+**To enable HTTPS (SSL=true):**
+
+Pass `--ssl true` to setup.sh — it generates self-signed TLS certificates via nginx and updates `config/isi_mcp.env`. The listen port defaults to 443 when SSL is enabled:
+
+```bash
+./setup.sh --host 192.168.0.33 --ssl true
+# Server available at https://localhost:443/mcp
+```
+
+Use `--listen-port` to override the port for either mode:
+
+```bash
+./setup.sh --host 192.168.0.33 --ssl true --listen-port 8443
+./setup.sh --host 192.168.0.33 --listen-port 8080   # HTTP on non-standard port
+```
+
+These flags write to `config/isi_mcp.env` and persist across restarts. You can also edit the file directly:
+
+```
+SSL=true
+PORT=443
+```
 
 **Non-interactive (for scripting — use env vars to avoid shell history):**
 
@@ -98,7 +133,7 @@ Non-secret configuration is stored as flat `KEY=VALUE` files in the top-level `c
 
 | File | Service | Purpose |
 |---|---|---|
-| `config/isi_mcp.env` | isi_mcp | App settings: `VAULT_FILE`, `AUTH_ENABLED`, `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `MCP_PUBLIC_URL` |
+| `config/isi_mcp.env` | isi_mcp / nginx | App settings: `PORT`, `SSL`, `AUTH_ENABLED`, `VAULT_FILE`, `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `MCP_PUBLIC_URL`. `PORT` and `SSL` are also read by `setup.sh` and `start.sh` to control the listen port and nginx. |
 | `config/keycloak.env` | keycloak | Non-secret Keycloak settings: DB connection, hostname, HTTP port, admin username |
 | `config/keycloak-db.env` | keycloak-db | Non-secret Postgres settings: `POSTGRES_DB`, `POSTGRES_USER` |
 
@@ -117,27 +152,49 @@ MCP_PUBLIC_URL=https://powerscale-mcp.example.com
 
 ## TLS Certificates
 
-The setup script generates self-signed certificates automatically on first run. The `start.sh` script also checks for missing certificates and auto-generates them if needed.
+TLS certificates are only relevant when `SSL=true` in `config/isi_mcp.env`. When SSL is enabled, `setup.sh` generates self-signed certificates during setup, and `start.sh` auto-generates them if missing.
+
+When running `setup.sh --ssl true`, if certificates already exist you will be prompted to regenerate them or keep them. To force regeneration manually:
+
+```bash
+nginx/generate-certs.sh --force
+docker compose restart nginx
+```
 
 For full details on all certificate options — including auto-generated development certificates, bring-your-own CA-signed certificates, certificate rotation, and client trust configuration — see **[TLS Certificate Guide](tls.md)**.
 
-**Quick reference:**
+**Quick reference (SSL=true only):**
 
 | Task | Command |
 |---|---|
-| Regenerate dev certs (e.g. after hostname change) | `nginx/generate-certs.sh --force && docker-compose restart nginx` |
-| Install a CA-signed cert | Copy `server.crt` and `server.key` into `nginx/certs/`, then `docker-compose restart nginx` |
+| Regenerate dev certs (e.g. after hostname change) | `nginx/generate-certs.sh --force && docker compose restart nginx` |
+| Install a CA-signed cert | Copy `server.crt` and `server.key` into `nginx/certs/`, then `docker compose restart nginx` |
 | Trust CA in Node.js / Claude Code | `export NODE_EXTRA_CA_CERTS=/path/to/nginx/certs/ca.crt` |
 
 ## Endpoints
 
-| Endpoint | Protocol | Description |
-|---|---|---|
-| `https://localhost/mcp` | Streamable HTTP | Primary MCP endpoint (via nginx) |
-| `https://localhost/sse` | SSE | Legacy SSE endpoint (via nginx) |
-| `https://localhost/health` | HTTP GET | Health check (returns JSON) |
-| `https://localhost/version` | HTTP GET | Server version (returns JSON) |
-| `https://localhost/auth/` | HTTP | Keycloak IdP (OAuth flows, JWKS, admin console — when auth is enabled) |
+### SSL=false (default — HTTP direct)
+
+| Endpoint | Description |
+|---|---|
+| `http://localhost:PORT/mcp` | Primary MCP endpoint (Streamable HTTP) |
+| `http://localhost:PORT/sse` | Legacy SSE endpoint |
+| `http://localhost:PORT/health` | Health check (returns JSON) |
+| `http://localhost:PORT/version` | Server version (returns JSON) |
+
+`PORT` defaults to 80. Set via `--listen-port` or `PORT=` in `config/isi_mcp.env`.
+
+### SSL=true — HTTPS via nginx
+
+| Endpoint | Description |
+|---|---|
+| `https://localhost:PORT/mcp` | Primary MCP endpoint (via nginx, TLS) |
+| `https://localhost:PORT/sse` | Legacy SSE endpoint (via nginx, TLS) |
+| `https://localhost:PORT/health` | Health check (returns JSON) |
+| `https://localhost:PORT/version` | Server version (returns JSON) |
+| `https://localhost:PORT/auth/` | Keycloak IdP (when auth is enabled) |
+
+`PORT` defaults to 443 when SSL=true.
 
 ## Managing Vault Credentials
 

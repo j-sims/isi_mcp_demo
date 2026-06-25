@@ -71,15 +71,19 @@ The `ca_bundle` field takes precedence — when present, the server validates th
 
 ### Client-to-Server TLS (Nginx Reverse Proxy)
 
-The server ships with an nginx reverse proxy that terminates TLS for all client connections:
+SSL/TLS is **optional** and **disabled by default** (`SSL=false` in `config/isi_mcp.env`). When disabled, the isi_mcp container is exposed directly over HTTP on `PORT` (default 80) — no nginx, no certificates required.
+
+Enable TLS via `setup.sh --ssl true` or by setting `SSL=true` in `config/isi_mcp.env`. When enabled:
 
 - `./setup.sh` and `./nginx/generate-certs.sh` generate a **local CA** (`ca.crt`) and a **server certificate** (`server.crt`) signed by that CA
 - Certificates are stored in `nginx/certs/` (gitignored — never committed)
 - Clients must trust `ca.crt` (not `server.crt`) — see [Client Integration](clients.md) for instructions. Node.js-based clients (Claude Code, VSCode extensions) require `NODE_EXTRA_CA_CERTS` pointing to `ca.crt`
 - For production, replace with certificates from your CA — clients will trust them automatically
 - nginx enforces TLS 1.2+ with strong cipher suites
-- nginx only listens on port 443 (HTTPS) — there is no HTTP listener; clients must connect directly to HTTPS
+- nginx listens on `PORT` (default 443 when `SSL=true`)
 - For step-by-step procedures (regeneration, bring-your-own cert, rotation, client trust setup), see **[TLS Certificate Guide](tls.md)**
+
+> **Recommendation**: use `SSL=true` for any deployment reachable beyond localhost or a trusted private network.
 
 ### Security Headers
 

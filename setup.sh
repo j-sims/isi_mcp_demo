@@ -63,8 +63,10 @@ Required for setup (prompted interactively if not provided):
 Optional for setup:
   --port PORT         API port (default: 8080)
   --user USER         Cluster username (prompted with 'root' as default)
-  --name NAME         Cluster label in vault.yml (default: isilon)
+  --name NAME         Cluster label in vault.yml (default: powerscale)
   --auth true|false   Enable OAuth authentication via Keycloak (default: false)
+  --ssl true|false    Enable HTTPS via nginx with TLS (default: false)
+  --listen-port PORT  Server listen port (default: 80 for HTTP, 443 for HTTPS)
   --no-cache          Force rebuild Docker image without using cached layers
   -h, --help          Show this help message
 
@@ -128,7 +130,7 @@ add-cluster
     --host HOST         Hostname or IP (required; https:// added automatically)
     --port PORT         API port (default: 8080)
     --user USER         Admin username (default: root)
-    --pass PASS         Admin password (prompted securely if not provided)
+    --pass              Admin password (flag — always prompted securely; never accepted as a CLI value)
 
 remove-cluster
   Remove a cluster from the vault. Cannot remove the currently selected cluster
@@ -160,8 +162,8 @@ Examples:
 
   # Non-interactive add (avoid shell history for passwords)
   read -s -p 'Vault password: ' VAULT_PASSWORD && export VAULT_PASSWORD
-  read -s -p 'Cluster password: ' CLUSTER_PASS
-  ./setup.sh add-cluster --name lab --host 172.16.10.10 --user root --pass "$CLUSTER_PASS"
+  ./setup.sh add-cluster --name lab --host 172.16.10.10 --user root --pass
+  # (cluster password is always prompted securely when --pass flag is given)
 
   # Remove a cluster
   ./setup.sh remove-cluster --name lab
@@ -324,7 +326,7 @@ else:
         print(f\"  {c['name']}: {c['host']}:{c['port']}  [{ssl}{ca}]{selected}\")
 print()
 print(f'Total: {len(clusters)} cluster(s)')
-" 2>/dev/null
+"
     echo ""
 }
 
@@ -341,7 +343,7 @@ do_add_cluster() {
             --host)    CLUSTER_HOST="${args[$((i+1))]}";  i=$((i+2)) ;;
             --port)    CLUSTER_PORT="${args[$((i+1))]}";  i=$((i+2)) ;;
             --user)    CLUSTER_USER="${args[$((i+1))]}";  i=$((i+2)) ;;
-            --pass)    CLUSTER_PASS="${args[$((i+1))]}";  i=$((i+2)) ;;
+            --pass)    i=$((i+1)) ;;
             -h|--help) show_cluster_mgmt_help; exit 0 ;;
             *) fail "Unknown argument: ${args[$i]}"; echo "Run ./setup.sh add-cluster --help for usage."; exit 1 ;;
         esac
@@ -360,11 +362,9 @@ do_add_cluster() {
         read -rp "Cluster username [root]: " CLUSTER_USER
         CLUSTER_USER="${CLUSTER_USER:-root}"
     fi
-    if [[ -z "$CLUSTER_PASS" ]]; then
-        read -rsp "Cluster password for ${CLUSTER_USER}@${CLUSTER_HOST}: " CLUSTER_PASS
-        echo
-        [[ -z "$CLUSTER_PASS" ]] && { fail "Cluster password is required."; exit 1; }
-    fi
+    read -rsp "Cluster password for ${CLUSTER_USER}@${CLUSTER_HOST}: " CLUSTER_PASS
+    echo
+    [[ -z "$CLUSTER_PASS" ]] && { fail "Cluster password is required."; exit 1; }
 
     _check_docker_prereqs
     _get_vault_pass_for_ops
@@ -423,7 +423,7 @@ ca_bundle  = os.environ.get('_ISI_CA') or None
 vm.add_cluster(name, host, port, username, password, verify_ssl, ca_bundle=ca_bundle)
 print(f'Cluster \"{name}\" added/updated in vault.')
 print(f'  Host: {host}:{port}  user: {username}  verify_ssl: {verify_ssl}' + (f'  ca_bundle: {ca_bundle}' if ca_bundle else ''))
-" 2>/dev/null
+"
 
     unset _ISI_NAME _ISI_HOST _ISI_PORT _ISI_USER _ISI_PASS _ISI_SSL _ISI_CA
     ok "Done. The running MCP server reloads the vault within 5 seconds."
@@ -484,7 +484,7 @@ if remaining:
     print(f'Remaining clusters: {remaining}')
 else:
     print('No clusters remain in vault.')
-" 2>/dev/null
+"
 
     # Also remove any associated cert file
     rm -f "${VAULT_DIR}/${CLUSTER_NAME}_cert.pem" 2>/dev/null || true
@@ -590,7 +590,7 @@ print('Current clusters:')
 for c in vm.list_clusters():
     sel = ' <-- selected' if c.get('selected') else ''
     print(f\"  {c['name']}: {c['host']}:{c['port']}{sel}\")
-" 2>/dev/null
+"
 
     unset _ISI_NAME _ISI_NEW_NAME _ISI_NEW_HOST _ISI_NEW_PORT _ISI_NEW_USER _ISI_NEW_PASS _ISI_NEW_SSL
     ok "Done. The running MCP server reloads the vault within 5 seconds."
@@ -625,10 +625,6 @@ for _sample in "${SCRIPT_DIR}/config/"*.env.sample; do
 done
 unset _sample _env
 
-# Export PORT so docker-compose can substitute it in the nginx port binding
-PORT=$(grep '^PORT=' "${SCRIPT_DIR}/config/isi_mcp.env" 2>/dev/null | cut -d= -f2- | tr -d ' ')
-export PORT="${PORT:-443}"
-
 # ---------------------------------------------------------------------------
 # Parse arguments
 # ---------------------------------------------------------------------------
@@ -638,35 +634,74 @@ CLUSTER_USER=""
 CLUSTER_PASS=""
 CLUSTER_NAME="powerscale"
 VAULT_PASS="${VAULT_PASSWORD:-}"
-AUTH_ARG=""
+AUTH_ARG="false"
+SSL_ARG="false"
+LISTEN_PORT_ARG=""
 NO_CACHE=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --host)       CLUSTER_HOST="$2"; shift 2 ;;
-        --port)       CLUSTER_PORT="$2"; shift 2 ;;
-        --user)       CLUSTER_USER="$2"; shift 2 ;;
-        --pass)       CLUSTER_PASS="$2"; shift 2 ;;
-        --name)       CLUSTER_NAME="$2"; shift 2 ;;
-        --auth)       AUTH_ARG="$2"; shift 2 ;;
-        --no-cache)   NO_CACHE=true; shift ;;
-        -h|--help)    show_help; exit 0 ;;
-        *)            fail "Unknown argument: $1"; echo "Run ./setup.sh --help for usage."; exit 1 ;;
+        --host)         CLUSTER_HOST="$2"; shift 2 ;;
+        --port)         CLUSTER_PORT="$2"; shift 2 ;;
+        --user)         CLUSTER_USER="$2"; shift 2 ;;
+        --pass)         CLUSTER_PASS="$2"; shift 2 ;;
+        --name)         CLUSTER_NAME="$2"; shift 2 ;;
+        --auth)         AUTH_ARG="$2"; shift 2 ;;
+        --ssl)          SSL_ARG="$2"; shift 2 ;;
+        --listen-port)  LISTEN_PORT_ARG="$2"; shift 2 ;;
+        --no-cache)     NO_CACHE=true; shift ;;
+        -h|--help)      show_help; exit 0 ;;
+        *)              fail "Unknown argument: $1"; echo "Run ./setup.sh --help for usage."; exit 1 ;;
     esac
 done
 
+# When --listen-port is not given, default the port for the selected mode
+# (443 for HTTPS, 80 for HTTP). User can override with --listen-port.
+if [[ -z "$LISTEN_PORT_ARG" ]]; then
+    if [[ "$SSL_ARG" == "true" ]]; then
+        LISTEN_PORT_ARG="443"
+    else
+        LISTEN_PORT_ARG="80"
+    fi
+fi
+
 # ---------------------------------------------------------------------------
-# Apply --auth argument to config/isi_mcp.env if provided
+# Apply CLI server-config args to config/isi_mcp.env (CLI takes precedence)
 # ---------------------------------------------------------------------------
 APP_CONFIG_EARLY="${SCRIPT_DIR}/config/isi_mcp.env"
-if [[ -n "$AUTH_ARG" ]]; then
-    if [[ "$AUTH_ARG" == "true" || "$AUTH_ARG" == "false" ]]; then
-        sed -i "s/^AUTH_ENABLED=.*/AUTH_ENABLED=${AUTH_ARG}/" "$APP_CONFIG_EARLY"
-        ok "Set AUTH_ENABLED=${AUTH_ARG} in config/isi_mcp.env"
+if [[ "$AUTH_ARG" == "true" || "$AUTH_ARG" == "false" ]]; then
+    sed -i "s/^AUTH_ENABLED=.*/AUTH_ENABLED=${AUTH_ARG}/" "$APP_CONFIG_EARLY"
+    ok "Set AUTH_ENABLED=${AUTH_ARG} in config/isi_mcp.env"
+else
+    fail "--auth must be 'true' or 'false' (got: ${AUTH_ARG})"
+    exit 1
+fi
+if [[ "$SSL_ARG" == "true" || "$SSL_ARG" == "false" ]]; then
+    sed -i "s/^SSL=.*/SSL=${SSL_ARG}/" "$APP_CONFIG_EARLY"
+    ok "Set SSL=${SSL_ARG} in config/isi_mcp.env"
+else
+    fail "--ssl must be 'true' or 'false' (got: ${SSL_ARG})"
+    exit 1
+fi
+if [[ -n "$LISTEN_PORT_ARG" ]]; then
+    if [[ "$LISTEN_PORT_ARG" =~ ^[0-9]+$ ]]; then
+        sed -i "s/^PORT=.*/PORT=${LISTEN_PORT_ARG}/" "$APP_CONFIG_EARLY"
+        ok "Set PORT=${LISTEN_PORT_ARG} in config/isi_mcp.env"
     else
-        fail "--auth must be 'true' or 'false' (got: ${AUTH_ARG})"
+        fail "--listen-port must be a number (got: ${LISTEN_PORT_ARG})"
         exit 1
     fi
+fi
+
+# Read effective PORT and SSL from config (after all CLI overrides applied above)
+PORT=$(grep '^PORT=' "$APP_CONFIG_EARLY" 2>/dev/null | cut -d= -f2- | tr -d ' ')
+PORT="${PORT:-80}"
+SSL=$(grep '^SSL=' "$APP_CONFIG_EARLY" 2>/dev/null | cut -d= -f2- | tr -d ' ')
+SSL="${SSL:-false}"
+if [[ "$SSL" == "true" ]]; then
+    export HTTPS_PORT="$PORT"
+else
+    export PORT="$PORT"
 fi
 
 # ---------------------------------------------------------------------------
@@ -847,6 +882,9 @@ if grep -qE '^AUTH_ENABLED=true' "$APP_CONFIG" 2>/dev/null; then
     fi
     COMPOSE_PROFILES="--profile auth"
 fi
+if [[ "$SSL" == "true" ]]; then
+    COMPOSE_PROFILES="$COMPOSE_PROFILES --profile ssl"
+fi
 
 # ---------------------------------------------------------------------------
 # Normalize host — ensure https:// prefix
@@ -858,48 +896,40 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Initialize cluster CA bundle variable (will be set during cert extraction)
+# Initialize variables set during cert extraction (SKIP_SETUP=false path)
 # ---------------------------------------------------------------------------
 CLUSTER_CA_BUNDLE=""
+VERIFY_SSL="true"
 
 # ---------------------------------------------------------------------------
-# Write plaintext vault.yml (will be encrypted in the next step)
-# ---------------------------------------------------------------------------
-if [[ "$SKIP_SETUP" == false ]]; then
-    mkdir -p "$VAULT_DIR"
-    {
-        cat << VAULT_EOF
-clusters:
-  ${CLUSTER_NAME}:
-    host: "${VAULT_HOST}"
-    port: ${CLUSTER_PORT}
-    username: ${CLUSTER_USER}
-    password: ${CLUSTER_PASS}
-    verify_ssl: true
-VAULT_EOF
-        if [[ -n "${KEYCLOAK_DB_PASSWORD:-}" ]]; then
-            cat << KEYCLOAK_EOF
-
-keycloak:
-  db_password: ${KEYCLOAK_DB_PASSWORD}
-  admin_password: ${KEYCLOAK_ADMIN_PASSWORD}
-KEYCLOAK_EOF
-        fi
-    } > "$VAULT_FILE"
-    chmod 600 "$VAULT_FILE"
-    ok "Created vault.yml (plaintext — will encrypt next)"
-fi
-
-# ---------------------------------------------------------------------------
-# Generate TLS certificates for nginx (if not already present)
+# Generate TLS certificates for nginx (only when SSL=true)
 # ---------------------------------------------------------------------------
 CERT_SCRIPT="${SCRIPT_DIR}/nginx/generate-certs.sh"
-if [[ -x "$CERT_SCRIPT" ]]; then
-    info "Checking TLS certificates..."
-    "$CERT_SCRIPT"
+CERT_DIR="${SCRIPT_DIR}/nginx/certs"
+if [[ "$SSL" == "true" ]]; then
+    if [[ -f "${CERT_DIR}/server.crt" && -f "${CERT_DIR}/server.key" ]]; then
+        warn "SSL certificates already exist in nginx/certs/."
+        read -rp "Regenerate certificates? [y/N]: " REGEN_CERTS
+        if [[ "$REGEN_CERTS" == "y" || "$REGEN_CERTS" == "Y" ]]; then
+            if [[ -x "$CERT_SCRIPT" ]]; then
+                "$CERT_SCRIPT" --force
+            else
+                warn "nginx/generate-certs.sh not found — keeping existing certificates."
+            fi
+        else
+            info "Keeping existing certificates."
+        fi
+    else
+        if [[ -x "$CERT_SCRIPT" ]]; then
+            info "Generating TLS certificates..."
+            "$CERT_SCRIPT"
+        else
+            warn "nginx/generate-certs.sh not found — skipping TLS cert generation."
+            warn "Place cert files in nginx/certs/ before starting with SSL=true."
+        fi
+    fi
 else
-    warn "nginx/generate-certs.sh not found — skipping TLS cert generation."
-    warn "Run nginx/generate-certs.sh manually before starting with HTTPS."
+    info "SSL=false — skipping TLS certificate generation."
 fi
 
 # ---------------------------------------------------------------------------
@@ -912,12 +942,34 @@ $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" build $BUILD_FLAG
 ok "Image built"
 
 # ---------------------------------------------------------------------------
+# Validate vault password early (existing-setup path only).
+# Fail fast with a clear message rather than a cryptic Python traceback buried
+# inside a later docker compose run call.
+# ---------------------------------------------------------------------------
+if [[ "$SKIP_SETUP" == true ]]; then
+    info "Validating vault password..."
+    if ! VAULT_PASSWORD="$VAULT_PASS" $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" \
+        run --rm --no-deps isi_mcp python3 -c "
+import os
+from ansible.parsing.vault import VaultLib, VaultSecret
+pwd = os.environ.get('VAULT_PASSWORD', '').encode()
+VaultLib([('default', VaultSecret(pwd))]).decrypt(open('/app/vault/vault.yml').read())
+print('vault ok')
+"; then
+        fail "Vault password is incorrect or vault is corrupted."
+        exit 1
+    fi
+fi
+
+# ---------------------------------------------------------------------------
 # If keeping an existing vault with auth enabled, read Keycloak credentials
 # from the vault using the vault password already collected above.
 # ---------------------------------------------------------------------------
 if [[ "$SKIP_SETUP" == true ]] && grep -qE '^AUTH_ENABLED=true' "$APP_CONFIG" 2>/dev/null \
         && [[ -z "${KEYCLOAK_DB_PASSWORD:-}" ]]; then
     info "Reading Keycloak credentials from vault..."
+    # Use unique line-prefix markers so grep can isolate vault output even if
+    # docker compose prints container lifecycle messages to stdout on this platform.
     _KC_CREDS=$(VAULT_PASSWORD="$VAULT_PASS" $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" \
         run --rm --no-deps isi_mcp python3 -c "
 import os, yaml, sys
@@ -927,19 +979,81 @@ vault = VaultLib([('default', VaultSecret(pwd))])
 with open('/app/vault/vault.yml') as f:
     data = yaml.safe_load(vault.decrypt(f.read()))
 kc = data.get('keycloak', {})
-print(kc.get('db_password', ''))
-print(kc.get('admin_password', ''))
-" 2>/dev/null) || true
-    KEYCLOAK_DB_PASSWORD=$(printf '%s\n' "$_KC_CREDS" | sed -n '1p')
-    KEYCLOAK_ADMIN_PASSWORD=$(printf '%s\n' "$_KC_CREDS" | sed -n '2p')
+print('__KC_DB__' + str(kc.get('db_password', '')))
+print('__KC_ADMIN__' + str(kc.get('admin_password', '')))
+") || true
+    KEYCLOAK_DB_PASSWORD=$(printf '%s\n' "$_KC_CREDS" | grep '^__KC_DB__' | head -1 | sed 's/^__KC_DB__//')
+    KEYCLOAK_ADMIN_PASSWORD=$(printf '%s\n' "$_KC_CREDS" | grep '^__KC_ADMIN__' | head -1 | sed 's/^__KC_ADMIN__//')
     export KEYCLOAK_DB_PASSWORD KEYCLOAK_ADMIN_PASSWORD
     unset _KC_CREDS
     if [[ -n "$KEYCLOAK_DB_PASSWORD" ]]; then
         ok "Keycloak credentials loaded from vault."
     else
-        warn "Keycloak credentials not found in vault — Keycloak may fail to start."
-        warn "Re-run './setup.sh' without an existing vault to reconfigure if needed."
+        warn "Keycloak credentials not found in vault (auth was added after initial setup)."
+        info "Please enter Keycloak passwords to add them to the vault now."
+        read -rsp "Keycloak database password (KEYCLOAK_DB_PASSWORD): " KEYCLOAK_DB_PASSWORD
+        echo
+        export KEYCLOAK_DB_PASSWORD
+        if [[ -z "$KEYCLOAK_DB_PASSWORD" ]]; then
+            fail "KEYCLOAK_DB_PASSWORD is required when AUTH_ENABLED=true."
+            exit 1
+        fi
+        read -rsp "Keycloak admin password (KEYCLOAK_ADMIN_PASSWORD): " KEYCLOAK_ADMIN_PASSWORD
+        echo
+        export KEYCLOAK_ADMIN_PASSWORD
+        if [[ -z "$KEYCLOAK_ADMIN_PASSWORD" ]]; then
+            fail "KEYCLOAK_ADMIN_PASSWORD is required when AUTH_ENABLED=true."
+            exit 1
+        fi
     fi
+fi
+
+# ---------------------------------------------------------------------------
+# Guard against Keycloak DB volume/password mismatch.
+#
+# If the user supplies a KEYCLOAK_DB_PASSWORD that differs from what was used
+# to initialise the Postgres volume, Keycloak will fail to connect to its
+# database. Detect this and offer to drop and recreate the volume.
+# ---------------------------------------------------------------------------
+if [[ "$SKIP_SETUP" == true ]] \
+    && grep -qE '^AUTH_ENABLED=true' "$APP_CONFIG" 2>/dev/null \
+    && [[ "$KEYCLOAK_VOLUME_EXISTS" == true ]] \
+    && [[ -n "${KEYCLOAK_DB_PASSWORD:-}" ]]; then
+
+    _VAULT_KC_DB=$(VAULT_PASSWORD="$VAULT_PASS" $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" \
+        run --rm --no-deps isi_mcp python3 -c "
+import os, yaml
+from ansible.parsing.vault import VaultLib, VaultSecret
+pwd = os.environ.get('VAULT_PASSWORD', '').encode()
+vault = VaultLib([('default', VaultSecret(pwd))])
+try:
+    data = yaml.safe_load(vault.decrypt(open('/app/vault/vault.yml').read()))
+    print('__VKC__' + str(data.get('keycloak', {}).get('db_password', '')), end='')
+except Exception:
+    print('__VKC__', end='')
+" 2>/dev/null) || true
+    _VAULT_KC_DB=$(printf '%s' "$_VAULT_KC_DB" | grep -o '__VKC__.*' | sed 's/^__VKC__//')
+
+    if [[ -n "$_VAULT_KC_DB" && "$_VAULT_KC_DB" != "$KEYCLOAK_DB_PASSWORD" ]]; then
+        warn "KEYCLOAK_DB_PASSWORD differs from the value stored in the vault."
+        warn "The Keycloak Postgres volume was initialised with the old password."
+        warn "Changing the password WITHOUT dropping the volume will cause Keycloak to fail to start."
+        echo ""
+        read -rp "Drop and recreate the Keycloak database volume (loses all realm data)? [y/N]: " _DROP_VOL
+        if [[ "$_DROP_VOL" == "y" || "$_DROP_VOL" == "Y" ]]; then
+            info "Stopping containers and removing Keycloak database volume..."
+            $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" down 2>/dev/null || true
+            docker volume rm "$KEYCLOAK_DB_VOLUME" 2>/dev/null \
+                || { fail "Could not remove volume. Stop all running containers first and retry."; exit 1; }
+            ok "Volume removed — Keycloak will be re-initialised with the new password."
+            KEYCLOAK_VOLUME_EXISTS=false
+        else
+            info "Keeping existing volume — reverting to the password stored in the vault."
+            KEYCLOAK_DB_PASSWORD="$_VAULT_KC_DB"
+            export KEYCLOAK_DB_PASSWORD
+        fi
+    fi
+    unset _VAULT_KC_DB _DROP_VOL
 fi
 
 # ---------------------------------------------------------------------------
@@ -960,9 +1074,6 @@ pwd = os.environ.get('VAULT_PASSWORD', '').encode()
 vault = VaultLib([('default', VaultSecret(pwd))])
 with open('/app/vault/vault.yml') as f:
     data = yaml.safe_load(vault.decrypt(f.read()))
-if 'keycloak' in data:
-    print('Keycloak section already present in vault — no update needed.')
-    sys.exit(0)
 data['keycloak'] = {
     'db_password': os.environ['_KC_DB_PASS'],
     'admin_password': os.environ.get('_KC_ADMIN_PASS', ''),
@@ -978,18 +1089,20 @@ print('Keycloak credentials added to vault.')
 fi
 
 # ---------------------------------------------------------------------------
-# Extract cluster TLS certificate (for SSL verification without replacing cert)
+# Extract cluster TLS certificate (for SSL verification)
 #
 # Uses the just-built Docker image — no openssl needed on the host.
-# The vault dir is already bind-mounted at /app/vault inside the container.
-# Extracts the cert and saves it to vault/${CLUSTER_NAME}_cert.pem, then updates vault.yml.
+# Sets VERIFY_SSL and CLUSTER_CA_BUNDLE bash variables used by vault creation.
+# Three cases:
+#   a) CA-signed cert (Subject != Issuer): verify_ssl=true, use system CA store.
+#   b) Self-signed with CA:TRUE: cert pinning via ca_bundle.
+#   c) Self-signed without CA:TRUE (PowerScale v1 default): verify_ssl=false.
 # ---------------------------------------------------------------------------
 if [[ "$SKIP_SETUP" == false ]]; then
-    HOST_BARE="${VAULT_HOST#https://}"  # strip https:// prefix
+    HOST_BARE="${VAULT_HOST#https://}"
     HOST_BARE="${HOST_BARE#http://}"
     info "Extracting cluster TLS certificate for SSL verification..."
 
-    # Use openssl inside the container to extract the certificate
     CERT_EXTRACTED=false
     if $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" run --rm isi_mcp \
         sh -c "openssl s_client -connect ${HOST_BARE}:${CLUSTER_PORT} \
@@ -1001,15 +1114,6 @@ if [[ "$SKIP_SETUP" == false ]]; then
         CERT_EXTRACTED=true
     fi
 
-    # Inspect the extracted cert to decide the SSL strategy.
-    #
-    # Three cases:
-    #   a) CA-signed cert (Subject != Issuer): customer installed their own cert.
-    #      Keep verify_ssl: true and rely on the system CA store.
-    #   b) Self-signed with CA:TRUE: valid v3 self-signed CA cert.
-    #      Store as ca_bundle for cert pinning.
-    #   c) Self-signed without CA:TRUE: PowerScale default X.509 v1 cert.
-    #      Cannot be used as a CA bundle — set verify_ssl: false.
     CERT_IS_CA=false
     IS_SELF_SIGNED=false
     if [[ "$CERT_EXTRACTED" == true ]]; then
@@ -1025,91 +1129,138 @@ if [[ "$SKIP_SETUP" == false ]]; then
     fi
 
     if [[ "$IS_SELF_SIGNED" == true && "$CERT_IS_CA" == true ]]; then
-        # (b) Self-signed v3 CA cert — use for cert pinning
         ok "Cluster certificate saved to vault/${CLUSTER_NAME}_cert.pem (CA:TRUE — cert pinning enabled)"
         CLUSTER_CA_BUNDLE="/app/vault/${CLUSTER_NAME}_cert.pem"
-        if grep -q "^    ca_bundle:" "$VAULT_FILE" 2>/dev/null; then
-            sed -i "s|^    ca_bundle:.*|    ca_bundle: ${CLUSTER_CA_BUNDLE}|" "$VAULT_FILE"
-        else
-            sed -i "/^    verify_ssl:/a\\    ca_bundle: ${CLUSTER_CA_BUNDLE}" "$VAULT_FILE"
-        fi
     elif [[ "$IS_SELF_SIGNED" == false && "$CERT_EXTRACTED" == true ]]; then
-        # (a) CA-signed cert — keep verify_ssl: true, use system CA store
         rm -f "${VAULT_DIR}/${CLUSTER_NAME}_cert.pem" 2>/dev/null || true
         ok "Cluster has a CA-signed certificate — SSL verification enabled using system CA store."
     else
-        # (c) Self-signed without CA:TRUE (PowerScale v1 default) or extraction failed
         rm -f "${VAULT_DIR}/${CLUSTER_NAME}_cert.pem" 2>/dev/null || true
         if [[ "$CERT_EXTRACTED" == true ]]; then
             warn "Cluster cert is X.509 v1 self-signed (no CA:TRUE) — typical for PowerScale default certs."
         else
             warn "Could not extract cluster certificate."
         fi
-        warn "Setting verify_ssl: false in vault.yml — SSL certificate will not be verified."
-        sed -i "s/^    verify_ssl:.*/    verify_ssl: false/" "$VAULT_FILE"
+        warn "SSL verification will be disabled (verify_ssl: false)."
+        VERIFY_SSL="false"
     fi
 fi
 
 # ---------------------------------------------------------------------------
-# Encrypt vault.yml using VaultLib Python API inside the built image.
+# Create and encrypt vault.yml in a single step.
 #
-# We read the plaintext /app/vault/vault.yml (via the directory bind mount),
-# encrypt it in-memory with VaultLib, and write to stdout. On the host we
-# redirect stdout to a temp file and then rename it atomically.
-#
-# The vault password is passed directly (never stored on disk).
+# All credentials are passed via environment variables — never as CLI arguments
+# (which are visible in docker inspect / ps aux) and never written to disk in
+# plaintext. Python builds the YAML dict, yaml.dump handles all quoting, and
+# VaultLib encrypts in memory before writing the ciphertext to vault.yml.
 # ---------------------------------------------------------------------------
 if [[ "$SKIP_SETUP" == false ]]; then
-    info "Encrypting vault.yml..."
-    VAULT_TMP="${VAULT_FILE}.tmp"
-    $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" run --rm isi_mcp \
-        python3 -c "
-import sys
+    info "Creating and encrypting vault.yml..."
+    mkdir -p "$VAULT_DIR"
+    export _ISI_NAME="$CLUSTER_NAME"
+    export _ISI_HOST="$VAULT_HOST"
+    export _ISI_PORT="$CLUSTER_PORT"
+    export _ISI_USER="$CLUSTER_USER"
+    export _ISI_PASS="$CLUSTER_PASS"
+    export _ISI_SSL="$VERIFY_SSL"
+    export _ISI_CA="${CLUSTER_CA_BUNDLE:-}"
+    export _KC_DB_PASS="${KEYCLOAK_DB_PASSWORD:-}"
+    export _KC_ADMIN_PASS="${KEYCLOAK_ADMIN_PASSWORD:-}"
+
+    VAULT_PASSWORD="$VAULT_PASS" $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" run --rm --no-deps \
+        -e _ISI_NAME -e _ISI_HOST -e _ISI_PORT -e _ISI_USER -e _ISI_PASS \
+        -e _ISI_SSL -e _ISI_CA -e _KC_DB_PASS -e _KC_ADMIN_PASS \
+        isi_mcp python3 -c "
+import os, yaml
 from ansible.parsing.vault import VaultLib, VaultSecret
-# Read password from stdin (passed via environment via -e)
-password = sys.argv[1].encode() if len(sys.argv) > 1 else b''
-if not password:
-    print('ERROR: Vault password required', file=sys.stderr)
-    sys.exit(1)
-vault = VaultLib([('default', VaultSecret(password))])
-plaintext = open('/app/vault/vault.yml', 'rb').read()
+from pathlib import Path
+name       = os.environ['_ISI_NAME']
+host       = os.environ['_ISI_HOST']
+port       = int(os.environ['_ISI_PORT'])
+username   = os.environ['_ISI_USER']
+password   = os.environ['_ISI_PASS']
+verify_ssl = os.environ['_ISI_SSL'].lower() == 'true'
+ca_bundle  = os.environ.get('_ISI_CA') or None
+kc_db      = os.environ.get('_KC_DB_PASS', '')
+kc_admin   = os.environ.get('_KC_ADMIN_PASS', '')
+data = {'clusters': {name: {
+    'host': host, 'port': port, 'username': username,
+    'password': password, 'verify_ssl': verify_ssl,
+}}}
+if ca_bundle:
+    data['clusters'][name]['ca_bundle'] = ca_bundle
+if kc_db:
+    data['keycloak'] = {'db_password': kc_db, 'admin_password': kc_admin}
+pwd = os.environ['VAULT_PASSWORD'].encode()
+vault = VaultLib([('default', VaultSecret(pwd))])
+plaintext = yaml.dump(data, default_flow_style=False).encode()
 encrypted = vault.encrypt(plaintext)
-sys.stdout.buffer.write(encrypted if isinstance(encrypted, bytes) else encrypted.encode())
-" "$VAULT_PASS" > "${VAULT_TMP}"
-    mv "${VAULT_TMP}" "${VAULT_FILE}"
-    chmod 600 "${VAULT_FILE}"
-    ok "vault.yml encrypted"
+Path('/app/vault/vault.yml').write_bytes(
+    encrypted if isinstance(encrypted, bytes) else encrypted.encode()
+)
+print('vault.yml created and encrypted.')
+"
+    unset _ISI_NAME _ISI_HOST _ISI_PORT _ISI_USER _ISI_PASS _ISI_SSL _ISI_CA _KC_DB_PASS _KC_ADMIN_PASS
+    chmod 600 "$VAULT_FILE"
+    ok "vault.yml created and encrypted"
 fi
 
 # ---------------------------------------------------------------------------
 # Print connection instructions (before starting so they're visible above logs)
 # ---------------------------------------------------------------------------
+if [[ "$SSL" == "true" ]]; then
+    _MCP_URL="https://localhost:${PORT}/mcp"
+    _SSE_URL="https://localhost:${PORT}/sse"
+else
+    _MCP_URL="http://localhost:${PORT}/mcp"
+    _SSE_URL="http://localhost:${PORT}/sse"
+fi
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-ok "Setup complete! Connecting to: ${VAULT_HOST}:${CLUSTER_PORT} as ${CLUSTER_USER}"
+if [[ "$SKIP_SETUP" == false ]]; then
+    ok "Setup complete! Connecting to: ${VAULT_HOST}:${CLUSTER_PORT} as ${CLUSTER_USER}"
+else
+    ok "Setup complete! Using existing cluster configuration."
+fi
 echo ""
-info "MCP server will be available at: https://localhost/mcp (via nginx)"
-info "  Direct backend (no TLS):      http://localhost:8000 (not exposed by default)"
+if [[ "$SSL" == "true" ]]; then
+    info "MCP server will be available at: ${_MCP_URL} (via nginx, TLS)"
+else
+    info "MCP server will be available at: ${_MCP_URL} (direct HTTP)"
+fi
 echo ""
 warn "IMPORTANT: Save your vault password in a secure location!"
 warn "You will need it to restart the server later."
 echo ""
 info "Connect your LLM client:"
-echo "  Claude Code: claude mcp add --transport http powerscale https://localhost/mcp"
+echo "  Claude Code: claude mcp add --transport http powerscale ${_MCP_URL}"
 echo "  Claude Desktop: Add to claude_desktop_config.json:"
-echo '    { "mcpServers": { "powerscale": { "url": "https://localhost/mcp" } } }'
-echo "  Cursor/Windsurf SSE endpoint: https://localhost/sse"
+echo "    { \"mcpServers\": { \"powerscale\": { \"url\": \"${_MCP_URL}\" } } }"
+echo "  Cursor/Windsurf SSE endpoint: ${_SSE_URL}"
 echo ""
-warn "Note: Self-signed certs require clients to accept untrusted certificates."
-echo ""
+if [[ "$SSL" == "true" ]]; then
+    warn "Note: Self-signed certs require clients to accept untrusted certificates."
+    echo ""
+fi
+if grep -qE '^AUTH_ENABLED=true' "$APP_CONFIG" 2>/dev/null; then
+    if [[ "$SSL" == "true" ]]; then
+        _KC_ADMIN_URL="https://localhost:${PORT}/auth/admin"
+    else
+        _KC_ADMIN_URL="http://localhost:${PORT}/auth/admin"
+    fi
+    info "Keycloak admin console:"
+    echo "  ${_KC_ADMIN_URL}"
+    echo ""
+fi
 info "To restart the server later:"
 echo "  ./start.sh"
 echo ""
 info "To add or edit clusters later:"
-echo "  $COMPOSE_CMD -f ${SCRIPT_DIR}/docker-compose.yml exec isi_mcp ansible-vault edit /app/vault/vault.yml"
+echo "  $COMPOSE_CMD exec isi_mcp ansible-vault edit /app/vault/vault.yml"
 echo ""
 info "To stop the server:"
-echo "  $COMPOSE_CMD -f ${SCRIPT_DIR}/docker-compose.yml down"
+echo "  $COMPOSE_CMD down"
 echo ""
 info "To start claude with the Powerscale Agent:"
 echo "claude --agent PowerscaleAgent --agents '{
@@ -1123,6 +1274,12 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # ---------------------------------------------------------------------------
+# Build compose file list: always base, plus http.yml overlay when SSL=false
+# ---------------------------------------------------------------------------
+COMPOSE_FILES="-f ${SCRIPT_DIR}/docker-compose.yml"
+[[ "$SSL" == "false" ]] && COMPOSE_FILES="$COMPOSE_FILES -f ${SCRIPT_DIR}/docker-compose.http.yml"
+
+# ---------------------------------------------------------------------------
 # Start the server.
 #
 # Stop any existing container first. docker-compose v1 (<=1.29.2) has a bug
@@ -1131,8 +1288,8 @@ echo ""
 # the old container before 'up' avoids the recreate path entirely.
 # ---------------------------------------------------------------------------
 info "Stopping any existing container..."
-$COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" $COMPOSE_PROFILES down 2>/dev/null || true
+$COMPOSE_CMD $COMPOSE_FILES $COMPOSE_PROFILES down 2>/dev/null || true
 
 info "Starting MCP server in background..."
-VAULT_PASSWORD="$VAULT_PASS" $COMPOSE_CMD -f "${SCRIPT_DIR}/docker-compose.yml" $COMPOSE_PROFILES up -d
-ok "Server started. View logs: $COMPOSE_CMD -f ${SCRIPT_DIR}/docker-compose.yml logs -f"
+VAULT_PASSWORD="$VAULT_PASS" $COMPOSE_CMD $COMPOSE_FILES $COMPOSE_PROFILES up -d
+ok "Server started. View logs: $COMPOSE_CMD $COMPOSE_FILES logs -f"

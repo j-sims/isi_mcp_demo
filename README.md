@@ -78,19 +78,21 @@ schedules we created during testing so we can start fresh"
 ## Quick Start
 
 ```bash
-# Clone and setup
+# Clone and setup (HTTP mode — default, no TLS required)
 git clone <repo-url>
 cd isi_mcp_demo
 ./setup.sh
 
-# Start the server (generates TLS certs, builds image, starts nginx + MCP server)
-export VAULT_PASSWORD=$(read -s -p 'Enter vault password: ' pwd && echo $pwd)
-docker-compose up -d
-
-# Server is now available at https://localhost/mcp (via nginx reverse proxy)
+# Server is now available at http://localhost/mcp
 ```
 
-> **Client setup required**: MCP clients must trust the server's local CA certificate before connecting. See **[Client Integration](docs/clients.md)** for instructions.
+**To enable HTTPS** (recommended for non-localhost deployments):
+
+```bash
+./setup.sh --ssl true
+# Server is available at https://localhost:443/mcp
+# Clients must trust nginx/certs/ca.crt — see Client Integration docs
+```
 
 See **[Installation & Setup](docs/install.md)** for detailed Docker deployment instructions.
 
