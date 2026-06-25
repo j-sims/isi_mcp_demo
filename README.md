@@ -78,23 +78,30 @@ schedules we created during testing so we can start fresh"
 ## Quick Start
 
 ```bash
-# Clone and setup (HTTP mode — default, no TLS required)
 git clone <repo-url>
 cd isi_mcp_demo
-./setup.sh
-
-# Server is now available at http://localhost/mcp
+./setup.sh        # interactive — prompts for cluster host, credentials, vault password
 ```
 
-**To enable HTTPS** (recommended for non-localhost deployments):
+The server is now available at `http://localhost/mcp`. Connect your LLM client and start managing your cluster.
+
+**Common setup variants:**
 
 ```bash
+# HTTPS (recommended for non-localhost access)
 ./setup.sh --ssl true
-# Server is available at https://localhost:443/mcp
-# Clients must trust nginx/certs/ca.crt — see Client Integration docs
+# → https://localhost/mcp  (clients must trust nginx/certs/ca.crt — see Client Integration docs)
+
+# HTTPS + OAuth authentication (production)
+./setup.sh --ssl true --auth true
+# → https://localhost/mcp  (MCP clients prompt for login via browser)
+
+# Non-standard port
+./setup.sh --ssl true --listen-port 8443
+# → https://localhost:8443/mcp
 ```
 
-See **[Installation & Setup](docs/install.md)** for detailed Docker deployment instructions.
+See **[Installation & Setup](docs/install.md)** for the full setup guide including all deployment modes.
 
 See **[Features & Tools](docs/features.md)** for the complete feature list, tool groups, and detailed tool descriptions.
 
