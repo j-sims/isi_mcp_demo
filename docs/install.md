@@ -8,7 +8,7 @@ Choose the combination of SSL and authentication that fits your environment:
 |---|---|---|---|---|
 | **HTTP, no auth** (default) | `false` | `false` | `http://localhost/mcp` | Local dev, trusted private network |
 | **HTTPS, no auth** | `true` | `false` | `https://localhost/mcp` | Multi-user on a private LAN |
-| **HTTPS + auth** | `true` | `true` | `https://localhost/mcp` | Production / internet-exposed |
+| **HTTPS + auth** | `true` | `true` | `https://localhost/mcp` | Production |
 | No SSL + auth | — | — | — | **Not supported** — Keycloak requires nginx (`SSL=true`) |
 
 All modes are set via `./setup.sh` flags or by editing `config/isi_mcp.env`. The default is HTTP with no auth.
