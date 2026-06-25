@@ -37,7 +37,7 @@ All modes are set via `./setup.sh` flags or by editing `config/isi_mcp.env`. The
 ### 2. Clone the Repository
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/j-sims/isi_mcp_demo
 cd isi_mcp_demo
 ```
 
