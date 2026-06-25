@@ -117,12 +117,12 @@ Prompts for the vault password, then starts all services in the background. When
 ```
 
 **Tearing down and restarting (e.g. after a config change):**
-
+Stops existing containers, then starts fresh. Volumes (Keycloak database, playbooks) are preserved.
 ```bash
 ./start.sh --reboot
 ```
 
-Stops existing containers, then starts fresh. Volumes (Keycloak database, playbooks) are preserved.
+
 
 **Removing all data (volumes included):**
 
