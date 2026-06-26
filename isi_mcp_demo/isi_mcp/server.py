@@ -154,8 +154,10 @@ def _refresh_tool_state() -> None:
     config = _load_tools_config()
     current_tools = _local_tools()
     for name, meta in config.items():
-        if name in MANAGEMENT_TOOLS:
-            continue
+        # Management tools are intentionally NOT skipped: an operator may disable
+        # (or re-enable) them by editing tools.json, and this refresh applies that
+        # file state. The LLM cannot reach this path — powerscale_tools_toggle
+        # refuses to persist management-tool changes, so only the file drives them.
         should_be_enabled = meta.get("enabled", True)
         is_enabled = name in current_tools
 
@@ -349,8 +351,10 @@ def _apply_startup_config() -> None:
     for name, meta in config.items():
         if meta.get("enabled", True):
             continue
-        if name in MANAGEMENT_TOOLS:
-            continue
+        # Management tools MAY be disabled from tools.json by an operator (a
+        # deliberate lockdown). They can only be re-enabled by editing the file
+        # again — the powerscale_tools_toggle tool refuses them in both
+        # directions, so the LLM can never re-register one an operator removed.
         if name in current_tools:
             _disabled_tools[name] = current_tools[name]
             mcp.local_provider.remove_tool(name)

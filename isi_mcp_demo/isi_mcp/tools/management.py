@@ -147,6 +147,12 @@ def register(mcp, local_tools_fn, load_config_fn, update_enabled_fn,
         - action: "disable" to remove tools from the tool list, or "enable" to
           restore them.
 
+        Note: management/cluster tools (powerscale_tools_* and powerscale_cluster_*)
+        are operator-controlled and cannot be enabled or disabled here in either
+        direction. They are governed by config/tools.json (and, when auth is enabled,
+        the Keycloak mcp-admin role). Names that resolve to management tools are
+        reported under "refused_management" and left unchanged.
+
         Use this tool when:
         - The user wants to reduce token usage by disabling unused tool groups
         - The user wants to re-enable previously disabled tools
@@ -165,12 +171,14 @@ def register(mcp, local_tools_fn, load_config_fn, update_enabled_fn,
         tool_names = resolve_names_fn(names)
         toggled = []
         skipped = []
+        refused_management = []
 
         current_tools = local_tools_fn()
         if action == "disable":
             for name in tool_names:
+                # Management tools are operator-controlled: never disable them here.
                 if name in management_tools:
-                    skipped.append(name)
+                    refused_management.append(name)
                     continue
                 if name in current_tools:
                     disabled_tools[name] = current_tools[name]
@@ -180,6 +188,11 @@ def register(mcp, local_tools_fn, load_config_fn, update_enabled_fn,
                     skipped.append(name)
         else:  # enable
             for name in tool_names:
+                # Management tools are operator-controlled: the LLM must never be
+                # able to re-register one an operator disabled via tools.json.
+                if name in management_tools:
+                    refused_management.append(name)
+                    continue
                 if name in disabled_tools:
                     tool_obj = disabled_tools.pop(name)
                     mcp.add_tool(tool_obj)
@@ -187,13 +200,23 @@ def register(mcp, local_tools_fn, load_config_fn, update_enabled_fn,
                 else:
                     skipped.append(name)
 
+        # Only non-management toggles reach here, so management entries in
+        # tools.json are never rewritten by this tool.
         for name in toggled:
             update_enabled_fn(name, enabled=(action == "enable"))
 
-        return {
+        result = {
             "action": action,
             "toggled": toggled,
             "skipped": skipped,
             "total_enabled": len(local_tools_fn()),
             "total_disabled": len(disabled_tools),
         }
+        if refused_management:
+            result["refused_management"] = sorted(set(refused_management))
+            result["message"] = (
+                "Management tools are operator-controlled and cannot be enabled or "
+                "disabled with this tool. To change them, edit config/tools.json "
+                "directly (the change is applied within a few seconds)."
+            )
+        return result
