@@ -336,6 +336,19 @@ def _apply_startup_config() -> None:
 
 _apply_startup_config()
 
+# One-line startup banner summarizing the server's effective posture, so common
+# misconfigurations (wrong mode, no cluster, IaC on) are obvious at boot.
+_iac_on = os.environ.get("IAC_MODE", "").strip().lower() in ("1", "true", "yes")
+_access_mode = "keycloak-rbac" if _AUTH_ENABLED else "tool-toggle"
+try:
+    _selected = VaultManager().selected_cluster_name or "none"
+except Exception:
+    _selected = "unknown"
+logger.info(
+    "PowerScale MCP ready — access=%s, iac_mode=%s, tools=%d enabled/%d disabled, cluster=%s",
+    _access_mode, _iac_on, len(_local_tools()), len(_disabled_tools), _selected,
+)
+
 
 # ---------------------------------------------------------------------------
 # Inject per-parameter descriptions into FastMCP tool input schemas
@@ -403,7 +416,20 @@ from starlette.routing import Route
 
 async def _health_handler(request):
     tool_count = len(_local_tools())
-    return JSONResponse({"status": "ok", "tools_loaded": tool_count})
+    # Best-effort selected-cluster lookup; never let a vault hiccup fail health.
+    selected_cluster = None
+    try:
+        selected_cluster = VaultManager().selected_cluster_name
+    except Exception:
+        pass
+    return JSONResponse({
+        "status": "ok",
+        "tools_loaded": tool_count,
+        "tools_disabled": len(_disabled_tools),
+        "auth_enabled": _AUTH_ENABLED,
+        "iac_mode": os.environ.get("IAC_MODE", "").strip().lower() in ("1", "true", "yes"),
+        "selected_cluster": selected_cluster,
+    })
 
 
 app.routes.insert(0, Route("/health", _health_handler, methods=["GET"]))

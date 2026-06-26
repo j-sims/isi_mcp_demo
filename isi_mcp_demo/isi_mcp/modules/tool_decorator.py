@@ -112,7 +112,13 @@ def safe_tool(*, group: str, mode: str) -> Callable:
                 return fn(*args, **kwargs)
             except Exception as e:
                 logger.exception("Tool %s failed", fn.__name__)
-                return {"error": _sanitize_exception(fn.__name__, e)}
+                # "error" stays a plain string for backward compatibility; the
+                # additive "error_type" lets clients branch on the exception class
+                # instead of substring-matching the message.
+                return {
+                    "error": _sanitize_exception(fn.__name__, e),
+                    "error_type": type(e).__name__,
+                }
 
         if _mcp_instance is None:
             raise RuntimeError(
