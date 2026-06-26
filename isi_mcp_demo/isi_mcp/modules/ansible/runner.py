@@ -10,6 +10,12 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# Maximum length for any single string value rendered into a playbook. Bounds
+# memory/log/playbook growth and protects downstream APIs from oversized inputs.
+# Override via MAX_PLAYBOOK_VALUE_LEN. Connection vars (host/user/password
+# placeholders) are exempt — only resource-specific values are checked.
+MAX_PLAYBOOK_VALUE_LEN = int(os.environ.get("MAX_PLAYBOOK_VALUE_LEN", 4096))
+
 
 class AnsibleRunner:
     """
@@ -79,6 +85,31 @@ class AnsibleRunner:
             "api_password": "{{ api_password }}",
         }
 
+    @staticmethod
+    def _validate_variable_lengths(variables: dict) -> None:
+        """Reject any string value longer than MAX_PLAYBOOK_VALUE_LEN.
+
+        Raises ValueError naming the offending key. List/dict values are checked
+        recursively so JSON-derived structures (ACL entries, query conditions) are
+        also bounded.
+        """
+        def _check(key, value):
+            if isinstance(value, str):
+                if len(value) > MAX_PLAYBOOK_VALUE_LEN:
+                    raise ValueError(
+                        f"Value for '{key}' exceeds the maximum length of "
+                        f"{MAX_PLAYBOOK_VALUE_LEN} characters ({len(value)})."
+                    )
+            elif isinstance(value, dict):
+                for k, v in value.items():
+                    _check(f"{key}.{k}", v)
+            elif isinstance(value, (list, tuple)):
+                for i, v in enumerate(value):
+                    _check(f"{key}[{i}]", v)
+
+        for key, value in (variables or {}).items():
+            _check(key, value)
+
     def render_playbook(self, template_name: str, variables: dict) -> Path:
         """
         Render a Jinja2 template with the given variables and save as a YAML playbook.
@@ -93,6 +124,11 @@ class AnsibleRunner:
         Returns:
             Path to the rendered playbook file
         """
+        # Bound the length of resource-specific string values before rendering so
+        # an oversized name/path/description can't bloat the playbook, logs, or a
+        # downstream API call. Checked against the caller-supplied variables only.
+        self._validate_variable_lengths(variables)
+
         # Merge connection vars (without credentials) with resource-specific vars
         # Credentials will be passed via extravars to ansible-runner at execution time
         all_vars = {**self._get_connection_vars(), **variables}
