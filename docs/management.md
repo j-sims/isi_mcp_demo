@@ -96,7 +96,7 @@ Each MCP tool has a **mode** (`read` or `write`) and an **enabled** flag. All 21
 
 Tool state is persisted in `config/tools.json` across container restarts.
 
-**Important**: The 5 management write tools (`powerscale_tools_toggle`, `powerscale_cluster_setdefault`, `powerscale_cluster_add`, `powerscale_cluster_remove`, `powerscale_cluster_modify`) cannot be disabled and are always available, regardless of their `enabled` flag in `config/tools.json`.
+**Important**: The management/cluster tools (`powerscale_tools_*` and `powerscale_cluster_*`) are **operator-controlled**. The LLM-facing `powerscale_tools_toggle` cannot enable or disable them in either direction — names that resolve to a management tool are returned under `refused_management` and left unchanged. An operator can still disable them by setting `"enabled": false` directly in `config/tools.json` (applied at startup and within ~5 s at runtime); re-enabling is likewise an operator-only edit. This means the LLM can never re-register a management tool an operator has removed. See [security.md](security.md#management-tools-are-operator-controlled).
 
 ### Inspecting Tool State
 
@@ -130,9 +130,9 @@ powerscale_tools_toggle(names=["write"], action="disable")
 
 Changes persist to `config/tools.json` and survive container restarts.
 
-### Always-Available Management Tools
+### Operator-Controlled Management Tools
 
-These tools cannot be disabled and are always accessible to the LLM:
+These tools cannot be enabled or disabled by the LLM via `powerscale_tools_toggle` (only an operator can change them, by editing `config/tools.json`). By default they are all enabled and accessible to the LLM:
 
 - `powerscale_tools_list` / `powerscale_tools_list_by_group` / `powerscale_tools_list_by_mode` — inspect tool state
 - `powerscale_tools_toggle` — enable or disable tools by mode, group, or name

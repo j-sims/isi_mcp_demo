@@ -26,7 +26,21 @@ Use `config/tools.json` and the `powerscale_tools_toggle` management tool to ena
 
 Both mechanisms can be used together — tool toggle controls which tools are registered with the server, while RBAC controls which registered tools each authenticated user can see and call.
 
-Five **management write tools** (`powerscale_tools_toggle`, `powerscale_cluster_setdefault`, `powerscale_cluster_add`, `powerscale_cluster_remove`, `powerscale_cluster_modify`) cannot be disabled and are always available
+### Management tools are operator-controlled
+
+The management/cluster tools (`powerscale_tools_list*`, `powerscale_tools_toggle`, and `powerscale_cluster_*`) are governed only by the operator, never by the LLM:
+
+- The `powerscale_tools_toggle` tool **refuses to enable or disable any management tool** in either direction. Requests naming a management tool (directly, or via the `management` group / a `read`/`write` mode target) are returned under `refused_management` and left unchanged.
+- An operator **can** disable management tools by setting `"enabled": false` in `config/tools.json` (applied at startup and within ~5 s at runtime). This is a deliberate lockdown — for example, removing `powerscale_cluster_add`/`powerscale_cluster_modify` so the LLM cannot alter stored cluster credentials.
+- Re-enabling a management tool is also an operator action (edit `tools.json` back to `true`, or restart). Because the LLM cannot persist a change to a management tool's flag, it can never re-register one an operator removed.
+
+This gives the no-auth (tool-toggle) deployment mode a hard lockdown equivalent to the Keycloak `mcp-admin` boundary used when `AUTH_ENABLED=true`.
+
+## Filesystem Path Safety
+
+All FileMgmt operations normalize their path arguments before use: any `..` (parent-directory) component is **rejected** so a caller cannot traverse outside the intended directory, regardless of leading/trailing slashes. This applies to every path, source, and destination argument across directory, file, ACL, metadata, WORM, copy/move, and query operations.
+
+Optionally, set `FILEMGMT_ROOT_PREFIX` (e.g. `ifs`) to additionally constrain all FileMgmt paths to a single root. It is off by default because access-point-relative paths are not rooted at `/ifs`.
 
 ## Mutating Operations
 
@@ -201,12 +215,12 @@ One JSON object per line (NDJSON). Each entry contains:
 | Field | Description |
 |---|---|
 | `timestamp` | ISO 8601 UTC timestamp of the call |
-| `uuid` | Deterministic UUID5 derived from `{timestamp}:{username}:{domain}:{mode}` — stable fingerprint for a given event |
+| `uuid` | Deterministic UUID5 derived from `{timestamp}:{username}:{domain}:{tool}:{mode}:{hash(inputs)}` — stable fingerprint that is unique per distinct event |
 | `username` | Caller identity — `preferred_username` from JWT when auth is enabled; `anonymous` when auth is disabled |
 | `domain` | Keycloak realm from the JWT `iss` claim (e.g. `powerscale`); `local` when auth is disabled |
 | `tool` | MCP tool name (e.g. `powerscale_quota_set`) |
 | `mode` | `read` or `write` — from `config/tools.json` |
-| `inputs` | Tool arguments as a JSON object |
+| `inputs` | Tool arguments as a JSON object — sensitive values are redacted (see below) |
 | `output` | Tool response as a JSON value (truncated at 4 096 characters if large) |
 | `error` | Exception message if the call failed; `null` on success |
 
@@ -230,6 +244,7 @@ Rotated files are named `audit.log.1`, `audit.log.2`, etc. The current active fi
 ### Notes
 
 - The audit log is **always active** regardless of whether `AUTH_ENABLED` is set. When auth is disabled, entries are written with `username: anonymous` and `domain: local`.
+- **Sensitive inputs are redacted** before an entry is written: values of keys whose name contains `password`, `passwd`, `secret`, or `token` (case-insensitive, plus any names in `AUDIT_REDACT_KEYS`) are replaced with `***`, recursively through nested objects and lists. So credentials passed to `powerscale_user_create`, `powerscale_cluster_add`, etc. never persist in the log. The redacted inputs are also what the `uuid` hash is computed over.
 - The log is written by `AuditMiddleware` in `server.py`, which runs for **every tool call** — including management tools.
 - The `audit/` directory is bind-mounted (not baked into the image) so logs persist across container rebuilds and restarts.
 - The `audit/` directory itself is gitignored — log files are never committed to the repository.

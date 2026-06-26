@@ -183,18 +183,23 @@ directly from the environment (set them in the `environment:` section of
 | `AGENT_CONTEXT_PATH` | `/app/AGENT-CONTEXT.md` | File served at the `/context` endpoint |
 | `TOOL_TIMEOUT` | `60` | Wall-clock seconds per tool call (timeout middleware) |
 | `TOOL_THREADS` | `200` | anyio worker-thread capacity for concurrent tool calls |
-| `API_TIMEOUT` | `30` | Default per-request timeout (s) applied to every SDK call |
-| `CONNECT_TIMEOUT` | `30` | SDK connection timeout (s) |
-| `READ_TIMEOUT` | `30` | SDK read timeout (s) |
+| `API_TIMEOUT` | `30` | Fallback per-request timeout (s); the default for both phases below |
+| `CONNECT_TIMEOUT` | `API_TIMEOUT` | SDK connection-phase timeout (s); overrides the connect phase when set |
+| `READ_TIMEOUT` | `API_TIMEOUT` | SDK read-phase timeout (s); overrides the read phase when set |
 | `PLAYBOOKS_DIR` | `<pkg>/playbooks` | Output dir for rendered Ansible playbooks |
 | `MAX_PLAYBOOK_VALUE_LEN` | `4096` | Max length of any string value rendered into a playbook |
 | `FILEMGMT_ROOT_PREFIX` | unset | If set (e.g. `ifs`), restricts FileMgmt paths to that root |
 | `AUDIT_LOG_DIR` | `/app/audit` | Directory for the NDJSON audit log |
 | `MAX_AUDIT_LOGFILE_SIZE` | `10485760` | Bytes per audit log file before rotation |
 | `MAX_AUDIT_LOGFILE_COUNT` | `10` | Number of rotated audit log backups to keep |
+| `AUDIT_REDACT_KEYS` | unset | Extra comma-separated input keys to redact in the audit log (added to the built-in `password`/`passwd`/`secret`/`token`) |
 
 > Path traversal (`..`) in FileMgmt paths is always rejected regardless of
 > `FILEMGMT_ROOT_PREFIX`.
+>
+> Audit inputs are redacted before they are written: values of keys containing
+> `password`, `passwd`, `secret`, or `token` (case-insensitive, plus any names in
+> `AUDIT_REDACT_KEYS`) are replaced with `***`.
 
 ## TLS Certificates
 
