@@ -312,13 +312,40 @@ _TOOL_TO_GROUP["powerscale_mcp_resources_list"] = "utils"
 # Startup: apply enabled flags from tools.json
 # ---------------------------------------------------------------------------
 
+def _warn_on_tools_config_drift(current_tools: Dict[str, Any], config: dict) -> None:
+    """Log a warning for any drift between registered tools and tools.json.
+
+    Catches the two silent-failure cases at startup instead of in production:
+      - a registered tool with no tools.json entry (cannot be persistently
+        toggled — the toggle tool only updates names already present in the file);
+      - a tools.json entry with no matching registered tool (stale/dead row).
+    """
+    code_tools = set(current_tools)
+    config_tools = set(config)
+    for name in sorted(code_tools - config_tools):
+        logger.warning(
+            "Tool '%s' is registered but missing from tools.json — it cannot be "
+            "toggled or persisted. Add an entry: \"%s\": {\"enabled\": true}.",
+            name, name,
+        )
+    for name in sorted(config_tools - code_tools):
+        logger.warning(
+            "tools.json entry '%s' has no matching registered tool — stale entry, "
+            "safe to remove.", name,
+        )
+
+
 def _apply_startup_config() -> None:
     current_tools = _local_tools()
+    config = _load_tools_config()
+
+    # Surface config/code drift regardless of ENABLE_ALL_TOOLS.
+    _warn_on_tools_config_drift(current_tools, config)
+
     if os.environ.get("ENABLE_ALL_TOOLS", "").lower() == "true":
         logger.info("ENABLE_ALL_TOOLS set — all %d tools enabled", len(current_tools))
         return
 
-    config = _load_tools_config()
     for name, meta in config.items():
         if meta.get("enabled", True):
             continue

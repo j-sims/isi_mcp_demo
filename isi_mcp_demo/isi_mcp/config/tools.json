@@ -11,6 +11,9 @@
   "get_mcp_version": {
     "enabled": true
   },
+  "powerscale_mcp_resources_list": {
+    "enabled": true
+  },
   "powerscale_cluster_verify": {
     "enabled": true
   },
