@@ -123,24 +123,43 @@ def register(mcp, vault_manager_class):
         """
         try:
             host_bare = re.sub(r'^https?://', '', host).split(':')[0]
+
+            # Validate name — it becomes both a vault key and a filename, so restrict
+            # it to a safe character set (no path separators or shell metacharacters).
+            if not re.fullmatch(r'[A-Za-z0-9._-]+', name):
+                return {
+                    "success": False,
+                    "error": "Invalid cluster name. Use only letters, digits, '.', '_' or '-'.",
+                }
+
             vault_dir = os.path.dirname(os.environ.get("VAULT_FILE", "/app/vault/vault.yml"))
             cert_path_container = f"{vault_dir}/{name}_cert.pem"
 
+            # Extract the cluster's TLS certificate WITHOUT invoking a shell. The two
+            # openssl stages run as argument vectors (no `sh -c`), so host/name values
+            # can never be shell-interpreted. s_client output is piped to x509 in-process
+            # via subprocess input=, and the resulting PEM is written with Python file I/O.
+            # Skip extraction entirely if host is not a plain hostname/IP (defense in depth).
             cert_extracted = False
-            try:
-                result = subprocess.run(
-                    ["sh", "-c",
-                     f"openssl s_client -connect {host_bare}:{port} -showcerts "
-                     f"</dev/null 2>/dev/null | openssl x509 -outform PEM > {cert_path_container}"],
-                    timeout=10, capture_output=True,
-                )
-                cert_extracted = (
-                    result.returncode == 0
-                    and os.path.exists(cert_path_container)
-                    and os.path.getsize(cert_path_container) > 0
-                )
-            except (subprocess.TimeoutExpired, OSError, FileNotFoundError) as e:
-                logger.debug(f"Certificate extraction failed: {e}")
+            if re.fullmatch(r'[A-Za-z0-9.-]+', host_bare):
+                try:
+                    s_client = subprocess.run(
+                        ["openssl", "s_client", "-connect", f"{host_bare}:{port}", "-showcerts"],
+                        stdin=subprocess.DEVNULL, capture_output=True, timeout=10,
+                    )
+                    if s_client.stdout:
+                        x509 = subprocess.run(
+                            ["openssl", "x509", "-outform", "PEM"],
+                            input=s_client.stdout, capture_output=True, timeout=5,
+                        )
+                        if x509.returncode == 0 and x509.stdout:
+                            with open(cert_path_container, "wb") as cert_f:
+                                cert_f.write(x509.stdout)
+                            cert_extracted = os.path.getsize(cert_path_container) > 0
+                except (subprocess.TimeoutExpired, OSError) as e:
+                    logger.debug(f"Certificate extraction failed: {e}")
+            else:
+                logger.debug("Skipping cert extraction: host %r is not a plain hostname/IP", host_bare)
 
             # Three SSL cases:
             #   a) CA-signed cert (Subject != Issuer): use system CA store, verify_ssl=True
