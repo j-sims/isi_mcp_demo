@@ -9,7 +9,7 @@
 
 ## Access Control
 
-All 213 tools ship enabled by default. There are two approaches to controlling tool access:
+All 215 tools ship enabled by default. There are two approaches to controlling tool access:
 
 ### Without Authentication (`AUTH_ENABLED=false`)
 

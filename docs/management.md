@@ -89,7 +89,7 @@ This approach is ideal for:
 
 ## Dynamic Tool Management
 
-Each MCP tool has a **mode** (`read` or `write`) and an **enabled** flag. All 213 tools ship enabled by default. Tool access can be controlled in two ways:
+Each MCP tool has a **mode** (`read` or `write`) and an **enabled** flag. All 215 tools ship enabled by default. Tool access can be controlled in two ways:
 
 - **Without auth** (`AUTH_ENABLED=false`): Use `powerscale_tools_toggle` and `config/tools.json` to enable/disable tools by group, mode, or name. This is the primary access control mechanism for single-user or trusted-network deployments.
 - **With auth** (`AUTH_ENABLED=true`): Keycloak RBAC provides per-user access control via mode roles and group roles. The tool toggle mechanism still works alongside RBAC — it controls which tools are registered, while RBAC controls which registered tools each user can see.
@@ -100,7 +100,7 @@ Tool state is persisted in `config/tools.json` across container restarts.
 
 ### Inspecting Tool State
 
-Three always-available listing tools show the current state of all 213 tools:
+Three always-available listing tools show the current state of all 215 tools:
 
 - `powerscale_tools_list` — flat alphabetical list with name, group, mode, and enabled status for every tool
 - `powerscale_tools_list_by_group` — tools grouped by functional area

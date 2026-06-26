@@ -165,6 +165,37 @@ MCP_PUBLIC_URL=https://powerscale-mcp.example.com
 ./start.sh
 ```
 
+### Environment variable reference
+
+Beyond the `.env` files above, the server reads a number of runtime tuning knobs
+directly from the environment (set them in the `environment:` section of
+`docker-compose.yml` or export them before `./start.sh`). All are optional.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `AUTH_ENABLED` | `false` | Enable Keycloak OAuth + RBAC middleware |
+| `IAC_MODE` | `false` | Render playbooks for external execution instead of running them |
+| `ENABLE_ALL_TOOLS` | `false` | Ignore `tools.json` enabled flags and register all tools (test harness) |
+| `DEBUG` | unset | Verbose logging of connection details and rendered playbooks |
+| `VAULT_FILE` | `/app/vault/vault.yml` | Path to the encrypted cluster credential vault |
+| `VAULT_PASSWORD` | — | Vault decryption password (memory only; required for encrypted vaults) |
+| `TOOLS_CONFIG_PATH` | `/app/config/tools.json` | Path to the per-tool enable/disable config |
+| `AGENT_CONTEXT_PATH` | `/app/AGENT-CONTEXT.md` | File served at the `/context` endpoint |
+| `TOOL_TIMEOUT` | `60` | Wall-clock seconds per tool call (timeout middleware) |
+| `TOOL_THREADS` | `200` | anyio worker-thread capacity for concurrent tool calls |
+| `API_TIMEOUT` | `30` | Default per-request timeout (s) applied to every SDK call |
+| `CONNECT_TIMEOUT` | `30` | SDK connection timeout (s) |
+| `READ_TIMEOUT` | `30` | SDK read timeout (s) |
+| `PLAYBOOKS_DIR` | `<pkg>/playbooks` | Output dir for rendered Ansible playbooks |
+| `MAX_PLAYBOOK_VALUE_LEN` | `4096` | Max length of any string value rendered into a playbook |
+| `FILEMGMT_ROOT_PREFIX` | unset | If set (e.g. `ifs`), restricts FileMgmt paths to that root |
+| `AUDIT_LOG_DIR` | `/app/audit` | Directory for the NDJSON audit log |
+| `MAX_AUDIT_LOGFILE_SIZE` | `10485760` | Bytes per audit log file before rotation |
+| `MAX_AUDIT_LOGFILE_COUNT` | `10` | Number of rotated audit log backups to keep |
+
+> Path traversal (`..`) in FileMgmt paths is always rejected regardless of
+> `FILEMGMT_ROOT_PREFIX`.
+
 ## TLS Certificates
 
 TLS certificates are only relevant when `SSL=true` in `config/isi_mcp.env`. When SSL is enabled, `setup.sh` generates self-signed certificates during setup, and `start.sh` auto-generates them if missing.
@@ -196,6 +227,7 @@ For full details on all certificate options — including auto-generated develop
 | `http://localhost:PORT/sse` | Legacy SSE endpoint |
 | `http://localhost:PORT/health` | Health check (returns JSON) |
 | `http://localhost:PORT/version` | Server version (returns JSON) |
+| `http://localhost:PORT/context` | Agent operating-context doc (returns markdown) |
 
 `PORT` defaults to 80. Set via `--listen-port` or `PORT=` in `config/isi_mcp.env`.
 
@@ -207,6 +239,7 @@ For full details on all certificate options — including auto-generated develop
 | `https://localhost:PORT/sse` | Legacy SSE endpoint (via nginx, TLS) |
 | `https://localhost:PORT/health` | Health check (returns JSON) |
 | `https://localhost:PORT/version` | Server version (returns JSON) |
+| `https://localhost:PORT/context` | Agent operating-context doc (returns markdown) |
 | `https://localhost:PORT/auth/` | Keycloak IdP (when auth is enabled) |
 
 `PORT` defaults to 443 when SSL=true.

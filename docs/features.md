@@ -5,7 +5,7 @@
 The PowerScale MCP server provides comprehensive automation and management capabilities for PowerScale clusters:
 
 - **Multi-cluster support** with parallel operations via `cluster_name` parameter, or sequential switching via management tools
-- **213 MCP tools** organized into 41 groups (158 read + 55 write), all enabled by default
+- **215 MCP tools** organized into 41 groups (159 read + 56 write), all enabled by default
 - **Two access control models**: tool toggle via `tools.json`/`powerscale_tools_toggle` (without auth), or Keycloak RBAC with mode + group roles (with auth)
 - **Dynamic tool management** to keep LLM context efficient
 - **Health checks** including quorum, service lights, critical events, network, and capacity
@@ -73,7 +73,7 @@ The PowerScale MCP server provides comprehensive automation and management capab
 | ApiSessions | 3 | 3 | 0 | Platform API session settings and invalidations |
 | GroupnetsSummary | 1 | 1 | 0 | GroupNet summary information |
 
-**Total: 213 tools across 41 groups (158 read + 55 write), all enabled by default**
+**Total: 215 tools across 41 groups (159 read + 56 write), all enabled by default**
 
 **Access control**: Without auth, use `powerscale_tools_toggle` to disable tools by group or mode. With auth (`AUTH_ENABLED=true`), Keycloak RBAC controls per-user access via mode and group roles. Runtime toggle examples:
 
