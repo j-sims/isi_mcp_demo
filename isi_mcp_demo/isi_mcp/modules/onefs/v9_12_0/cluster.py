@@ -45,8 +45,13 @@ class Cluster:
         self.host = host or os.environ.get("HOST")
         self.username = username or os.environ.get("USERNAME")
         self.password = password or os.environ.get("PASSWORD")
-        self.connect_timeout = connect_timeout or int(os.environ.get("CONNECT_TIMEOUT", 30))
-        self.read_timeout = read_timeout or int(os.environ.get("READ_TIMEOUT", 30))
+        # API_TIMEOUT is the single fallback default; CONNECT_TIMEOUT / READ_TIMEOUT
+        # override the connect / read phases individually when set. This keeps the
+        # historical behavior (API_TIMEOUT controlling both) while making the
+        # documented per-phase knobs actually take effect.
+        _api_timeout_default = int(os.environ.get("API_TIMEOUT", 30))
+        self.connect_timeout = connect_timeout or int(os.environ.get("CONNECT_TIMEOUT", _api_timeout_default))
+        self.read_timeout = read_timeout or int(os.environ.get("READ_TIMEOUT", _api_timeout_default))
 
         # ca_bundle takes precedence for SSL verification
         # If provided, urllib3 will verify the cluster cert against this CA bundle file
@@ -96,15 +101,17 @@ class Cluster:
 
         # Inject a default HTTP timeout on every SDK call so tools never hang
         # indefinitely waiting for a slow or unresponsive cluster.
+        # The (connect, read) tuple comes from self.connect_timeout / self.read_timeout
+        # (resolved above from CONNECT_TIMEOUT / READ_TIMEOUT, defaulting to API_TIMEOUT).
         # Override per-call by passing _request_timeout explicitly (existing calls
         # that already pass timeout= on statistics endpoints are unaffected because
         # those use the statistics_api timeout kwarg, not _request_timeout).
-        _api_timeout = int(os.environ.get("API_TIMEOUT", 30))
+        _request_timeout = (self.connect_timeout, self.read_timeout)
         _orig_call_api = self.api_client.call_api
 
         def _call_api_with_timeout(*args, **kwargs):
             if "_request_timeout" not in kwargs:
-                kwargs["_request_timeout"] = (_api_timeout, _api_timeout)
+                kwargs["_request_timeout"] = _request_timeout
             return _orig_call_api(*args, **kwargs)
 
         self.api_client.call_api = _call_api_with_timeout
@@ -119,7 +126,7 @@ class Cluster:
 
         def _rest_request_with_timeout(*args, **kwargs):
             if kwargs.get("_request_timeout") is None:
-                kwargs["_request_timeout"] = (_api_timeout, _api_timeout)
+                kwargs["_request_timeout"] = _request_timeout
             return _orig_rest_request(*args, **kwargs)
 
         self.api_client.rest_client.request = _rest_request_with_timeout
