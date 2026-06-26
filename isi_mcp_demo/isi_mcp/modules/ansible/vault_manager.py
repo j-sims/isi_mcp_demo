@@ -1,10 +1,26 @@
 import fcntl
+import functools
 import json
 import os
+import threading
 import time
 import yaml
 from pathlib import Path
 from ansible.parsing.vault import VaultLib, VaultSecret
+
+
+def _locked(method):
+    """Serialize a VaultManager method on the instance reentrant lock.
+
+    Internal helpers (_load_vault/_save_vault/_refresh_*) are intentionally left
+    undecorated — they are only reached through a decorated public method or
+    __init__, both of which already hold the (reentrant) lock.
+    """
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        with self._lock:
+            return method(self, *args, **kwargs)
+    return wrapper
 
 
 class VaultManager:
@@ -17,11 +33,19 @@ class VaultManager:
     """
 
     _instance = None
+    # Guards singleton construction itself (the __new__ check-and-set).
+    _singleton_lock = threading.Lock()
 
     def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
+        with cls._singleton_lock:
+            if cls._instance is None:
+                inst = super().__new__(cls)
+                inst._initialized = False
+                # Per-instance reentrant lock: serializes all vault read/refresh/
+                # mutate/save operations across concurrent tool threads. Reentrant
+                # so a locked public method can call other guarded helpers.
+                inst._lock = threading.RLock()
+                cls._instance = inst
         return cls._instance
 
     # TTL for re-checking vault.yml mtime and cluster_state.json (seconds)
@@ -31,8 +55,13 @@ class VaultManager:
     def __init__(self):
         if self._initialized:
             return
-        self._initialized = True
+        with self._lock:
+            if self._initialized:
+                return
+            self._initialized = True
+            self._init_state()
 
+    def _init_state(self):
         self.vault_file = Path(os.environ.get("VAULT_FILE", "/app/vault/vault.yml"))
         self._cluster_state_path = Path(
             os.environ.get("TOOLS_CONFIG_PATH", "/app/config/tools.json")
@@ -133,6 +162,7 @@ class VaultManager:
             if self._selected is None and prev_selected in self._clusters:
                 self._selected = prev_selected
 
+    @_locked
     def add_cluster(self, name: str, host: str, port: int, username: str, password: str, verify_ssl: bool, ca_bundle: str = None):
         """Add or update a cluster and persist the vault."""
         if not host.startswith(('http://', 'https://')):
@@ -150,6 +180,7 @@ class VaultManager:
             self._selected = name
         self._save_vault()
 
+    @_locked
     def modify_cluster(self, name: str, new_name: str = None, host: str = None,
                        port: int = None, username: str = None, password: str = None,
                        verify_ssl: bool = None, ca_bundle: str = None) -> bool:
@@ -184,6 +215,7 @@ class VaultManager:
         self._save_vault()
         return True
 
+    @_locked
     def remove_cluster(self, name: str) -> bool:
         """Remove a cluster and persist the vault. Returns False if not found."""
         if name not in self._clusters:
@@ -194,6 +226,7 @@ class VaultManager:
         self._save_vault()
         return True
 
+    @_locked
     def reload(self):
         """Re-read and decrypt the vault file. Called when vault may have changed."""
         self._clusters = {}
@@ -235,10 +268,12 @@ class VaultManager:
             self._load_selected()
 
     @property
+    @_locked
     def selected_cluster_name(self) -> str | None:
         self._refresh_selected()
         return self._selected
 
+    @_locked
     def select_cluster(self, name: str) -> bool:
         """Switch active cluster. Persists to disk for multi-instance consistency.
         Returns True on success, False if name not found."""
@@ -248,6 +283,7 @@ class VaultManager:
         self._save_selected()
         return True
 
+    @_locked
     def list_clusters(self) -> list[dict]:
         """Return list of cluster info dicts (no passwords)."""
         self._refresh_vault()
@@ -270,6 +306,7 @@ class VaultManager:
             )
         return result
 
+    @_locked
     def get_selected_credentials(self) -> dict | None:
         """Return credentials dict for the currently selected cluster, or None."""
         self._refresh_vault()
@@ -277,6 +314,7 @@ class VaultManager:
             return None
         return dict(self._clusters[self._selected])
 
+    @_locked
     def get_credentials(self, name: str) -> dict | None:
         """Return credentials dict for the named cluster, or None if not found."""
         self._refresh_vault()
