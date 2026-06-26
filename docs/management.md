@@ -138,3 +138,12 @@ These tools cannot be disabled and are always accessible to the LLM:
 - `powerscale_tools_toggle` — enable or disable tools by mode, group, or name
 - `powerscale_cluster_list` / `powerscale_cluster_setdefault` — view and switch target clusters
 - `powerscale_cluster_add` / `powerscale_cluster_remove` / `powerscale_cluster_modify` — add, remove, or update clusters in the vault
+- `powerscale_mcp_resources_list` — always-on diagnostic tool that lists the MCP resources (skills and manifests) the server exposes
+
+> **Note on the tool count.** The server registers **215** tools, while
+> `config/tools.json` lists **214**. The difference is
+> `powerscale_mcp_resources_list`: it is a built-in diagnostic tool registered
+> directly in `server.py` (not via the `@safe_tool` + `tools.json` flow), so it is
+> intentionally **always on** and is **not** governed by `powerscale_tools_toggle`
+> or the `tools.json` enabled flags. This is by design — it never mutates the
+> cluster and only reports which MCP resources are loaded.
