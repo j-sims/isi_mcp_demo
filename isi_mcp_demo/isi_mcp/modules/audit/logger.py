@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import logging.handlers
@@ -85,13 +86,20 @@ class AuditLogger:
             self._logger.addHandler(handler)
 
     @staticmethod
-    def _make_uuid(unix_ts: float, username: str, domain: str, mode: str) -> str:
-        """Deterministic UUID5 derived from event identity fields.
+    def _make_uuid(unix_ts: float, username: str, domain: str, tool_name: str,
+                   mode: str, inputs) -> str:
+        """Deterministic UUID5 derived from the full event identity.
 
-        Inputs: unix timestamp (6 decimal places), username, domain, mode (read|write).
-        Same inputs always produce the same UUID — useful for deduplication auditing.
+        Inputs: unix timestamp (6 decimal places), username, domain, tool name,
+        mode (read|write), and a hash of the (already-redacted) arguments. Including
+        the tool name and arguments means two distinct calls in the same microsecond
+        no longer collide, while identical calls still produce the same UUID — so the
+        value remains useful for deduplication auditing.
         """
-        name = f"{unix_ts:.6f}:{username}:{domain}:{mode}"
+        inputs_hash = hashlib.sha256(
+            json.dumps(inputs, default=str, sort_keys=True).encode("utf-8")
+        ).hexdigest()
+        name = f"{unix_ts:.6f}:{username}:{domain}:{tool_name}:{mode}:{inputs_hash}"
         return str(uuid.uuid5(_AUDIT_NAMESPACE, name))
 
     def log(
@@ -120,7 +128,7 @@ class AuditLogger:
 
         entry = {
             "timestamp": datetime.fromtimestamp(ts, tz=timezone.utc).isoformat(),
-            "uuid":      self._make_uuid(ts, username, domain, mode),
+            "uuid":      self._make_uuid(ts, username, domain, tool_name, mode, inputs),
             "username":  username,
             "domain":    domain,
             "tool":      tool_name,
