@@ -4,7 +4,8 @@ import socket
 import uuid
 import ansible_runner
 from datetime import datetime
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import FileSystemLoader
+from jinja2.sandbox import SandboxedEnvironment
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -42,8 +43,13 @@ class AnsibleRunner:
         # Ensure playbooks output directory exists
         self.playbooks_dir.mkdir(parents=True, exist_ok=True)
 
-        # Build Jinja2 environment pointing at Templates/
-        self.jinja_env = Environment(
+        # Build a *sandboxed* Jinja2 environment pointing at Templates/.
+        # User-influenced values (share names, paths, descriptions, usernames) flow
+        # into template.render(); a SandboxedEnvironment blocks access to Python
+        # internals, preventing server-side template injection (SSTI) / RCE if a
+        # value contains Jinja syntax. The existing templates use only plain
+        # substitution and standard filters, so rendering behavior is unchanged.
+        self.jinja_env = SandboxedEnvironment(
             loader=FileSystemLoader(str(self.templates_dir)),
             keep_trailing_newline=True,
         )
