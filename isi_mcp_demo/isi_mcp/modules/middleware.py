@@ -156,8 +156,14 @@ if _FASTMCP_AUTH_AVAILABLE:
                 error = str(exc)
                 raise
             finally:
-                self._audit.log(username, domain, tool_name, mode, inputs,
-                                self._extract_output(result), error)
+                # Audit logging must never mask or break a tool result. This runs in
+                # the finally block, so an exception here would override the real
+                # return value / raised error — swallow and log it instead.
+                try:
+                    self._audit.log(username, domain, tool_name, mode, inputs,
+                                    self._extract_output(result), error)
+                except Exception:
+                    logger.exception("Audit logging failed for tool %s", tool_name)
 
     class TimeoutMiddleware(Middleware):
         """Enforce a hard wall-clock deadline on every tool call.

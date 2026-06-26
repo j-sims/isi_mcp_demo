@@ -72,10 +72,13 @@ class AuditLogger:
     ) -> None:
         ts = time.time()
 
+        # Truncate oversized outputs to keep audit entries bounded. We must NOT
+        # json.loads() the sliced JSON back — cutting a JSON string at an arbitrary
+        # offset almost always yields invalid JSON and raises. Instead, replace the
+        # output with a string marker that still serializes cleanly.
         output_json = json.dumps(output, default=str)
         if len(output_json) > _MAX_OUTPUT_CHARS:
-            output_json = output_json[:_MAX_OUTPUT_CHARS] + "...[truncated]"
-            output = json.loads(output_json)
+            output = output_json[:_MAX_OUTPUT_CHARS] + "...[truncated]"
 
         entry = {
             "timestamp": datetime.fromtimestamp(ts, tz=timezone.utc).isoformat(),
