@@ -31,7 +31,7 @@ class FileMgmt:
         """Create and return a NamespaceApi instance."""
         return isi_sdk.NamespaceApi(self.cluster.api_client)
 
-    def _normalize_path(self, path: str) -> str:
+    def _normalize_path(self, path: str, strip: bool = True) -> str:
         """
         Normalize and validate a path for Namespace API operations.
 
@@ -46,9 +46,17 @@ class FileMgmt:
 
         Args:
             path: Path string (absolute or relative)
+            strip: When True (the default) the returned value has leading/trailing
+                slashes removed — the relative form the Namespace URL path expects.
+                When False the original string is returned unchanged on success;
+                only the ``..`` traversal check (and root-prefix check) runs. Use
+                strip=False for values whose required wire format is not the bare
+                relative path (e.g. move/copy source/destination set via header,
+                and the absolute target of an access point).
 
         Returns:
-            Normalized path without leading or trailing slashes
+            Normalized path (slash-stripped when ``strip`` is True, otherwise the
+            original string).
 
         Raises:
             ValueError: if the path contains a ``..`` traversal component or
@@ -56,15 +64,14 @@ class FileMgmt:
         """
         if not path:
             return path
-        # Strip leading slashes (handle both /ifs and / prefixes)
-        path = path.lstrip('/')
-        # Strip trailing slashes
-        path = path.rstrip('/')
+        # Compute the slash-stripped value for validation regardless of strip mode
+        # so 'a/../b', '../etc', '/ifs/..' are all checked consistently.
+        stripped = path.lstrip('/').rstrip('/')
 
         # Reject path traversal: no component may be '..'. This is checked on the
         # normalized (slash-stripped) value so 'a/../b', '../etc', and 'a/..'
         # are all rejected regardless of leading slashes.
-        parts = PurePosixPath(path).parts
+        parts = PurePosixPath(stripped).parts
         if any(part == '..' for part in parts):
             raise ValueError(
                 f"Invalid path '{path}': '..' path traversal is not allowed."
@@ -80,7 +87,7 @@ class FileMgmt:
                     f"Invalid path '{path}': must be within '/{root_prefix}'."
                 )
 
-        return path
+        return stripped if strip else path
 
     def _parse_headers(self, headers):
         """Convert HTTPHeaderDict to a plain dict."""
@@ -96,8 +103,8 @@ class FileMgmt:
                        type: str = None, hidden: bool = False,
                        access_point: str = None) -> dict:
         api = self._ns_api()
-        # Normalize path: strip leading slash if present
-        path = path.lstrip('/')
+        # Normalize path: strip slashes and reject '..' traversal
+        path = self._normalize_path(path)
         kwargs = {'detail': detail, 'limit': limit}
         if resume:
             kwargs['resume'] = resume
@@ -128,6 +135,7 @@ class FileMgmt:
                          overwrite: bool = False,
                          access_point: str = None) -> dict:
         api = self._ns_api()
+        path = self._normalize_path(path)
         kwargs = {}
         if access_control:
             kwargs['x_isi_ifs_access_control'] = access_control
@@ -147,6 +155,7 @@ class FileMgmt:
     def delete_directory(self, path: str, recursive: bool = False,
                          access_point: str = None) -> dict:
         api = self._ns_api()
+        path = self._normalize_path(path)
         kwargs = {}
         if recursive:
             kwargs['recursive'] = recursive
@@ -162,6 +171,9 @@ class FileMgmt:
     def move_directory(self, path: str, destination: str,
                        access_point: str = None) -> dict:
         api = self._ns_api()
+        path = self._normalize_path(path)
+        # destination is sent via header in its original form; reject traversal only.
+        destination = self._normalize_path(destination, strip=False)
         if access_point:
             api.move_directory_with_access_point_container_path(
                 access_point, path, destination)
@@ -172,6 +184,7 @@ class FileMgmt:
 
     def get_directory_attributes(self, path: str) -> dict:
         api = self._ns_api()
+        path = self._normalize_path(path)
         data, status, headers = api.get_directory_attributes_with_http_info(path)
         return self._parse_headers(headers)
 
@@ -181,6 +194,7 @@ class FileMgmt:
 
     def get_file_contents(self, path: str, byte_range: str = None) -> dict:
         api = self._ns_api()
+        path = self._normalize_path(path)
         kwargs = {'_preload_content': False}
         if byte_range:
             kwargs['range'] = byte_range
@@ -211,6 +225,7 @@ class FileMgmt:
                     content_type: str = None,
                     overwrite: bool = False) -> dict:
         api = self._ns_api()
+        path = self._normalize_path(path)
         kwargs = {}
         if access_control:
             kwargs['x_isi_ifs_access_control'] = access_control
@@ -224,16 +239,21 @@ class FileMgmt:
 
     def delete_file(self, path: str) -> dict:
         api = self._ns_api()
+        path = self._normalize_path(path)
         api.delete_file(path)
         return {"success": True, "message": f"File deleted: {path}"}
 
     def move_file(self, path: str, destination: str) -> dict:
         api = self._ns_api()
+        path = self._normalize_path(path)
+        # destination is sent via header in its original form; reject traversal only.
+        destination = self._normalize_path(destination, strip=False)
         api.move_file(path, destination)
         return {"success": True, "message": f"File moved from {path} to {destination}"}
 
     def get_file_attributes(self, path: str) -> dict:
         api = self._ns_api()
+        path = self._normalize_path(path)
         data, status, headers = api.get_file_attributes_with_http_info(path)
         return self._parse_headers(headers)
 
@@ -245,6 +265,9 @@ class FileMgmt:
                        overwrite: bool = False, merge: bool = False,
                        continue_on_error: bool = False) -> dict:
         api = self._ns_api()
+        # destination is the URL path (relative form); source is sent via header.
+        destination = self._normalize_path(destination)
+        source = self._normalize_path(source, strip=False)
         kwargs = {}
         if overwrite:
             kwargs['overwrite'] = overwrite
@@ -269,6 +292,9 @@ class FileMgmt:
                   overwrite: bool = False, clone: bool = False,
                   snapshot: str = None) -> dict:
         api = self._ns_api()
+        # destination is the URL path (relative form); source is sent via header.
+        destination = self._normalize_path(destination)
+        source = self._normalize_path(source, strip=False)
         kwargs = {}
         if overwrite:
             kwargs['overwrite'] = overwrite
@@ -296,6 +322,7 @@ class FileMgmt:
     def get_acl(self, path: str, nsaccess: bool = None,
                 zone: str = None) -> dict:
         api = self._ns_api()
+        path = self._normalize_path(path)
         kwargs = {}
         if nsaccess is not None:
             kwargs['nsaccess'] = nsaccess
@@ -311,6 +338,7 @@ class FileMgmt:
                 authoritative: str = None,
                 nsaccess: bool = None, zone: str = None) -> dict:
         api = self._ns_api()
+        path = self._normalize_path(path)
 
         acl_objects = None
         if acl:
@@ -362,6 +390,7 @@ class FileMgmt:
     def get_metadata(self, path: str, is_directory: bool = True,
                      zone: str = None) -> dict:
         api = self._ns_api()
+        path = self._normalize_path(path)
         kwargs = {}
         if zone:
             kwargs['zone'] = zone
@@ -379,6 +408,7 @@ class FileMgmt:
                      is_directory: bool = True,
                      zone: str = None) -> dict:
         api = self._ns_api()
+        path = self._normalize_path(path)
 
         attr_objects = []
         for a in attrs:
@@ -417,6 +447,9 @@ class FileMgmt:
 
     def create_access_point(self, name: str, path: str) -> dict:
         api = self._ns_api()
+        # path is the absolute namespace target stored in cluster config; preserve
+        # its form (do not strip leading slash) but still reject '..' traversal.
+        path = self._normalize_path(path, strip=False)
         params = AccessPointCreateParams(path=path)
         api.create_access_point(name, params)
         return {"success": True, "message": f"Access point '{name}' created at {path}"}
@@ -432,6 +465,7 @@ class FileMgmt:
 
     def get_worm_properties(self, path: str) -> dict:
         api = self._ns_api()
+        path = self._normalize_path(path)
         result = api.get_worm_properties(path, True)
         return result.to_dict()
 
@@ -439,6 +473,7 @@ class FileMgmt:
                             commit_to_worm: bool = False,
                             worm_retention_date: str = None) -> dict:
         api = self._ns_api()
+        path = self._normalize_path(path)
         params = WormCreateParams(
             commit_to_worm=commit_to_worm,
             worm_retention_date=worm_retention_date
@@ -458,6 +493,7 @@ class FileMgmt:
                         hidden: bool = False,
                         max_depth: int = None) -> dict:
         api = self._ns_api()
+        path = self._normalize_path(path)
 
         cond_objects = []
         for c in conditions:
