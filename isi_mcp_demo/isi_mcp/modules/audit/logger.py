@@ -12,6 +12,37 @@ _AUDIT_NAMESPACE = uuid.UUID("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
 # Truncate large tool outputs in the log to keep entries reasonable
 _MAX_OUTPUT_CHARS = 4096
 
+# Input keys whose values are redacted before an audit entry is written. Matched
+# case-insensitively as substrings, so 'password' also covers 'api_password' and
+# 'new_password', etc. Extend via the AUDIT_REDACT_KEYS env var (comma-separated).
+_DEFAULT_REDACT_KEYS = ("password", "passwd", "secret", "token")
+_REDACTED = "***"
+
+
+def _resolve_redact_keys() -> tuple:
+    extra = os.environ.get("AUDIT_REDACT_KEYS", "")
+    tokens = {t.strip().lower() for t in extra.split(",") if t.strip()}
+    return tuple({*_DEFAULT_REDACT_KEYS, *tokens})
+
+
+def _redact(value, keys):
+    """Recursively replace values of sensitive keys with a redaction marker.
+
+    Walks dicts (matching keys by case-insensitive substring) and lists/tuples;
+    scalars and non-matching values are returned unchanged.
+    """
+    if isinstance(value, dict):
+        result = {}
+        for k, v in value.items():
+            if isinstance(k, str) and any(tok in k.lower() for tok in keys):
+                result[k] = _REDACTED
+            else:
+                result[k] = _redact(v, keys)
+        return result
+    if isinstance(value, (list, tuple)):
+        return [_redact(v, keys) for v in value]
+    return value
+
 
 class AuditLogger:
     """Singleton rotating-file audit logger. One JSON object per line (NDJSON).
@@ -35,6 +66,9 @@ class AuditLogger:
         backup_count = int(os.environ.get("MAX_AUDIT_LOGFILE_COUNT", 10))
         audit_dir = os.environ.get("AUDIT_LOG_DIR", "/app/audit")
         os.makedirs(audit_dir, exist_ok=True)
+
+        # Resolved once at startup; sensitive input values are redacted in log().
+        self._redact_keys = _resolve_redact_keys()
 
         self._logger = logging.getLogger("isi_mcp.audit")
         self._logger.setLevel(logging.INFO)
@@ -71,6 +105,10 @@ class AuditLogger:
         error: str | None = None,
     ) -> None:
         ts = time.time()
+
+        # Redact sensitive input values (passwords, tokens, secrets) before the
+        # entry is written so credentials never persist in the on-disk audit log.
+        inputs = _redact(inputs, self._redact_keys)
 
         # Truncate oversized outputs to keep audit entries bounded. We must NOT
         # json.loads() the sliced JSON back — cutting a JSON string at an arbitrary
