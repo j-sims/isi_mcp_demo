@@ -254,12 +254,17 @@ class VaultManager:
         self._refresh_selected()
         result = []
         for name, cfg in self._clusters.items():
+            ca_bundle = cfg.get("ca_bundle")
             result.append(
                 {
                     "name": name,
                     "host": cfg.get("host", ""),
                     "port": cfg.get("port", 8080),
-                    "verify_ssl": cfg.get("verify_ssl", False),
+                    # Default to True to match Cluster's actual default — an entry
+                    # that omits verify_ssl is verified, not insecure.
+                    "verify_ssl": cfg.get("verify_ssl", True),
+                    # Surface whether this cluster is pinned to a per-cluster CA bundle.
+                    "ca_bundle": ca_bundle if ca_bundle else None,
                     "default": name == self._selected,
                 }
             )
