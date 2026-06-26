@@ -1,3 +1,6 @@
+import os
+from pathlib import PurePosixPath
+
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.models.namespace_acl import NamespaceAcl
 from isilon_sdk.v9_12_0.models.acl_object import AclObject
@@ -30,16 +33,26 @@ class FileMgmt:
 
     def _normalize_path(self, path: str) -> str:
         """
-        Normalize a path by removing leading/trailing slashes.
+        Normalize and validate a path for Namespace API operations.
 
         Converts both absolute paths (/ifs/data/projects) and relative paths
         (ifs/data/projects, data/projects) to relative format without leading slash.
+
+        Security: rejects path-traversal sequences (any ``..`` component) so a
+        caller cannot escape the intended directory boundary. Optionally enforces
+        an allowed root prefix when the FILEMGMT_ROOT_PREFIX environment variable
+        is set (e.g. ``ifs`` or ``/ifs``). Root enforcement is OFF by default
+        because access-point-relative paths are not rooted at /ifs.
 
         Args:
             path: Path string (absolute or relative)
 
         Returns:
             Normalized path without leading or trailing slashes
+
+        Raises:
+            ValueError: if the path contains a ``..`` traversal component or
+                (when configured) falls outside the allowed root prefix.
         """
         if not path:
             return path
@@ -47,6 +60,26 @@ class FileMgmt:
         path = path.lstrip('/')
         # Strip trailing slashes
         path = path.rstrip('/')
+
+        # Reject path traversal: no component may be '..'. This is checked on the
+        # normalized (slash-stripped) value so 'a/../b', '../etc', and 'a/..'
+        # are all rejected regardless of leading slashes.
+        parts = PurePosixPath(path).parts
+        if any(part == '..' for part in parts):
+            raise ValueError(
+                f"Invalid path '{path}': '..' path traversal is not allowed."
+            )
+
+        # Optional root-prefix enforcement (opt-in via env var). Disabled by
+        # default so access-point-relative paths continue to work.
+        root_prefix = os.environ.get("FILEMGMT_ROOT_PREFIX", "").strip().strip('/')
+        if root_prefix:
+            allowed = PurePosixPath(root_prefix).parts
+            if parts[:len(allowed)] != allowed:
+                raise ValueError(
+                    f"Invalid path '{path}': must be within '/{root_prefix}'."
+                )
+
         return path
 
     def _parse_headers(self, headers):
