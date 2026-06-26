@@ -28,6 +28,31 @@ from typing import Any, Callable, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
+# Imported at module load so a missing SDK never breaks tool registration.
+try:
+    from isilon_sdk.v9_12_0.rest import ApiException as _ApiException
+except Exception:  # pragma: no cover - SDK always present in container
+    _ApiException = None
+
+
+def _sanitize_exception(fn_name: str, exc: Exception) -> str:
+    """Build a client-safe error string for an exception.
+
+    SDK ``ApiException`` objects carry the full HTTP response body — which can
+    include internal IPs, node names, stack traces and auth specifics. We return
+    only the status line to the client and log the full detail server-side.
+    """
+    if _ApiException is not None and isinstance(exc, _ApiException):
+        status = getattr(exc, "status", None)
+        reason = getattr(exc, "reason", None) or "API error"
+        # Full body (incl. headers) goes to the server log only.
+        logger.warning(
+            "Tool %s ApiException: status=%s reason=%s body=%s",
+            fn_name, status, reason, getattr(exc, "body", None),
+        )
+        return f"{status} {reason}".strip() if status else str(reason)
+    return str(exc)
+
 # Populated by every @safe_tool() decoration:
 #   {tool_name: {"group": ..., "mode": ...}}
 TOOL_METADATA: Dict[str, Dict[str, str]] = {}
@@ -87,7 +112,7 @@ def safe_tool(*, group: str, mode: str) -> Callable:
                 return fn(*args, **kwargs)
             except Exception as e:
                 logger.exception("Tool %s failed", fn.__name__)
-                return {"error": str(e)}
+                return {"error": _sanitize_exception(fn.__name__, e)}
 
         if _mcp_instance is None:
             raise RuntimeError(
