@@ -265,7 +265,7 @@ for _n, _m in _MGMT_TOOL_MODES.items():
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def powerscale_mcp_resources_list() -> dict:
+async def powerscale_mcp_resources_list() -> dict:
     """
     List all available MCP resources (including skills) exposed by this server.
 
@@ -280,11 +280,11 @@ def powerscale_mcp_resources_list() -> dict:
     - resources: List of available resources with uri, name, and description
     - total: Total number of resources
     """
-    async def _list_resources():
-        return await mcp.list_resources()
-
     try:
-        resources = asyncio.new_event_loop().run_until_complete(_list_resources())
+        # Await directly on the running event loop. The previous
+        # asyncio.new_event_loop().run_until_complete() leaked a loop and would
+        # raise "event loop is already running" if invoked inside an active loop.
+        resources = await mcp.list_resources()
         return {
             "resources": [
                 {
