@@ -422,3 +422,45 @@ async def _version_handler(request):
 
 
 app.routes.insert(0, Route("/version", _version_handler, methods=["GET"]))
+
+
+# ---------------------------------------------------------------------------
+# Agent operating-context endpoint
+#
+# Serves AGENT-CONTEXT.md (the LLM's role/operating-principles/guardrails doc).
+# Clients fetch it at session start via `curl https://localhost/context`.
+# Path is overridable via the AGENT_CONTEXT_PATH env var.
+# ---------------------------------------------------------------------------
+from starlette.responses import PlainTextResponse
+
+AGENT_CONTEXT_PATH = os.environ.get("AGENT_CONTEXT_PATH", "/app/AGENT-CONTEXT.md")
+
+
+def _read_agent_context() -> Optional[str]:
+    try:
+        with open(AGENT_CONTEXT_PATH, "r", encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return None
+
+
+async def _context_handler(request):
+    body = _read_agent_context()
+    if body is None:
+        return JSONResponse(
+            {"error": f"Agent context not found at {AGENT_CONTEXT_PATH}"},
+            status_code=404,
+        )
+    return PlainTextResponse(body, media_type="text/markdown")
+
+
+app.routes.insert(0, Route("/context", _context_handler, methods=["GET"]))
+
+
+@mcp.resource("context://powerscale", mime_type="text/markdown")
+def powerscale_agent_context() -> str:
+    """PowerScale MCP agent operating context (role, principles, guardrails)."""
+    body = _read_agent_context()
+    if body is None:
+        raise FileNotFoundError(f"Agent context not found at {AGENT_CONTEXT_PATH}")
+    return body
