@@ -2,6 +2,7 @@ import json
 from modules.tool_decorator import safe_tool, get_cluster
 from modules.onefs.v9_12_0.filemgmt import FileMgmt
 from modules.utils.paging import normalize_resume
+from modules.utils.kwargs import parse_json_param
 from typing import Dict, Any, Optional
 
 
@@ -569,9 +570,7 @@ def powerscale_acl_set(
     - success: Boolean indicating if the ACL was set
     - message: Human-readable confirmation
     """
-    acl_list = None
-    if acl:
-        acl_list = json.loads(acl)
+    acl_list = parse_json_param("acl", acl)
 
     # Auto-detect authoritative type based on what's being set.
     # OneFS requires 'authoritative' for all ACL set operations.
@@ -893,7 +892,7 @@ def powerscale_directory_query(
     resume = normalize_resume(resume)
 
     conditions_list = json.loads(conditions)
-    result_attrs_list = json.loads(result_attrs) if result_attrs else None
+    result_attrs_list = parse_json_param("result_attrs", result_attrs)
 
     cluster = get_cluster(cluster_name)
     fm = FileMgmt(cluster)

@@ -7,7 +7,22 @@ every ``add()`` and ``set_global_settings()`` method.
 """
 
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+
+
+def parse_json_param(name: str, value: Optional[str], default: Any = None) -> Any:
+    """Parse a single JSON-string tool parameter, naming it on failure.
+
+    Returns ``default`` when *value* is None/empty. On malformed JSON raises
+    ValueError naming *name*, so the caller sees an actionable message instead
+    of a bare ``json.JSONDecodeError`` that doesn't say which argument was bad.
+    """
+    if not value:
+        return default
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError) as e:
+        raise ValueError(f"Parameter '{name}' must be a valid JSON string: {e}") from e
 
 
 def drop_none(**kwargs: Any) -> Dict[str, Any]:
@@ -34,5 +49,19 @@ def parse_json_kwargs(**kwargs: Any) -> Dict[str, Any]:
     Use for complex parameters (lists/dicts) that arrive as JSON strings from
     MCP tool inputs and must be deserialised before being passed to Ansible.
     Empty/None values are dropped.
+
+    Raises ValueError naming the offending parameter when a value is not valid
+    JSON, so the caller gets an actionable message instead of a bare
+    ``json.JSONDecodeError`` that doesn't say which argument was malformed.
     """
-    return {k: json.loads(v) for k, v in kwargs.items() if v}
+    result: Dict[str, Any] = {}
+    for k, v in kwargs.items():
+        if not v:
+            continue
+        try:
+            result[k] = json.loads(v)
+        except (json.JSONDecodeError, TypeError) as e:
+            raise ValueError(
+                f"Parameter '{k}' must be a valid JSON string: {e}"
+            ) from e
+    return result
