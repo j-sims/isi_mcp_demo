@@ -25,6 +25,32 @@ def parse_json_param(name: str, value: Optional[str], default: Any = None) -> An
         raise ValueError(f"Parameter '{name}' must be a valid JSON string: {e}") from e
 
 
+def parse_json_list_param(name: str, value: Optional[str], default: Any = None) -> Any:
+    """Parse a JSON-string parameter that must decode to a list of objects.
+
+    Like :func:`parse_json_param`, but enforces the expected shape for tool
+    parameters such as ``conditions``/``attrs``/``acl`` that are documented as a
+    JSON *array* of objects. A lone object is wrapped into a one-element list as a
+    convenience. Anything else (a scalar, or a list whose elements are not
+    objects) raises a clear ValueError naming *name*, instead of letting the
+    domain layer blow up later with an opaque ``'str' object has no attribute
+    'get'`` AttributeError.
+
+    Returns ``default`` when *value* is None/empty.
+    """
+    if not value:
+        return default
+    parsed = parse_json_param(name, value, default)
+    if isinstance(parsed, dict):
+        parsed = [parsed]
+    if not isinstance(parsed, list) or not all(isinstance(item, dict) for item in parsed):
+        raise ValueError(
+            f"Parameter '{name}' must be a JSON array of objects, "
+            f"e.g. '[{{\"key\": \"value\"}}]'."
+        )
+    return parsed
+
+
 def drop_none(**kwargs: Any) -> Dict[str, Any]:
     """Return a dict containing only keys whose value is not None.
 

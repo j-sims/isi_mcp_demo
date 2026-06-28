@@ -63,9 +63,16 @@ class FilePool:
                 "policy": policy_dict
             }
         except ApiException as e:
+            msg = safe_api_error(e)
+            if getattr(e, "status", None) == 404:
+                msg = (
+                    f"{msg} — no filepool policy named/identified by '{policy_id}'. "
+                    "Use powerscale_filepool_policy_get to list existing policies "
+                    "(for the system default policy use powerscale_filepool_default_policy_get)."
+                )
             return {
                 "success": False,
-                "error": safe_api_error(e)
+                "error": msg
             }
 
     def get_default_policy(self) -> dict:

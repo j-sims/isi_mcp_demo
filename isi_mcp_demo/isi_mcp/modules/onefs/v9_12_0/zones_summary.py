@@ -34,15 +34,17 @@ class ZonesSummary:
             "zones": zones,
         }
 
-    def get_zone(self, zone_id: int):
+    def get_zone(self, zone_id):
         """
         Retrieve non-privileged summary information for a specific access zone.
 
         Arguments:
-        - zone_id: The integer zone ID to retrieve
+        - zone_id: The zone name (e.g. "System") or numeric zone ID to retrieve
         """
         zones_summary_api = isi_sdk.ZonesSummaryApi(self.cluster.api_client)
-        result = zones_summary_api.get_zones_summary_zone(zone_id)
+        # Convert to string for URL path parameter
+        zone_id_param = str(zone_id)
+        result = zones_summary_api.get_zones_summary_zone(zone_id_param)
         summary = result.summary if result.summary else None
         if summary is None:
             return {"error": f"Zone {zone_id} not found"}

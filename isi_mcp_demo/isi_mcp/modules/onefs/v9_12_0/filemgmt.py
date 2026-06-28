@@ -89,6 +89,20 @@ class FileMgmt:
 
         return stripped if strip else path
 
+    def _ran_path(self, path: str) -> str:
+        """
+        Build a full RESTful Access to Namespace (RAN) path for header values.
+
+        OneFS move/copy operations carry the destination (``x-isi-ifs-set-location``)
+        and copy source (``x-isi-ifs-copy-source``) as HTTP headers whose values must
+        be full RAN paths prefixed with ``/namespace`` (e.g. ``/namespace/ifs/dir/file``).
+        Passing a bare ``/ifs/...`` value causes the cluster to return 400 Bad Request.
+
+        Runs the same ``..`` traversal / root-prefix validation as ``_normalize_path``,
+        then returns ``/namespace/<relative path>``.
+        """
+        return "/namespace/" + self._normalize_path(path)
+
     def _parse_headers(self, headers):
         """Convert HTTPHeaderDict to a plain dict."""
         return dict(headers) if headers else {}
@@ -172,8 +186,9 @@ class FileMgmt:
                        access_point: str = None) -> dict:
         api = self._ns_api()
         path = self._normalize_path(path)
-        # destination is sent via header in its original form; reject traversal only.
-        destination = self._normalize_path(destination, strip=False)
+        # destination is sent via the x-isi-ifs-set-location header and must be a
+        # full RAN path (/namespace/...); reject traversal then add the prefix.
+        destination = self._ran_path(destination)
         if access_point:
             api.move_directory_with_access_point_container_path(
                 access_point, path, destination)
@@ -246,8 +261,9 @@ class FileMgmt:
     def move_file(self, path: str, destination: str) -> dict:
         api = self._ns_api()
         path = self._normalize_path(path)
-        # destination is sent via header in its original form; reject traversal only.
-        destination = self._normalize_path(destination, strip=False)
+        # destination is sent via the x-isi-ifs-set-location header and must be a
+        # full RAN path (/namespace/...); reject traversal then add the prefix.
+        destination = self._ran_path(destination)
         api.move_file(path, destination)
         return {"success": True, "message": f"File moved from {path} to {destination}"}
 
@@ -265,9 +281,10 @@ class FileMgmt:
                        overwrite: bool = False, merge: bool = False,
                        continue_on_error: bool = False) -> dict:
         api = self._ns_api()
-        # destination is the URL path (relative form); source is sent via header.
+        # destination is the URL path (relative form); source is sent via the
+        # x-isi-ifs-copy-source header and must be a full RAN path (/namespace/...).
         destination = self._normalize_path(destination)
-        source = self._normalize_path(source, strip=False)
+        source = self._ran_path(source)
         kwargs = {}
         if overwrite:
             kwargs['overwrite'] = overwrite
@@ -292,9 +309,10 @@ class FileMgmt:
                   overwrite: bool = False, clone: bool = False,
                   snapshot: str = None) -> dict:
         api = self._ns_api()
-        # destination is the URL path (relative form); source is sent via header.
+        # destination is the URL path (relative form); source is sent via the
+        # x-isi-ifs-copy-source header and must be a full RAN path (/namespace/...).
         destination = self._normalize_path(destination)
-        source = self._normalize_path(source, strip=False)
+        source = self._ran_path(source)
         kwargs = {}
         if overwrite:
             kwargs['overwrite'] = overwrite

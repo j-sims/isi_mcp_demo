@@ -240,7 +240,8 @@ def powerscale_zones_get(cluster_name: str = None) -> AnyType:
 
     Response fields per zone:
     - name:               Zone name (e.g. "System", "Zone2")
-    - id:                 Numeric zone ID
+    - id:                 Zone identifier string (usually same as name)
+    - zone_id:            Numeric zone ID — use this for id_resolution_* and zones_summary_zone_get tools
     - groupnet:           Network groupnet this zone is associated with
     - path:               Root IFS path for this zone (e.g. "/ifs")
     - description:        Human-readable description

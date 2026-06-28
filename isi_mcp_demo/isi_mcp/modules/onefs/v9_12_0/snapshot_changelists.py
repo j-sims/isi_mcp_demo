@@ -1,5 +1,14 @@
 import isilon_sdk.v9_12_0 as isi_sdk
+from isilon_sdk.v9_12_0.rest import ApiException
+
+from modules.utils.errors import safe_api_error
 from modules.utils.paging import page_kwargs
+
+_ID_HINT = (
+    "Changelist ids are of the form '<begin_snapshot_id>_<end_snapshot_id>' "
+    "and are produced by running a ChangelistCreate job between two snapshots; "
+    "'1' is not a valid changelist id."
+)
 
 
 class SnapshotChangelists:
@@ -21,8 +30,13 @@ class SnapshotChangelists:
         - resume: Pagination token from a previous call
         - limit: Maximum number of results (default 100)
         """
-        api = isi_sdk.SnapshotChangelistsApi(self.cluster.api_client)
-        result = api.get_changelist_entries(changelist_id, **page_kwargs(limit, resume))
+        try:
+            api = isi_sdk.SnapshotChangelistsApi(self.cluster.api_client)
+            result = api.get_changelist_entries(changelist_id, **page_kwargs(limit, resume))
+        except ApiException as e:
+            if getattr(e, "status", None) == 400:
+                return {"error": f"{safe_api_error(e)} — {_ID_HINT}", "status": 400}
+            raise
         entries = result.entries if hasattr(result, "entries") and result.entries else []
         return {
             "items": [e.to_dict() for e in entries],

@@ -206,6 +206,7 @@ class Network:
             items.append({
                 "name": d.get("name"),
                 "id": d.get("id"),
+                "zone_id": d.get("zone_id"),
                 "groupnet": d.get("groupnet"),
                 "path": d.get("path"),
                 "description": d.get("description"),
@@ -242,6 +243,7 @@ class Network:
                 zones_by_groupnet.setdefault(gn, []).append({
                     "name": d.get("name"),
                     "id": d.get("id"),
+                    "zone_id": d.get("zone_id"),
                     "groupnet": gn,
                     "path": d.get("path"),
                     "auth_providers": d.get("auth_providers", []),

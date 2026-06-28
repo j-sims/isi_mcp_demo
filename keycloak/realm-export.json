@@ -27,7 +27,9 @@
         "description": "Write access to MCP tools (includes mcp-read)",
         "composite": true,
         "composites": {
-          "realm": ["mcp-read"]
+          "realm": [
+            "mcp-read"
+          ]
         },
         "clientRole": false
       },
@@ -36,7 +38,9 @@
         "description": "Administrative access to MCP tools (includes mcp-write)",
         "composite": true,
         "composites": {
-          "realm": ["mcp-write"]
+          "realm": [
+            "mcp-write"
+          ]
         },
         "clientRole": false
       },
@@ -55,12 +59,6 @@
       {
         "name": "mcp-group-cluster_nodes",
         "description": "Access to cluster_nodes tool group",
-        "composite": false,
-        "clientRole": false
-      },
-      {
-        "name": "mcp-group-connectivity",
-        "description": "Access to connectivity tool group",
         "composite": false,
         "clientRole": false
       },
@@ -91,12 +89,6 @@
       {
         "name": "mcp-group-filepool",
         "description": "Access to filepool tool group",
-        "composite": false,
-        "clientRole": false
-      },
-      {
-        "name": "mcp-group-fsa",
-        "description": "Access to fsa tool group",
         "composite": false,
         "clientRole": false
       },
@@ -151,18 +143,6 @@
       {
         "name": "mcp-group-local_info",
         "description": "Access to local_info tool group",
-        "composite": false,
-        "clientRole": false
-      },
-      {
-        "name": "mcp-group-metadataiq",
-        "description": "Access to metadataiq tool group",
-        "composite": false,
-        "clientRole": false
-      },
-      {
-        "name": "mcp-group-mpa",
-        "description": "Access to mpa tool group",
         "composite": false,
         "clientRole": false
       },
@@ -229,12 +209,6 @@
       {
         "name": "mcp-group-storagepool_nodetypes",
         "description": "Access to storagepool_nodetypes tool group",
-        "composite": false,
-        "clientRole": false
-      },
-      {
-        "name": "mcp-group-supportassist",
-        "description": "Access to supportassist tool group",
         "composite": false,
         "clientRole": false
       },
@@ -348,9 +322,16 @@
         "subType": "anonymous",
         "subComponents": {},
         "config": {
-          "trusted-hosts": ["localhost", "127.0.0.1"],
-          "host-sending-registration-request-must-match": ["false"],
-          "client-uris-must-match": ["true"]
+          "trusted-hosts": [
+            "localhost",
+            "127.0.0.1"
+          ],
+          "host-sending-registration-request-must-match": [
+            "false"
+          ],
+          "client-uris-must-match": [
+            "true"
+          ]
         }
       }
     ]

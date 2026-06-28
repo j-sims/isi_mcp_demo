@@ -467,79 +467,7 @@
   "powerscale_hardening_reports_get": {
     "enabled": true
   },
-  "powerscale_supportassist_settings_get": {
-    "enabled": true
-  },
-  "powerscale_supportassist_status_get": {
-    "enabled": true
-  },
-  "powerscale_supportassist_license_get": {
-    "enabled": true
-  },
-  "powerscale_supportassist_terms_get": {
-    "enabled": true
-  },
-  "powerscale_supportassist_tasks_get": {
-    "enabled": true
-  },
-  "powerscale_supportassist_task_get": {
-    "enabled": true
-  },
-  "powerscale_connectivity_settings_get": {
-    "enabled": true
-  },
-  "powerscale_connectivity_status_get": {
-    "enabled": true
-  },
-  "powerscale_connectivity_license_get": {
-    "enabled": true
-  },
-  "powerscale_connectivity_terms_get": {
-    "enabled": true
-  },
-  "powerscale_connectivity_tasks_get": {
-    "enabled": true
-  },
-  "powerscale_connectivity_task_get": {
-    "enabled": true
-  },
   "powerscale_debug_stats_get": {
-    "enabled": true
-  },
-  "powerscale_fsa_results_get": {
-    "enabled": true
-  },
-  "powerscale_fsa_result_get": {
-    "enabled": true
-  },
-  "powerscale_fsa_index_get": {
-    "enabled": true
-  },
-  "powerscale_fsa_settings_get": {
-    "enabled": true
-  },
-  "powerscale_fsa_top_dirs_get": {
-    "enabled": true
-  },
-  "powerscale_fsa_top_dir_get": {
-    "enabled": true
-  },
-  "powerscale_fsa_top_files_get": {
-    "enabled": true
-  },
-  "powerscale_fsa_top_file_get": {
-    "enabled": true
-  },
-  "powerscale_fsa_histogram_get": {
-    "enabled": true
-  },
-  "powerscale_fsa_histogram_stat_get": {
-    "enabled": true
-  },
-  "powerscale_fsa_directories_get": {
-    "enabled": true
-  },
-  "powerscale_fsa_directory_get": {
     "enabled": true
   },
   "powerscale_synciq_report_subreports_get": {
@@ -579,39 +507,6 @@
     "enabled": true
   },
   "powerscale_lfn_path_get": {
-    "enabled": true
-  },
-  "powerscale_metadataiq_settings_get": {
-    "enabled": true
-  },
-  "powerscale_metadataiq_status_get": {
-    "enabled": true
-  },
-  "powerscale_metadataiq_certificate_get": {
-    "enabled": true
-  },
-  "powerscale_mpa_approvers_get": {
-    "enabled": true
-  },
-  "powerscale_mpa_approver_get": {
-    "enabled": true
-  },
-  "powerscale_mpa_requests_get": {
-    "enabled": true
-  },
-  "powerscale_mpa_request_get": {
-    "enabled": true
-  },
-  "powerscale_mpa_settings_get": {
-    "enabled": true
-  },
-  "powerscale_mpa_request_lifecycle_get": {
-    "enabled": true
-  },
-  "powerscale_mpa_privilege_actions_get": {
-    "enabled": true
-  },
-  "powerscale_mpa_trust_anchors_get": {
     "enabled": true
   },
   "powerscale_local_cluster_time_get": {

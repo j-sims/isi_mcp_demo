@@ -160,17 +160,19 @@ def powerscale_zones_summary_get(groupnet: Optional[str] = None, cluster_name: s
 
 
 @safe_tool(group="zones_summary", mode="read")
-def powerscale_zones_summary_zone_get(zone_id: int, cluster_name: str = None) -> dict:
+def powerscale_zones_summary_zone_get(zone_id, cluster_name: str = None) -> dict:
     """
-    Retrieve non-privileged summary information for a specific access zone by ID.
+    Retrieve non-privileged summary information for a specific access zone.
 
     Returns the base path for the zone. This endpoint is accessible without
     elevated privileges, making it useful for verifying zone existence and
     path from unprivileged contexts.
 
     Arguments:
-    - zone_id: The integer zone ID (use powerscale_zones_summary_get to list
-               zones; for full zone details with auth providers use powerscale_zones_get)
+    - zone_id: The numeric zone ID (e.g. 1) or zone name (e.g. "System").
+               Use powerscale_zones_get to list available zones and get their
+               zone_id field. For full zone details with auth providers, use
+               powerscale_zones_get.
     """
     cluster = get_cluster(cluster_name)
     zs = ZonesSummary(cluster)

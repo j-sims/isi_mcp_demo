@@ -24,7 +24,9 @@ class SyncReports:
         - dir: Sort direction ('ASC' or 'DESC')
         """
         api = isi_sdk.SyncReportsApi(self.cluster.api_client)
-        result = api.get_report_subreports(report_id=report_id, **page_kwargs(limit, resume, sort=sort, dir=dir))
+        # SDK signature is get_report_subreports(rid, ...) where rid is the report id;
+        # pass positionally (the keyword 'report_id' is not accepted by the SDK).
+        result = api.get_report_subreports(report_id, **page_kwargs(limit, resume, sort=sort, dir=dir))
         subreports = result.subreports if hasattr(result, "subreports") and result.subreports else []
         return {
             "items": [s.to_dict() for s in subreports],
@@ -39,7 +41,9 @@ class SyncReports:
         - subreport_id: The subreport ID
         """
         api = isi_sdk.SyncReportsApi(self.cluster.api_client)
-        result = api.get_report_subreport(report_id, subreport_id)
+        # SDK signature is get_report_subreport(report_subreport_id, rid) — the
+        # subreport id comes first and the report id (rid) second.
+        result = api.get_report_subreport(subreport_id, report_id)
         subreports = result.subreports if hasattr(result, "subreports") and result.subreports else []
         if subreports:
             return subreports[0].to_dict()

@@ -1,7 +1,7 @@
 from modules.tool_decorator import safe_tool, get_cluster
 from modules.onefs.v9_12_0.filemgmt import FileMgmt
 from modules.utils.paging import normalize_resume
-from modules.utils.kwargs import parse_json_param
+from modules.utils.kwargs import parse_json_param, parse_json_list_param
 from typing import Dict, Any, Optional
 
 
@@ -551,7 +551,9 @@ def powerscale_acl_set(
       Unix permissions. Use this for simple permission changes.
     - owner: Owner name to set (e.g. "root", "admin").
     - group: Group name to set (e.g. "wheel", "staff").
-    - acl: JSON string of ACL entry objects for fine-grained access control.
+    - acl: JSON string for fine-grained access control. Must be a JSON ARRAY
+      of ACL entry objects (not a single object). Do NOT put owner/group/mode
+      here — use the dedicated owner/group/mode arguments above for those.
       Example:
       '[{"accesstype":"allow","accessrights":["dir_gen_all"],
         "inherit_flags":["container_inherit","object_inherit"],
@@ -569,7 +571,7 @@ def powerscale_acl_set(
     - success: Boolean indicating if the ACL was set
     - message: Human-readable confirmation
     """
-    acl_list = parse_json_param("acl", acl)
+    acl_list = parse_json_list_param("acl", acl)
 
     # Auto-detect authoritative type based on what's being set.
     # OneFS requires 'authoritative' for all ACL set operations.
@@ -656,7 +658,7 @@ def powerscale_metadata_set(
     - success: Boolean indicating if metadata was set
     - message: Human-readable confirmation
     """
-    attrs_list = parse_json_param("attrs", attrs)
+    attrs_list = parse_json_list_param("attrs", attrs)
 
     cluster = get_cluster(cluster_name)
     fm = FileMgmt(cluster)
@@ -890,7 +892,7 @@ def powerscale_directory_query(
     """
     resume = normalize_resume(resume)
 
-    conditions_list = parse_json_param("conditions", conditions)
+    conditions_list = parse_json_list_param("conditions", conditions)
     result_attrs_list = parse_json_param("result_attrs", result_attrs)
 
     cluster = get_cluster(cluster_name)

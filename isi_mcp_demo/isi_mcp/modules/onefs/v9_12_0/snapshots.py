@@ -142,9 +142,15 @@ class Snapshots:
                 "id": result.id if hasattr(result, 'id') else None
             }
         except ApiException as e:
+            msg = safe_api_error(e)
+            if getattr(e, "status", None) == 404:
+                msg = (
+                    f"{msg} — target snapshot '{target}' does not exist. "
+                    "Use powerscale_snapshot_get to list existing snapshots."
+                )
             return {
                 "success": False,
-                "error": safe_api_error(e)
+                "error": msg
             }
 
     def get_alias(self, alias_id: str) -> dict:

@@ -30,3 +30,26 @@ def safe_api_error(exc) -> str:
         reason = getattr(exc, "reason", None) or "API error"
         return f"API error: {status} {reason}".strip() if status else f"API error: {reason}"
     return f"API error: {exc}"
+
+
+def feature_error(exc, feature: str) -> dict:
+    """Return a client-safe error dict annotated with a likely cause.
+
+    Several list/get endpoints fail not because of a code bug but because the
+    feature is not licensed/enabled (HTTP 400), the resource/config does not
+    exist (404), or the service is unavailable (500). Wrap the sanitised API
+    error (see :func:`safe_api_error`) with that context so the caller gets an
+    actionable message instead of a bare status line.
+    """
+    msg = safe_api_error(exc)
+    status = getattr(exc, "status", None)
+    hint = None
+    if status == 400:
+        hint = f"{feature} may not be enabled or licensed on this cluster"
+    elif status == 404:
+        hint = f"{feature} is not configured, or the requested resource does not exist"
+    elif status == 500:
+        hint = f"{feature} returned a server error (the service may be unavailable)"
+    if hint:
+        return {"error": f"{msg} — {hint}.", "status": status}
+    return {"error": msg, "status": status}

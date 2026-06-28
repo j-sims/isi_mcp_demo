@@ -689,27 +689,6 @@ Response: `{"cluster.cpu.idle.avg": 919, "cluster.cpu.user.avg": 23, "cluster.cp
 
 ---
 
-### File System Analytics (FSA)
-
-**When to use**: Capacity analysis and data aging — identify largest directories/files, old data candidates for archiving, and storage waste. Requires an FSA job to have been run first.
-
-| Tool | Purpose | Key Arguments |
-|---|---|---|
-| `powerscale_fsa_results_get` | List available FSA result sets | — |
-| `powerscale_fsa_result_get` | Get details for a specific FSA result | `result_id` (int) |
-| `powerscale_fsa_index_get` | Get available FSA index table names | — |
-| `powerscale_fsa_settings_get` | Get FSA configuration settings | `[scope]` |
-| `powerscale_fsa_top_dirs_get` | Get the largest directories from an FSA result | `result_id` (int) |
-| `powerscale_fsa_top_dir_get` | Get a specific top directory entry | `result_id` (int), `top_dir_id` (int) |
-| `powerscale_fsa_top_files_get` | Get the largest files from an FSA result | `result_id` (int) |
-| `powerscale_fsa_top_file_get` | Get a specific top file entry | `result_id` (int), `top_file_id` (int) |
-| `powerscale_fsa_histogram_get` | File count histogram by size/age buckets | `result_id` (int) |
-| `powerscale_fsa_histogram_stat_get` | Histogram filtered by a specific statistic | `result_id` (int), `stat` (str) |
-| `powerscale_fsa_directories_get` | Get directory analytics from an FSA result | `result_id` (int) |
-| `powerscale_fsa_directory_get` | Get analytics for a specific directory | `result_id` (int), `directory_id` (int) |
-
----
-
 ### DataMover
 
 **When to use**: Configuring or monitoring cloud-tiering or data movement policies that migrate data between PowerScale and cloud/object targets.
@@ -779,27 +758,6 @@ Response: `{"cluster.cpu.idle.avg": 919, "cluster.cpu.user.avg": 23, "cluster.cp
 | `powerscale_hardening_profiles_get` | List available security hardening profiles | — |
 | `powerscale_hardening_state_get` | Get the current hardening service state | — |
 | `powerscale_hardening_reports_get` | List compliance reports for all hardening rules | — |
-
----
-
-### SupportAssist & Connectivity
-
-**When to use**: Reviewing Dell remote support configuration, checking telemetry status, or verifying that the cluster can reach Dell's support infrastructure.
-
-| Tool | Purpose | Key Arguments |
-|---|---|---|
-| `powerscale_supportassist_settings_get` | Get SupportAssist configuration | — |
-| `powerscale_supportassist_status_get` | Get current SupportAssist status | — |
-| `powerscale_supportassist_license_get` | Get SupportAssist license status | — |
-| `powerscale_supportassist_terms_get` | Get Terms & Conditions status | — |
-| `powerscale_supportassist_tasks_get` | List all SupportAssist tasks | — |
-| `powerscale_supportassist_task_get` | Get a specific task by ID | `task_id` (str) |
-| `powerscale_connectivity_settings_get` | Get connectivity diagnostic configuration | — |
-| `powerscale_connectivity_status_get` | Get connectivity diagnostic status | — |
-| `powerscale_connectivity_license_get` | Get connectivity service license | — |
-| `powerscale_connectivity_terms_get` | Get telemetry notice text | — |
-| `powerscale_connectivity_tasks_get` | List connectivity diagnostic tasks | — |
-| `powerscale_connectivity_task_get` | Get a specific connectivity task | `task_id` (str) |
 
 ---
 

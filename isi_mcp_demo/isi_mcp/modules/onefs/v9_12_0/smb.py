@@ -1,6 +1,8 @@
 import logging
 import isilon_sdk.v9_12_0 as isi_sdk
+from isilon_sdk.v9_12_0.rest import ApiException
 from modules.ansible.runner import AnsibleRunner
+from modules.utils.errors import feature_error
 from modules.utils.kwargs import drop_none, drop_falsy, parse_json_kwargs
 from modules.utils.paging import page_kwargs
 
@@ -156,8 +158,11 @@ class Smb:
     def get_sessions(self, limit: int = 1000, lnn: str = None,
                      lnn_skip: str = None, resume: str = None) -> dict:
         """List all open SMB sessions across cluster nodes."""
-        protocols_api = isi_sdk.ProtocolsApi(self.cluster.api_client)
-        result = protocols_api.get_smb_sessions(**page_kwargs(limit, resume, lnn=lnn, lnn_skip=lnn_skip))
+        try:
+            protocols_api = isi_sdk.ProtocolsApi(self.cluster.api_client)
+            result = protocols_api.get_smb_sessions(**page_kwargs(limit, resume, lnn=lnn, lnn_skip=lnn_skip))
+        except ApiException as e:
+            return feature_error(e, "SMB sessions (the SMB service may be unavailable or have no active sessions)")
 
         nodes = [n.to_dict() for n in result.nodes] if result.nodes else []
         return {
@@ -184,8 +189,11 @@ class Smb:
     def get_openfiles(self, limit: int = 1000, resume: str = None,
                       sort: str = None, dir: str = None) -> dict:
         """List all open files on the SMB server."""
-        protocols_api = isi_sdk.ProtocolsApi(self.cluster.api_client)
-        result = protocols_api.get_smb_openfiles(**page_kwargs(limit, resume, sort=sort, dir=dir))
+        try:
+            protocols_api = isi_sdk.ProtocolsApi(self.cluster.api_client)
+            result = protocols_api.get_smb_openfiles(**page_kwargs(limit, resume, sort=sort, dir=dir))
+        except ApiException as e:
+            return feature_error(e, "SMB open files (the SMB service may be unavailable or have no open files)")
 
         items = [f.to_dict() for f in result.openfiles] if result.openfiles else []
         return {
