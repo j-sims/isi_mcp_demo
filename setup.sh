@@ -653,7 +653,7 @@ while [[ $# -gt 0 ]]; do
         --auth)         AUTH_ARG="$2"; shift 2 ;;
         --ssl)          SSL_ARG="$2"; SSL_ARG_EXPLICIT=true; shift 2 ;;
         --listen-port)  LISTEN_PORT_ARG="$2"; shift 2 ;;
-        --no-cache)     NO_CACHE=true; shift ;;
+        --no-cache)     NO_CACHE=false; shift ;;
         -h|--help)      show_help; exit 0 ;;
         *)              fail "Unknown argument: $1"; echo "Run ./setup.sh --help for usage."; exit 1 ;;
     esac
