@@ -175,6 +175,9 @@ class Smb:
     def delete_sessions_by_user(self, computer: str, user: str) -> dict:
         """Close all SMB sessions for a specific user on a specific computer."""
         protocols_api = isi_sdk.ProtocolsApi(self.cluster.api_client)
+        # SDK arg order is (user, computer): the misleadingly-named first param
+        # `smb_sessions_computer_user` is actually the USER ({user} path segment),
+        # the second is the computer. Do not swap these.
         protocols_api.delete_smb_sessions_computer_user(user, computer)
         return {"success": True, "message": f"All SMB sessions for user '{user}' on computer '{computer}' closed"}
 

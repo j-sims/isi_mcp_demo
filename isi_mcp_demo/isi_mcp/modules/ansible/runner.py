@@ -86,6 +86,21 @@ class AnsibleRunner:
         }
 
     @staticmethod
+    def _read_and_close(stream):
+        """Read an ansible-runner stdout/stderr stream fully and close it.
+
+        These streams are file handles opened lazily by ansible-runner; reading
+        without closing leaks a file descriptor on every playbook run. Falls back
+        to ``str(stream)`` for non-file-like values. Returns the stream contents.
+        """
+        try:
+            return stream.read() if hasattr(stream, "read") else str(stream)
+        finally:
+            close = getattr(stream, "close", None)
+            if callable(close):
+                close()
+
+    @staticmethod
     def _validate_variable_lengths(variables: dict) -> None:
         """Reject any string value longer than MAX_PLAYBOOK_VALUE_LEN.
 
@@ -199,13 +214,19 @@ class AnsibleRunner:
             "playbook_path": str(playbook_path),
         }
 
-        # Capture stdout for diagnostics
-        if runner.stdout:
-            result["stdout"] = runner.stdout.read() if hasattr(runner.stdout, "read") else str(runner.stdout)
+        # Capture stdout for diagnostics. ansible-runner's stdout/stderr are
+        # properties that open a NEW file handle on every access, so capture each
+        # once and close it after reading — otherwise each run leaks file
+        # descriptors (the previous code accessed runner.stdout twice).
+        stdout_stream = runner.stdout
+        if stdout_stream:
+            result["stdout"] = self._read_and_close(stdout_stream)
 
         # On failure, include stderr if available
-        if not result["success"] and runner.stderr:
-            result["stderr"] = runner.stderr.read() if hasattr(runner.stderr, "read") else str(runner.stderr)
+        if not result["success"]:
+            stderr_stream = runner.stderr
+            if stderr_stream:
+                result["stderr"] = self._read_and_close(stderr_stream)
 
         # Extract structured task results from runner events
         task_results = {}

@@ -2,6 +2,7 @@ import logging
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
 from modules.utils.paging import page_kwargs
+from modules.utils.errors import safe_api_error
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,9 @@ class DataMover:
             result = datamover_api.list_datamover_policies(**page_kwargs(limit, resume))
         except ApiException as e:
             logger.error("API error: %s", e)
-            return {"items": [], "resume": None}
+            # Surface the failure additively (keep items/resume) so the caller can
+            # distinguish a real API error from a genuinely empty list.
+            return {"items": [], "resume": None, "error": safe_api_error(e)}
 
         items = [p.to_dict() for p in result.policies] if result.policies else []
 
@@ -57,7 +60,7 @@ class DataMover:
         except ApiException as e:
             return {
                 "success": False,
-                "error": f"API error: {e}"
+                "error": safe_api_error(e)
             }
 
     def create_policy(self, name: str, base_policy_id: int = None,
@@ -110,7 +113,7 @@ class DataMover:
         except ApiException as e:
             return {
                 "success": False,
-                "error": f"API error: {e}"
+                "error": safe_api_error(e)
             }
 
     def delete_policy(self, policy_id: str) -> dict:
@@ -132,7 +135,7 @@ class DataMover:
         except ApiException as e:
             return {
                 "success": False,
-                "error": f"API error: {e}"
+                "error": safe_api_error(e)
             }
 
     def get_policy_last_job(self, policy_id: str) -> dict:
@@ -155,7 +158,7 @@ class DataMover:
         except ApiException as e:
             return {
                 "success": False,
-                "error": f"API error: {e}"
+                "error": safe_api_error(e)
             }
 
     # ========================================================================
@@ -177,7 +180,9 @@ class DataMover:
             result = datamover_api.list_datamover_accounts(**page_kwargs(limit, resume))
         except ApiException as e:
             logger.error("API error: %s", e)
-            return {"items": [], "resume": None}
+            # Surface the failure additively (keep items/resume) so the caller can
+            # distinguish a real API error from a genuinely empty list.
+            return {"items": [], "resume": None, "error": safe_api_error(e)}
 
         items = [a.to_dict() for a in result.accounts] if result.accounts else []
 
@@ -206,7 +211,7 @@ class DataMover:
         except ApiException as e:
             return {
                 "success": False,
-                "error": f"API error: {e}"
+                "error": safe_api_error(e)
             }
 
     def create_account(self, name: str, account_type: str, uri: str,
@@ -272,7 +277,7 @@ class DataMover:
         except ApiException as e:
             return {
                 "success": False,
-                "error": f"API error: {e}"
+                "error": safe_api_error(e)
             }
 
     def delete_account(self, account_id: str) -> dict:
@@ -294,7 +299,7 @@ class DataMover:
         except ApiException as e:
             return {
                 "success": False,
-                "error": f"API error: {e}"
+                "error": safe_api_error(e)
             }
 
     # ========================================================================
@@ -316,7 +321,9 @@ class DataMover:
             result = datamover_api.list_datamover_base_policies(**page_kwargs(limit, resume))
         except ApiException as e:
             logger.error("API error: %s", e)
-            return {"items": [], "resume": None}
+            # Surface the failure additively (keep items/resume) so the caller can
+            # distinguish a real API error from a genuinely empty list.
+            return {"items": [], "resume": None, "error": safe_api_error(e)}
 
         items = [bp.to_dict() for bp in result.policies] if result.policies else []
 
@@ -345,7 +352,7 @@ class DataMover:
         except ApiException as e:
             return {
                 "success": False,
-                "error": f"API error: {e}"
+                "error": safe_api_error(e)
             }
 
     def create_base_policy(self, name: str, enabled: bool = None,
@@ -401,7 +408,7 @@ class DataMover:
         except ApiException as e:
             return {
                 "success": False,
-                "error": f"API error: {e}"
+                "error": safe_api_error(e)
             }
 
     def delete_base_policy(self, base_policy_id: str) -> dict:
@@ -423,5 +430,5 @@ class DataMover:
         except ApiException as e:
             return {
                 "success": False,
-                "error": f"API error: {e}"
+                "error": safe_api_error(e)
             }

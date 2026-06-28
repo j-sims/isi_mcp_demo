@@ -1,4 +1,6 @@
 import isilon_sdk.v9_12_0 as isi_sdk
+from isilon_sdk.v9_12_0.rest import ApiException
+from modules.utils.errors import safe_api_error
 
 class Config:
 
@@ -28,9 +30,16 @@ class Config:
         cluster_api = isi_sdk.ClusterApi(self.cluster.api_client)
         storagepool_api = isi_sdk.StoragepoolApi(self.cluster.api_client)
 
-        nodes = cluster_api.get_cluster_nodes()
-        node_pools = storagepool_api.list_storagepool_nodepools()
-        tiers = storagepool_api.list_storagepool_tiers()
+        # Hardware info is best-effort: get() treats a returned {"error": ...} as a
+        # signal to omit the optional "hardware" key rather than fail the whole
+        # cluster-config fetch. Honor that documented contract by catching here
+        # instead of letting an ApiException propagate and abort get().
+        try:
+            nodes = cluster_api.get_cluster_nodes()
+            node_pools = storagepool_api.list_storagepool_nodepools()
+            tiers = storagepool_api.list_storagepool_tiers()
+        except ApiException as e:
+            return {"error": safe_api_error(e)}
 
         return {
             "nodes": nodes.to_dict().get("nodes", []),

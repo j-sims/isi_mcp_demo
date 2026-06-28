@@ -1,6 +1,7 @@
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
 from modules.utils.timestamps import epoch_to_iso
+from modules.utils.errors import safe_api_error
 
 
 class Statistics:
@@ -54,20 +55,35 @@ class Statistics:
         Returns:
             When show_nodes=False: {key: value, "_sample_time": <unix_ts>} dict.
             When show_nodes=True: {"node_<devid>": {key: value}, "_sample_time": <unix_ts>} dict.
-            On error: {"error": str(e)}
+            On error: {"error": "API error: ..."}
         """
         stats_api = isi_sdk.StatisticsApi(self.cluster.api_client)
-        result = stats_api.get_statistics_current(
-            keys=keys,
-            degraded=False,
-            show_nodes=show_nodes,
-            timeout=15,
-        )
+        try:
+            result = stats_api.get_statistics_current(
+                keys=keys,
+                degraded=False,
+                show_nodes=show_nodes,
+                timeout=15,
+            )
+        except ApiException as e:
+            # Honor the documented "{'error': ...}" contract so callers like
+            # get_node_performance can detect a failed fetch and retry with a
+            # reduced key set (e.g. dropping node.cpu.throttling on virtual
+            # clusters) instead of the exception propagating and aborting.
+            return {"error": safe_api_error(e)}
 
         def _coerce(value):
             """Convert stat values to JSON-serializable Python types."""
             if value is None:
                 return None
+            # Preserve values that are already numeric. Calling int() first would
+            # truncate a native float stat (e.g. a 3.5 bytes/sec rate -> 3),
+            # silently corrupting the metric. The int()/float() parsing below is
+            # only meant for numeric *strings* the SDK may hand back.
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, (int, float)):
+                return value
             try:
                 return int(value)
             except (ValueError, TypeError):
@@ -296,7 +312,7 @@ class Statistics:
                 kwargs["queryable"] = True
             result = stats_api.get_statistics_keys(**kwargs)
         except ApiException as e:
-            return {"keys": [], "resume": None, "error": str(e)}
+            return {"keys": [], "resume": None, "error": safe_api_error(e)}
 
         keys_out = []
         if result.keys:

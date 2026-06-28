@@ -27,17 +27,21 @@ class Capacity:
 
         stats = {}
         for s in result.stats:
-            # Convert numeric string values to int/float
             value = s.value
-            try:
-                # Try int first
-                value = int(value)
-            except (ValueError, TypeError):
+            # Preserve values that are already numeric. Calling int() first would
+            # truncate a native float — e.g. a dedupe/compression ratio of 1.5 -> 1
+            # — silently corrupting the metric. The int()/float() parsing below is
+            # only for numeric *strings* the SDK may return.
+            if not isinstance(value, (int, float)):
                 try:
-                    # Fall back to float
-                    value = float(value)
+                    # Try int first (numeric string like "42")
+                    value = int(value)
                 except (ValueError, TypeError):
-                    # Keep as string if conversion fails
-                    pass
+                    try:
+                        # Fall back to float (numeric string like "1.5")
+                        value = float(value)
+                    except (ValueError, TypeError):
+                        # Keep as string if conversion fails
+                        pass
             stats[s.key] = value
         return stats

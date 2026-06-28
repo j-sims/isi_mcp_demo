@@ -3,6 +3,8 @@ import logging
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
 from modules.ansible.runner import AnsibleRunner
+from modules.utils.kwargs import parse_json_param
+from modules.utils.errors import safe_api_error
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +34,9 @@ class FilePool:
             result = filepool_api.list_filepool_policies()
         except ApiException as e:
             logger.error("API error: %s", e)
-            return {"items": [], "total": 0}
+            # Surface the failure additively (keep items/total) so the caller can
+            # distinguish a real API error from a genuinely empty list.
+            return {"items": [], "total": 0, "error": safe_api_error(e)}
 
         items = [p.to_dict() for p in result.policies] if result.policies else []
 
@@ -61,7 +65,7 @@ class FilePool:
         except ApiException as e:
             return {
                 "success": False,
-                "error": f"API error: {e}"
+                "error": safe_api_error(e)
             }
 
     def get_default_policy(self) -> dict:
@@ -81,7 +85,7 @@ class FilePool:
         except ApiException as e:
             return {
                 "success": False,
-                "error": f"API error: {e}"
+                "error": safe_api_error(e)
             }
 
     # ------------------------------------------------------------------
@@ -116,16 +120,18 @@ class FilePool:
         runner = AnsibleRunner(self.cluster)
         variables = {
             "policy_name": policy_name,
-            "file_matching_pattern": json.loads(file_matching_pattern),
+            "file_matching_pattern": parse_json_param("file_matching_pattern", file_matching_pattern),
         }
         if description:
             variables["description"] = description
         if apply_order is not None:
             variables["apply_order"] = apply_order
         if apply_data_storage_policy:
-            variables["apply_data_storage_policy"] = json.loads(apply_data_storage_policy)
+            variables["apply_data_storage_policy"] = parse_json_param(
+                "apply_data_storage_policy", apply_data_storage_policy)
         if apply_snapshot_storage_policy:
-            variables["apply_snapshot_storage_policy"] = json.loads(apply_snapshot_storage_policy)
+            variables["apply_snapshot_storage_policy"] = parse_json_param(
+                "apply_snapshot_storage_policy", apply_snapshot_storage_policy)
         if set_requested_protection:
             variables["set_requested_protection"] = set_requested_protection
         if set_data_access_pattern:
@@ -177,7 +183,7 @@ class FilePool:
                 update_params["apply_order"] = apply_order
 
             if file_matching_pattern is not None:
-                update_params["file_matching_pattern"] = json.loads(file_matching_pattern)
+                update_params["file_matching_pattern"] = parse_json_param("file_matching_pattern", file_matching_pattern)
 
             actions = self._build_actions(
                 apply_data_storage_policy=apply_data_storage_policy,
@@ -208,7 +214,7 @@ class FilePool:
         except ApiException as e:
             return {
                 "success": False,
-                "error": f"API error: {e}"
+                "error": safe_api_error(e)
             }
 
     # ------------------------------------------------------------------
@@ -246,14 +252,14 @@ class FilePool:
         actions = []
 
         if apply_data_storage_policy:
-            parsed = json.loads(apply_data_storage_policy) if isinstance(apply_data_storage_policy, str) else apply_data_storage_policy
+            parsed = parse_json_param("apply_data_storage_policy", apply_data_storage_policy) if isinstance(apply_data_storage_policy, str) else apply_data_storage_policy
             actions.append({
                 "action_type": "apply_data_storage_policy",
                 "action_param": json.dumps(parsed) if isinstance(parsed, dict) else str(parsed)
             })
 
         if apply_snapshot_storage_policy:
-            parsed = json.loads(apply_snapshot_storage_policy) if isinstance(apply_snapshot_storage_policy, str) else apply_snapshot_storage_policy
+            parsed = parse_json_param("apply_snapshot_storage_policy", apply_snapshot_storage_policy) if isinstance(apply_snapshot_storage_policy, str) else apply_snapshot_storage_policy
             actions.append({
                 "action_type": "apply_snapshot_storage_policy",
                 "action_param": json.dumps(parsed) if isinstance(parsed, dict) else str(parsed)

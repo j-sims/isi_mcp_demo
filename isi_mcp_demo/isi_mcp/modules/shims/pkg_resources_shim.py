@@ -25,9 +25,18 @@ class _WorkingSet(list):
     """Minimal stand-in for pkg_resources.WorkingSet."""
 
     def __init__(self):
-        super().__init__(
-            _Distribution(d) for d in importlib.metadata.distributions()
-        )
+        dists = []
+        for d in importlib.metadata.distributions():
+            try:
+                # A distribution with incomplete .dist-info metadata can have a
+                # missing "Name" (email.message returns None, so .lower() would
+                # raise AttributeError). pkg_resources tolerated such packages —
+                # skip the bad one rather than break the whole working_set (which
+                # would, in turn, break the dellemc.powerscale import).
+                dists.append(_Distribution(d))
+            except Exception:
+                continue
+        super().__init__(dists)
 
 
 working_set = _WorkingSet()

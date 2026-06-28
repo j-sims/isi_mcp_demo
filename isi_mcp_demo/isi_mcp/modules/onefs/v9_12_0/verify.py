@@ -53,7 +53,10 @@ class Verify:
         critical_events = []
 
         for group in event_groups:
-            if getattr(group, "severity", "").lower() == "critical":
+            # `or ""` guards a present-but-None severity: getattr's default only
+            # applies when the attribute is missing, so a None value would make
+            # .lower() raise AttributeError and abort the whole check.
+            if (getattr(group, "severity", "") or "").lower() == "critical":
                 critical_events.append(group)
 
         return [ce.to_dict() for ce in critical_events]
@@ -87,5 +90,15 @@ class Verify:
         for s in result.stats:
             stats[s.key] = s.value
 
-        percent_free = float(stats.get('ifs.bytes.avail', 0)) / float(stats.get('ifs.bytes.total', 0))
+        # Coerce None/missing to 0 so float() can't raise TypeError, then guard
+        # against a zero/unknown total — otherwise this would be a bare
+        # ZeroDivisionError that aborts the whole verification with no context.
+        total = float(stats.get('ifs.bytes.total') or 0)
+        avail = float(stats.get('ifs.bytes.avail') or 0)
+        if total <= 0:
+            raise ValueError(
+                "Cannot compute free space: cluster reported zero or unknown "
+                "total capacity (ifs.bytes.total)."
+            )
+        percent_free = avail / total
         return (round(percent_free * 100, 2))

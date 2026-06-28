@@ -66,6 +66,9 @@ def bytes_to_human(bytes_value: int) -> dict:
         if value < 1024 or unit == units[-1]:
             return {"bytes": bytes_value, "human_readable": f"{value:.2f}{unit}"}
         value /= 1024
+    # Unreachable for the non-empty units list above, but guarantees the documented
+    # dict contract on every path (guards against a future edit silently returning None).
+    return {"bytes": bytes_value, "human_readable": f"{value:.2f}{units[-1]}"}
 
 
 @safe_tool(group="utils", mode="read")
@@ -99,7 +102,13 @@ def human_to_bytes(human_value: str) -> dict:
     match = _re.fullmatch(r"\s*([\d.]+)\s*(B|KiB|MiB|GiB|TiB|PiB|EiB)\s*", human_value)
     if not match:
         raise ValueError(f"Invalid human-readable value: {human_value}")
-    value = float(match.group(1))
+    try:
+        value = float(match.group(1))
+    except ValueError:
+        # A multi-dot number like "1.2.3" passes the [\d.]+ character class but is
+        # not a valid float; surface the same actionable message instead of a bare
+        # "could not convert string to float" error.
+        raise ValueError(f"Invalid human-readable value: {human_value}")
     unit = match.group(2)
     return {"human_readable": human_value, "bytes": int(value * (1024 ** units[unit]))}
 

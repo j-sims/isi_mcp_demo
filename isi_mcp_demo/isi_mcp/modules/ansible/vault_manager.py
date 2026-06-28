@@ -251,12 +251,23 @@ class VaultManager:
     def _save_selected(self) -> None:
         """Persist current cluster selection to disk with file locking."""
         try:
-            with open(self._cluster_state_path, "w") as f:
-                fcntl.flock(f, fcntl.LOCK_EX)
+            # Open WITHOUT truncating (no O_TRUNC), take the exclusive lock, and
+            # only then truncate + write. Using open(path, "w") would truncate the
+            # file before flock is acquired, leaving a window where another process
+            # can read an empty/half-written cluster_state.json. Modifying in place
+            # (rather than write-temp+rename) avoids the bind-mount EBUSY issue the
+            # vault save path documents.
+            fd = os.open(self._cluster_state_path, os.O_WRONLY | os.O_CREAT, 0o644)
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX)
                 try:
-                    json.dump({"selected": self._selected}, f)
+                    os.ftruncate(fd, 0)
+                    os.lseek(fd, 0, os.SEEK_SET)
+                    os.write(fd, json.dumps({"selected": self._selected}).encode())
                 finally:
-                    fcntl.flock(f, fcntl.LOCK_UN)
+                    fcntl.flock(fd, fcntl.LOCK_UN)
+            finally:
+                os.close(fd)
             self._selected_last_read = time.monotonic()
         except OSError:
             pass

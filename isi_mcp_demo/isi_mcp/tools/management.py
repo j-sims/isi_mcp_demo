@@ -136,9 +136,9 @@ def register(mcp, local_tools_fn, load_config_fn, update_enabled_fn,
         the special mode targets "read" or "write" to toggle all read-only or all
         write tools at once.
 
-        Available groups: health, capacity, quotas, snapshots, synciq, datamover,
-        filepool, nfs, smb, s3, filemgmt, users, groups, events, statistics, utils,
-        networking, cluster_nodes, storagepool_nodetypes, licensing, zones_summary
+        To see the full, current set of group names (and which tools each contains),
+        call powerscale_tools_list_by_group — that is the authoritative source and
+        never drifts as groups are added.
 
         Arguments:
         - names: List of group names, individual tool names, and/or mode targets.
@@ -164,6 +164,8 @@ def register(mcp, local_tools_fn, load_config_fn, update_enabled_fn,
         - skipped: List of names that were already in the requested state
         - total_enabled: Updated count of enabled tools
         - total_disabled: Updated count of disabled tools
+        - refused_management: (only present when applicable) management/cluster
+          tool names that were left unchanged because they are operator-controlled
         """
         if action not in ("enable", "disable"):
             return {"error": f"Invalid action '{action}'. Must be 'enable' or 'disable'."}

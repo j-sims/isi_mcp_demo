@@ -1,7 +1,7 @@
-import json
 from modules.tool_decorator import safe_tool, get_cluster
 from modules.onefs.v9_12_0.nfs import Nfs
 from modules.utils.paging import normalize_resume, paginated_result
+from modules.utils.kwargs import parse_json_param
 from typing import Dict, Any, Optional
 
 
@@ -172,8 +172,8 @@ def powerscale_nfs_create(
     security_flavors_list = [f.strip() for f in security_flavors.split(",")] if security_flavors else None
 
     # Parse Phase 3 & 4 - User mapping JSON
-    map_root_dict = json.loads(map_root) if map_root else None
-    map_non_root_dict = json.loads(map_non_root) if map_non_root else None
+    map_root_dict = parse_json_param("map_root", map_root)
+    map_non_root_dict = parse_json_param("map_non_root", map_non_root)
 
     return nfs.add(
         path=path,

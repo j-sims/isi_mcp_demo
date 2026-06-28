@@ -2,6 +2,7 @@ import logging
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
 from modules.utils.timestamps import add_iso_timestamps
+from modules.utils.errors import safe_api_error
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +73,7 @@ class Events:
             result = event_api.get_event_eventgroup_occurrences(**kwargs)
         except ApiException as e:
             logger.error("API error: %s", e)
-            return {"items": [], "resume": None, "error": str(e)}
+            return {"items": [], "resume": None, "error": safe_api_error(e)}
 
         items = [eg.to_dict() for eg in result.eventgroups] if result.eventgroups else []
         if severity_filter:

@@ -77,13 +77,21 @@ class Quotas:
         return new_limit
 
     def increment_hard_quota(self, PATH, INCREMENT):
-        result = self._update_hard_quota(PATH, lambda current: current + INCREMENT)
+        def new_limit(current):
+            if current is None:
+                return ("Error: Quota has no hard limit to increment; "
+                        "set a hard limit first.")
+            return current + INCREMENT
+        result = self._update_hard_quota(PATH, new_limit)
         if isinstance(result, str):
             return result
         return f"Quota on {PATH} increased by {INCREMENT}"
 
     def decrement_hard_quota(self, PATH, INCREMENT):
         def new_limit(current):
+            if current is None:
+                return ("Error: Quota has no hard limit to decrement; "
+                        "set a hard limit first.")
             value = current - INCREMENT
             return value if value > 0 else "Error: Quota must be greater than zero"
         result = self._update_hard_quota(PATH, new_limit)
@@ -108,6 +116,13 @@ class Quotas:
             soft_grace_period_unit: Unit for grace period ('hours', 'days', 'weeks', 'months')
             persona: If set, creates a user quota; otherwise a directory quota
         """
+        # Validate the threshold type up front so an invalid value fails fast with
+        # the most actionable message — before parsing the size or building the
+        # runner (otherwise a bad quota_type + bad size surfaces the size error).
+        if quota_type not in ("hard", "soft", "advisory"):
+            return {"success": False, "status": "failed",
+                    "error": f"Invalid quota_type: {quota_type}. Must be 'hard', 'soft', or 'advisory'."}
+
         runner = AnsibleRunner(self.cluster)
 
         # Ansible's quota_type is the scope (directory/user/group),
@@ -133,9 +148,7 @@ class Quotas:
             variables["soft_grace_period_unit"] = soft_grace_period_unit
         elif quota_type == "advisory":
             variables["advisory_limit_size"] = size_value
-        else:
-            return {"success": False, "status": "failed",
-                    "error": f"Invalid quota_type: {quota_type}. Must be 'hard', 'soft', or 'advisory'."}
+        # quota_type is guaranteed valid by the early guard above.
 
         variables.update(drop_none(user_name=persona))
         return runner.execute("quota_create.yml.j2", variables)

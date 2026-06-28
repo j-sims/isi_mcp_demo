@@ -1,4 +1,3 @@
-import json
 from modules.tool_decorator import safe_tool, get_cluster
 from modules.onefs.v9_12_0.filemgmt import FileMgmt
 from modules.utils.paging import normalize_resume
@@ -657,7 +656,7 @@ def powerscale_metadata_set(
     - success: Boolean indicating if metadata was set
     - message: Human-readable confirmation
     """
-    attrs_list = json.loads(attrs)
+    attrs_list = parse_json_param("attrs", attrs)
 
     cluster = get_cluster(cluster_name)
     fm = FileMgmt(cluster)
@@ -891,7 +890,7 @@ def powerscale_directory_query(
     """
     resume = normalize_resume(resume)
 
-    conditions_list = json.loads(conditions)
+    conditions_list = parse_json_param("conditions", conditions)
     result_attrs_list = parse_json_param("result_attrs", result_attrs)
 
     cluster = get_cluster(cluster_name)

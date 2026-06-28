@@ -1,6 +1,7 @@
 import logging
 import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
+from modules.utils.errors import safe_api_error
 
 logger = logging.getLogger(__name__)
 
@@ -331,7 +332,7 @@ class Network:
                                 })
                         except ApiException as e:
                             logger.error("API error fetching pools for %s/%s: %s", gn_name, sn_name, e)
-                            pools_out = [{"error": str(e)}]
+                            pools_out = [{"error": safe_api_error(e)}]
 
                         subnets_out.append({
                             "name": sn_name,
@@ -348,7 +349,7 @@ class Network:
                         })
                 except ApiException as e:
                     logger.error("API error fetching subnets for groupnet '%s': %s", gn_name, e)
-                    subnets_out = [{"error": str(e)}]
+                    subnets_out = [{"error": safe_api_error(e)}]
 
                 groupnets_out.append({
                     "name": gn_name,
@@ -361,6 +362,6 @@ class Network:
                 })
         except ApiException as e:
             logger.error("API error fetching groupnets: %s", e)
-            return {"error": str(e), "groupnets": []}
+            return {"error": safe_api_error(e), "groupnets": []}
 
         return {"groupnets": groupnets_out}

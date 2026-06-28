@@ -157,7 +157,7 @@ def register(mcp, vault_manager_class):
                                 cert_f.write(x509.stdout)
                             cert_extracted = os.path.getsize(cert_path_container) > 0
                 except (subprocess.TimeoutExpired, OSError) as e:
-                    logger.debug(f"Certificate extraction failed: {e}")
+                    logger.debug("Certificate extraction failed: %s", e)
             else:
                 logger.debug("Skipping cert extraction: host %r is not a plain hostname/IP", host_bare)
 
@@ -187,18 +187,18 @@ def register(mcp, vault_manager_class):
 
                     if is_self_signed and cert_is_ca:
                         ca_bundle = cert_path_container
-                        logger.info(f"Extracted CA-capable self-signed cert for cluster '{name}'")
+                        logger.info("Extracted CA-capable self-signed cert for cluster '%s'", name)
                     else:
                         try:
                             os.remove(cert_path_container)
                         except OSError:
                             pass
                         if is_self_signed:
-                            logger.debug(f"Cert for '{name}' is self-signed but lacks CA:TRUE (X.509 v1)")
+                            logger.debug("Cert for '%s' is self-signed but lacks CA:TRUE (X.509 v1)", name)
                         else:
-                            logger.debug(f"Cert for '{name}' is CA-signed — will use system CA store")
+                            logger.debug("Cert for '%s' is CA-signed — will use system CA store", name)
                 except (subprocess.TimeoutExpired, OSError) as e:
-                    logger.debug(f"Cert inspection failed: {e}")
+                    logger.debug("Cert inspection failed: %s", e)
 
             ssl_note = None
             if ca_bundle:
@@ -223,7 +223,7 @@ def register(mcp, vault_manager_class):
                 "cluster": name,
                 "ssl_verified": ca_bundle is not None,
                 "verify_ssl": effective_verify_ssl,
-                "message": f"Cluster '{name}' saved to vault. Use powerscale_cluster_select to target it.",
+                "message": f"Cluster '{name}' saved to vault. Use powerscale_cluster_setdefault to make it the default target.",
                 "clusters": vm.list_clusters(),
             }
             if ssl_note:

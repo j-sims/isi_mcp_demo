@@ -122,9 +122,14 @@ class Users:
         if role_state:
             variables["role_state"] = role_state
 
-        # Pass password via extravars to keep it out of rendered playbook files
+        # Pass password via extravars to keep it out of rendered playbook files.
+        # The modify template gates its password line on `user_password is defined`
+        # at Jinja render time, so we must also set the placeholder in `variables`
+        # (same pattern as add()) — otherwise the line is omitted at render time and
+        # the password change silently never happens.
         extra_extravars = {}
         if password is not None:
+            variables["user_password"] = "{{ user_password }}"
             extra_extravars["user_password"] = password
 
         return runner.execute("user_modify.yml.j2", variables, extra_extravars=extra_extravars)

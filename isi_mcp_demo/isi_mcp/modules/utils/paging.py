@@ -28,4 +28,9 @@ def paginated_result(page: dict, limit: int) -> dict:
     """
     items = page.get("items") or []
     resume = page.get("resume") or None
-    return {"items": items, "resume": resume, "limit": limit, "has_more": bool(resume)}
+    result = {"items": items, "resume": resume, "limit": limit, "has_more": bool(resume)}
+    # Propagate an error reported by the module's page result so a failed list call
+    # isn't flattened into an indistinguishable empty page at the tool layer.
+    if page.get("error") is not None:
+        result["error"] = page["error"]
+    return result

@@ -75,17 +75,36 @@ TOOLS_CONFIG_PATH = os.environ.get("TOOLS_CONFIG_PATH", "/app/config/tools.json"
 
 
 def _load_tools_config() -> dict:
+    # Take a shared lock so a read never overlaps an in-progress exclusive write
+    # (_save_tools_config). Without it, _refresh_tool_state — which reads on nearly
+    # every tool call — could observe the file mid-write (during another instance's
+    # ftruncate+write window) and raise JSONDecodeError. The shared lock blocks only
+    # while a writer holds LOCK_EX; concurrent readers still proceed in parallel.
     with open(TOOLS_CONFIG_PATH, "r") as f:
-        return json.load(f)
+        fcntl.flock(f, fcntl.LOCK_SH)
+        try:
+            return json.load(f)
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
 
 
 def _save_tools_config(tools: dict) -> None:
-    with open(TOOLS_CONFIG_PATH, "w") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
+    # Open WITHOUT truncating (no "w"/O_TRUNC), take the exclusive lock, and only
+    # then truncate + write. open(path, "w") truncates the file *before* flock is
+    # acquired, leaving a window where a concurrent reader (another instance, or
+    # _load_tools_config in another process) sees an empty/half-written tools.json
+    # and fails to parse it. Mirrors VaultManager._save_selected.
+    fd = os.open(TOOLS_CONFIG_PATH, os.O_WRONLY | os.O_CREAT, 0o644)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
         try:
-            json.dump(tools, f, indent=2)
+            os.ftruncate(fd, 0)
+            os.lseek(fd, 0, os.SEEK_SET)
+            os.write(fd, json.dumps(tools, indent=2).encode())
         finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
+            fcntl.flock(fd, fcntl.LOCK_UN)
+    finally:
+        os.close(fd)
 
 
 def _update_tool_enabled(name: str, enabled: bool) -> None:

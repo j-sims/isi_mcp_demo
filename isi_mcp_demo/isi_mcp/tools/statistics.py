@@ -174,6 +174,9 @@ def powerscale_stats_node(cluster_name: str = None) -> Dict[str, Any]:
     If unavailable, the result will include a "_warning" key with guidance.
     Use cluster-level statistics (powerscale_stats_cpu, powerscale_stats_network,
     etc.) as an alternative for virtual clusters.
+    On some clusters node.cpu.throttling is not collected; in that case the field
+    is omitted from each node entry and a "_note" key explains the exclusion (the
+    other metrics are still returned).
 
     Use this tool when the user asks:
     - Which nodes are the busiest?

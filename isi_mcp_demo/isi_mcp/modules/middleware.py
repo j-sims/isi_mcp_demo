@@ -115,8 +115,10 @@ if _FASTMCP_AUTH_AVAILABLE:
             if token is not None:
                 username = token.claims.get("preferred_username", "unknown")
                 issuer = token.claims.get("iss", "")
+                # split() always yields >=1 element, so guard the *value*: an empty
+                # or trailing-slash issuer would otherwise write an empty domain.
                 parts = issuer.rstrip("/").split("/")
-                domain = parts[-1] if parts else "unknown"
+                domain = parts[-1] or "unknown"
             else:
                 username = "anonymous"
                 domain = "local"

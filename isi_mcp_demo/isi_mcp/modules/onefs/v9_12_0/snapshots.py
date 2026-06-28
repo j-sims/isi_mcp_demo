@@ -3,6 +3,7 @@ import isilon_sdk.v9_12_0 as isi_sdk
 from isilon_sdk.v9_12_0.rest import ApiException
 from modules.ansible.runner import AnsibleRunner
 from modules.utils.timestamps import add_iso_timestamps
+from modules.utils.errors import safe_api_error
 from modules.utils.paging import page_kwargs
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,9 @@ class Snapshots:
             result = snapshot_api.list_snapshot_snapshots(**page_kwargs(limit, resume))
         except ApiException as e:
             logger.error("API error: %s", e)
-            return {"items": [], "resume": None}
+            # Surface the failure additively (keep items/resume) so the caller can
+            # distinguish a real API error from a genuinely empty list.
+            return {"items": [], "resume": None, "error": safe_api_error(e)}
 
         items = [s.to_dict() for s in result.snapshots] if result.snapshots else []
         add_iso_timestamps(items, ['created', 'expires'])
@@ -104,7 +107,11 @@ class Snapshots:
             result = snapshot_api.get_snapshot_pending(**page_kwargs(limit, resume, begin=begin, end=end, schedule=schedule))
         except ApiException as e:
             logger.error("API error: %s", e)
-            return {"items": [], "resume": None, "has_more": False}
+            # Surface the failure additively: keep items/resume/has_more so existing
+            # callers don't break, but include "error" so the caller can tell a real
+            # failure from a genuinely empty pending-snapshot list.
+            return {"items": [], "resume": None, "has_more": False,
+                    "error": safe_api_error(e)}
 
         items = [p.to_dict() for p in result.pending] if result.pending else []
         add_iso_timestamps(items, ['time'])
@@ -137,7 +144,7 @@ class Snapshots:
         except ApiException as e:
             return {
                 "success": False,
-                "error": f"API error: {e}"
+                "error": safe_api_error(e)
             }
 
     def get_alias(self, alias_id: str) -> dict:
@@ -160,6 +167,6 @@ class Snapshots:
         except ApiException as e:
             return {
                 "success": False,
-                "error": f"API error: {e}"
+                "error": safe_api_error(e)
             }
 

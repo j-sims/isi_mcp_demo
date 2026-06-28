@@ -1,6 +1,6 @@
-import json
 import isilon_sdk.v9_12_0 as isi_sdk
 from modules.ansible.runner import AnsibleRunner
+from modules.utils.kwargs import parse_json_param
 
 
 class Group:
@@ -63,7 +63,7 @@ class Group:
             variables["provider_type"] = provider_type
         if users:
             if isinstance(users, str):
-                users = json.loads(users)
+                users = parse_json_param("users", users)
             variables["users"] = users
         if user_state:
             variables["user_state"] = user_state
@@ -76,6 +76,9 @@ class Group:
                users=None,
                user_state: str = None) -> dict:
         """Add or remove members from an existing group via Ansible."""
+        if not group_name and group_id is None:
+            return {"success": False,
+                    "error": "Either group_name or group_id must be provided to identify the group."}
         runner = AnsibleRunner(self.cluster)
         variables = {}
         if group_name:
@@ -88,7 +91,7 @@ class Group:
             variables["provider_type"] = provider_type
         if users:
             if isinstance(users, str):
-                users = json.loads(users)
+                users = parse_json_param("users", users)
             variables["users"] = users
         if user_state:
             variables["user_state"] = user_state
@@ -99,6 +102,9 @@ class Group:
                access_zone: str = None,
                provider_type: str = None) -> dict:
         """Delete a local group via Ansible."""
+        if not group_name and group_id is None:
+            return {"success": False,
+                    "error": "Either group_name or group_id must be provided to identify the group."}
         runner = AnsibleRunner(self.cluster)
         variables = {}
         if group_name:
