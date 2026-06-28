@@ -32,7 +32,7 @@
 {%- if user.user_name is defined %}
           - user_name: "{{ user.user_name }}"
 {%- elif user.user_id is defined %}
-          - user_id: {{ user.user_id }}
+          - user_id: "{{ user.user_id }}"
 {%- endif %}
 {%- endfor %}
         user_state: "{{ user_state }}"

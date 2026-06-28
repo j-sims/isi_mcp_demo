@@ -65,7 +65,8 @@ def powerscale_datamover_policy_get_by_id(policy_id: str, cluster_name: str = No
     return datamover.get_policy(policy_id=policy_id)
 
 @safe_tool(group="datamover", mode="write")
-def powerscale_datamover_policy_create(name: str, base_policy_id: int = None,
+def powerscale_datamover_policy_create(name: str, policy_type: str,
+                                       base_policy_id: int = None,
                                        enabled: bool = None, priority: str = None,
                                        run_now: bool = None, schedule: str = None,
                                        cluster_name: str = None) -> dict:
@@ -79,6 +80,11 @@ def powerscale_datamover_policy_create(name: str, base_policy_id: int = None,
 
     Arguments:
     - name: A user-provided policy name (required, e.g. "archive-old-data")
+    - policy_type: The type of data movement operation (required). One of:
+        "COPY"        — copy data from source to target
+        "REPEAT_COPY" — repeatedly copy data on a schedule
+        "CREATION"    — create data at the target
+        "EXPIRATION"  — expire/delete data at the target
     - base_policy_id: The unique base policy identifier to use as a template (optional)
     - enabled: True to enable the policy immediately, False to create it disabled (optional)
     - priority: The relative priority of the policy, e.g. "high", "medium", "low" (optional)
@@ -101,7 +107,8 @@ def powerscale_datamover_policy_create(name: str, base_policy_id: int = None,
     """
     cluster = get_cluster(cluster_name)
     datamover = DataMover(cluster)
-    return datamover.create_policy(name=name, base_policy_id=base_policy_id,
+    return datamover.create_policy(name=name, policy_type=policy_type,
+                                   base_policy_id=base_policy_id,
                                    enabled=enabled, priority=priority,
                                    run_now=run_now, schedule=schedule)
 
@@ -356,6 +363,7 @@ def powerscale_datamover_base_policy_get_by_id(base_policy_id: str, cluster_name
 def powerscale_datamover_base_policy_create(name: str, enabled: bool = None, priority: str = None,
                                             source_account_id: str = None, source_base_path: str = None,
                                             target_account_id: str = None, target_base_path: str = None,
+                                            override_list: str = None,
                                             cluster_name: str = None) -> dict:
     """
     Create a new DataMover base policy on the PowerScale cluster.
@@ -373,6 +381,13 @@ def powerscale_datamover_base_policy_create(name: str, enabled: bool = None, pri
     - source_base_path: Filesystem base path on source (optional, e.g. "/ifs/data")
     - target_account_id: Destination data storage account ID or name (optional)
     - target_base_path: Filesystem base path on target (optional, e.g. "/archive")
+    - override_list: JSON array of field names that child policies are permitted to
+      override (optional, defaults to [] meaning no overrides allowed).
+      Allowed values: "ENABLED", "PRIORITY", "SCHEDULE", "BRIEFCASE",
+      "SOURCE_ACCOUNT_ID", "TARGET_ACCOUNT_ID", "BASE_ACCOUNT_ID",
+      "TASK_ACCOUNT_ID", "SUBPATHS", "SOURCE_BASE_PATH", "TARGET_BASE_PATH",
+      "SRC_DATASET_RETENTION", "TGT_DATASET_RETENTION".
+      Example: '["ENABLED","PRIORITY"]'
 
     Use this tool when the user wants to:
     - Create a new base policy template
@@ -394,7 +409,8 @@ def powerscale_datamover_base_policy_create(name: str, enabled: bool = None, pri
                                        source_account_id=source_account_id,
                                        source_base_path=source_base_path,
                                        target_account_id=target_account_id,
-                                       target_base_path=target_base_path)
+                                       target_base_path=target_base_path,
+                                       override_list=override_list)
 
 @safe_tool(group="datamover", mode="write")
 def powerscale_datamover_base_policy_delete(base_policy_id: str, cluster_name: str = None) -> dict:

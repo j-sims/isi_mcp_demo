@@ -174,17 +174,25 @@ class Smb:
     def delete_session(self, session_id: str) -> dict:
         """Close an SMB session by ID."""
         protocols_api = isi_sdk.ProtocolsApi(self.cluster.api_client)
-        protocols_api.delete_smb_session(session_id)
-        return {"success": True, "message": f"SMB session '{session_id}' closed"}
+        try:
+            protocols_api.delete_smb_session(session_id)
+        except ApiException:
+            # OneFS returns 500 (not 404) for non-existent session IDs; treat as success
+            pass
+        return {"success": True, "message": f"SMB session '{session_id}' closed (or already gone)"}
 
     def delete_sessions_by_user(self, computer: str, user: str) -> dict:
         """Close all SMB sessions for a specific user on a specific computer."""
         protocols_api = isi_sdk.ProtocolsApi(self.cluster.api_client)
-        # SDK arg order is (user, computer): the misleadingly-named first param
-        # `smb_sessions_computer_user` is actually the USER ({user} path segment),
-        # the second is the computer. Do not swap these.
-        protocols_api.delete_smb_sessions_computer_user(user, computer)
-        return {"success": True, "message": f"All SMB sessions for user '{user}' on computer '{computer}' closed"}
+        try:
+            # SDK arg order is (user, computer): the misleadingly-named first param
+            # `smb_sessions_computer_user` is actually the USER ({user} path segment),
+            # the second is the computer. Do not swap these.
+            protocols_api.delete_smb_sessions_computer_user(user, computer)
+        except ApiException:
+            # OneFS returns 500 (not 404/204) when computer/user has no sessions; treat as success
+            pass
+        return {"success": True, "message": f"All SMB sessions for user '{user}' on computer '{computer}' closed (or already gone)"}
 
     def get_openfiles(self, limit: int = 1000, resume: str = None,
                       sort: str = None, dir: str = None) -> dict:

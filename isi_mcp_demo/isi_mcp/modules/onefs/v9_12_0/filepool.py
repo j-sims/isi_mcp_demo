@@ -161,10 +161,15 @@ class FilePool:
                set_requested_protection: str = None,
                set_data_access_pattern: str = None,
                set_write_performance_optimization: str = None) -> dict:
-        """Update a filepool policy via SDK.
+        """Update a filepool policy via SDK using read-modify-write.
 
         Only supplied (non-None) fields are modified. The Ansible module
         does not support modification, so this method uses the SDK directly.
+
+        Read-modify-write is required because the OneFS PUT endpoint returns 500
+        when the body omits fields like file_matching_pattern or actions that are
+        present on the existing policy (even though the SDK serialization skips None
+        attributes, the cluster still requires these fields for a valid update).
 
         Args:
             policy_id: Policy name or ID to update.
@@ -180,35 +185,56 @@ class FilePool:
         Returns:
             dict with success status.
         """
+        any_provided = any([
+            description is not None,
+            apply_order is not None,
+            file_matching_pattern is not None,
+            apply_data_storage_policy is not None,
+            apply_snapshot_storage_policy is not None,
+            set_requested_protection is not None,
+            set_data_access_pattern is not None,
+            set_write_performance_optimization is not None,
+        ])
+        if not any_provided:
+            return {"success": False, "error": "No fields provided to update."}
+
         filepool_api = isi_sdk.FilepoolApi(self.cluster.api_client)
         try:
-            update_params = {}
+            # Read current policy so we can send a fully-populated PUT body.
+            # OneFS returns 500 when apply_order or description are updated without
+            # including the existing file_matching_pattern and actions in the body.
+            get_result = filepool_api.get_filepool_policy(policy_id)
+            if not get_result.policies:
+                return {"success": False, "error": f"FilePool policy '{policy_id}' not found"}
+            existing = get_result.policies[0]
 
-            if description is not None:
-                update_params["description"] = description
-            if apply_order is not None:
-                update_params["apply_order"] = apply_order
+            # Carry forward existing values; overlay the explicitly requested changes.
+            merged_name = existing.name
+            merged_description = existing.description if description is None else description
+            merged_apply_order = existing.apply_order if apply_order is None else apply_order
+            merged_fmp = existing.file_matching_pattern
+            merged_actions = existing.actions
 
             if file_matching_pattern is not None:
-                update_params["file_matching_pattern"] = parse_json_param("file_matching_pattern", file_matching_pattern)
+                merged_fmp = parse_json_param("file_matching_pattern", file_matching_pattern)
 
-            actions = self._build_actions(
+            new_actions = self._build_actions(
                 apply_data_storage_policy=apply_data_storage_policy,
                 apply_snapshot_storage_policy=apply_snapshot_storage_policy,
                 set_requested_protection=set_requested_protection,
                 set_data_access_pattern=set_data_access_pattern,
                 set_write_performance_optimization=set_write_performance_optimization,
             )
-            if actions is not None:
-                update_params["actions"] = actions
+            if new_actions is not None:
+                merged_actions = new_actions
 
-            if not update_params:
-                return {
-                    "success": False,
-                    "error": "No fields provided to update."
-                }
-
-            policy = isi_sdk.FilepoolPolicy(**update_params)
+            policy = isi_sdk.FilepoolPolicy(
+                name=merged_name,
+                description=merged_description,
+                apply_order=merged_apply_order,
+                file_matching_pattern=merged_fmp,
+                actions=merged_actions,
+            )
             filepool_api.update_filepool_policy(
                 filepool_policy=policy,
                 filepool_policy_id=policy_id

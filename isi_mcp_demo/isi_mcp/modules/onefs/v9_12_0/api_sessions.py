@@ -1,4 +1,6 @@
 import isilon_sdk.v9_12_0 as isi_sdk
+from isilon_sdk.v9_12_0.rest import ApiException
+from modules.utils.errors import safe_api_error
 
 
 class ApiSessions:
@@ -31,7 +33,11 @@ class ApiSessions:
         - invalidation_id: The invalidation identifier
         """
         api = isi_sdk.ApiApi(self.cluster.api_client)
-        result = api.get_sessions_invalidation(invalidation_id)
+        try:
+            result = api.get_sessions_invalidation(invalidation_id)
+        except ApiException as e:
+            # OneFS returns 500 (not 404) when the invalidation does not exist
+            return {"error": safe_api_error(e)}
         invalidations = result.invalidations if hasattr(result, "invalidations") and result.invalidations else []
         if invalidations:
             return invalidations[0].to_dict()

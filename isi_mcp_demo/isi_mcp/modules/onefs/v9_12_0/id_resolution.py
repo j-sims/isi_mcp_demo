@@ -79,7 +79,8 @@ class IdResolution:
         except (ValueError, TypeError):
             zone_id_param = zone_id
         api = isi_sdk.IdResolutionZonesApi(self.cluster.api_client)
-        result = api.get_zone_user(zone_id_param, user_id)
+        # SDK signature: get_zone_user(zone_user_id, zid) — user ID is first, zone ID second
+        result = api.get_zone_user(user_id, zone_id_param)
         users = result.users if hasattr(result, "users") and result.users else []
         if users:
             return users[0].to_dict()
@@ -135,7 +136,8 @@ class IdResolution:
         except (ValueError, TypeError):
             zone_id_param = zone_id
         api = isi_sdk.IdResolutionZonesApi(self.cluster.api_client)
-        result = api.get_zone_group(zone_id_param, group_id)
+        # SDK signature: get_zone_group(zone_group_id, zid) — group ID is first, zone ID second
+        result = api.get_zone_group(group_id, zone_id_param)
         groups = result.groups if hasattr(result, "groups") and result.groups else []
         if groups:
             return groups[0].to_dict()

@@ -63,7 +63,8 @@ class DataMover:
                 "error": safe_api_error(e)
             }
 
-    def create_policy(self, name: str, base_policy_id: int = None,
+    def create_policy(self, name: str, policy_type: str,
+                     base_policy_id: int = None,
                      enabled: bool = None, priority: str = None,
                      run_now: bool = None, schedule: str = None,
                      **kwargs) -> dict:
@@ -71,6 +72,8 @@ class DataMover:
 
         Args:
             name: A user-provided policy name (required).
+            policy_type: The type of data movement policy (required). One of
+                "CREATION", "EXPIRATION", "COPY", "REPEAT_COPY".
             base_policy_id: The unique base policy identifier.
             enabled: True to enable the policy, False otherwise.
             priority: The relative priority of the policy.
@@ -85,6 +88,12 @@ class DataMover:
         try:
             # Build policy parameters
             policy_params = {"name": name}
+
+            # SDK requires policy_specific_attr with a non-None policy_type
+            policy_specific_attr = isi_sdk.DatamoverPolicyPolicySpecificAttrCreateParams(
+                policy_type=policy_type
+            )
+            policy_params["policy_specific_attr"] = policy_specific_attr
 
             if base_policy_id is not None:
                 policy_params["base_policy_id"] = base_policy_id
@@ -358,7 +367,8 @@ class DataMover:
     def create_base_policy(self, name: str, enabled: bool = None,
                           priority: str = None, source_account_id: str = None,
                           source_base_path: str = None, target_account_id: str = None,
-                          target_base_path: str = None, **kwargs) -> dict:
+                          target_base_path: str = None, override_list=None,
+                          **kwargs) -> dict:
         """Create a DataMover base policy via SDK.
 
         Args:
@@ -369,11 +379,18 @@ class DataMover:
             source_base_path: Filesystem base path on source system (optional).
             target_account_id: Destination data storage account identifier (optional).
             target_base_path: Filesystem base path on target system (optional).
+            override_list: List of field names child policies may override (required by
+                the SDK; pass [] to allow no overrides). Allowed values: "ENABLED",
+                "PRIORITY", "SCHEDULE", "BRIEFCASE", "SOURCE_ACCOUNT_ID",
+                "TARGET_ACCOUNT_ID", "BASE_ACCOUNT_ID", "TASK_ACCOUNT_ID", "SUBPATHS",
+                "SOURCE_BASE_PATH", "TARGET_BASE_PATH", "SRC_DATASET_RETENTION",
+                "TGT_DATASET_RETENTION".
             **kwargs: Additional base policy parameters (schedule, source_subpaths, etc.).
 
         Returns:
             dict with success status and base policy creation details.
         """
+        from modules.utils.kwargs import parse_json_param
         datamover_api = isi_sdk.DatamoverApi(self.cluster.api_client)
         try:
             # Build base policy parameters
@@ -391,6 +408,11 @@ class DataMover:
                 base_policy_params["target_account_id"] = target_account_id
             if target_base_path is not None:
                 base_policy_params["target_base_path"] = target_base_path
+
+            # SDK requires override_list to be a non-None list (may be empty)
+            if isinstance(override_list, str):
+                override_list = parse_json_param("override_list", override_list)
+            base_policy_params["override_list"] = override_list if override_list is not None else []
 
             # Add any additional kwargs
             base_policy_params.update(kwargs)
