@@ -382,7 +382,7 @@ def powerscale_datamover_base_policy_create(name: str, enabled: bool = None, pri
     - target_account_id: Destination data storage account ID or name (optional)
     - target_base_path: Filesystem base path on target (optional, e.g. "/archive")
     - override_list: JSON array of field names that child policies are permitted to
-      override (optional, defaults to [] meaning no overrides allowed).
+      override (required by the cluster API — must contain at least one value).
       Allowed values: "ENABLED", "PRIORITY", "SCHEDULE", "BRIEFCASE",
       "SOURCE_ACCOUNT_ID", "TARGET_ACCOUNT_ID", "BASE_ACCOUNT_ID",
       "TASK_ACCOUNT_ID", "SUBPATHS", "SOURCE_BASE_PATH", "TARGET_BASE_PATH",
