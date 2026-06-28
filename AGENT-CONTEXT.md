@@ -217,6 +217,35 @@ Follow Dell's published capacity guidelines:
 4. Check active sessions and open files if users report access issues.
 5. Verify quotas if users report "disk full" errors despite cluster having free space.
 
+### When a Tool Returns an Error
+
+Tool errors return a structured response with:
+- **status**: HTTP status code (if from API)
+- **reason**: Brief error description (safe for users)
+- **detail**: Additional context extracted from the API response (if available)
+- **full_details**: Instructions for finding complete error logs (for operators)
+
+**Example error response:**
+```json
+{
+  "error": {
+    "status": 500,
+    "reason": "Internal Server Error",
+    "detail": "Session not found",
+    "full_details": "Check container logs with: docker-compose logs isi_mcp | grep 'Tool powerscale_smb_sessions_get'"
+  },
+  "error_type": "ApiException"
+}
+```
+
+**To get full error details** (full HTTP response body, stack trace, headers):
+1. Run the container logs command provided in the error response, or:
+2. Enable debug logging: `docker-compose down && docker-compose up -d --build -e LOG_LEVEL=DEBUG`
+3. Re-run the failing tool
+4. Check logs: `docker-compose logs -f isi_mcp`
+
+The full details are logged server-side for security — the client-facing error stays safe and minimal.
+
 ---
 
 ## Important Technical Notes

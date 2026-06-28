@@ -35,23 +35,53 @@ except Exception:  # pragma: no cover - SDK always present in container
     _ApiException = None
 
 
-def _sanitize_exception(fn_name: str, exc: Exception) -> str:
-    """Build a client-safe error string for an exception.
+def _sanitize_exception(fn_name: str, exc: Exception) -> dict:
+    """Build a client-safe error response for an exception.
 
     SDK ``ApiException`` objects carry the full HTTP response body — which can
     include internal IPs, node names, stack traces and auth specifics. We return
     only the status line to the client and log the full detail server-side.
+
+    Returns a dict with:
+      - status: HTTP status code (for API errors) or None
+      - reason: Brief error reason (safe for client)
+      - detail: Optional additional context
+      - full_details: Pointer to server logs for operators
     """
     if _ApiException is not None and isinstance(exc, _ApiException):
         status = getattr(exc, "status", None)
         reason = getattr(exc, "reason", None) or "API error"
+        body = getattr(exc, "body", None)
+
         # Full body (incl. headers) goes to the server log only.
         logger.warning(
             "Tool %s ApiException: status=%s reason=%s body=%s",
-            fn_name, status, reason, getattr(exc, "body", None),
+            fn_name, status, reason, body,
         )
-        return f"{status} {reason}".strip() if status else str(reason)
-    return str(exc)
+
+        # Extract detail from body if it's a dict-like structure
+        detail = None
+        if body and isinstance(body, str):
+            try:
+                import json
+                body_obj = json.loads(body)
+                if isinstance(body_obj, dict):
+                    # Look for common error detail fields
+                    detail = body_obj.get("message") or body_obj.get("detail") or body_obj.get("error")
+            except Exception:  # pragma: no cover
+                pass
+
+        return {
+            "status": status,
+            "reason": reason,
+            "detail": detail,
+            "full_details": f"Check container logs with: docker-compose logs isi_mcp | grep 'Tool {fn_name}'",
+        }
+
+    return {
+        "reason": str(exc),
+        "full_details": f"Check container logs with: docker-compose logs isi_mcp | grep '{fn_name}'",
+    }
 
 # Populated by every @safe_tool() decoration:
 #   {tool_name: {"group": ..., "mode": ...}}
@@ -112,11 +142,11 @@ def safe_tool(*, group: str, mode: str) -> Callable:
                 return fn(*args, **kwargs)
             except Exception as e:
                 logger.exception("Tool %s failed", fn.__name__)
-                # "error" stays a plain string for backward compatibility; the
-                # additive "error_type" lets clients branch on the exception class
-                # instead of substring-matching the message.
+                error_details = _sanitize_exception(fn.__name__, e)
+                # "error" is now a structured dict with status, reason, detail, full_details
+                # error_type lets clients branch on the exception class
                 return {
-                    "error": _sanitize_exception(fn.__name__, e),
+                    "error": error_details,
                     "error_type": type(e).__name__,
                 }
 
