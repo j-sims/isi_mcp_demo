@@ -63,6 +63,12 @@
         "clientRole": false
       },
       {
+        "name": "mcp-group-connectivity",
+        "description": "Access to connectivity tool group",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "mcp-group-datamover",
         "description": "Access to datamover tool group",
         "composite": false,

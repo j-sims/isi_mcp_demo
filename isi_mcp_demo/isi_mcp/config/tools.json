@@ -467,6 +467,24 @@
   "powerscale_hardening_reports_get": {
     "enabled": true
   },
+  "powerscale_connectivity_settings_get": {
+    "enabled": true
+  },
+  "powerscale_connectivity_status_get": {
+    "enabled": true
+  },
+  "powerscale_connectivity_license_get": {
+    "enabled": true
+  },
+  "powerscale_connectivity_terms_get": {
+    "enabled": true
+  },
+  "powerscale_connectivity_tasks_get": {
+    "enabled": true
+  },
+  "powerscale_connectivity_task_get": {
+    "enabled": true
+  },
   "powerscale_debug_stats_get": {
     "enabled": true
   },

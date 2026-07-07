@@ -1,0 +1,25 @@
+=== Restoring connectivity feature group ===
+Repo: /tank/vm/ownCloud/EMC/Isilon/Repos/isi_mcp_demo
+
+[CREATE] /tank/vm/ownCloud/EMC/Isilon/Repos/isi_mcp_demo/isi_mcp_demo/isi_mcp/modules/onefs/v9_12_0/connectivity.py
+    OK
+[CREATE] /tank/vm/ownCloud/EMC/Isilon/Repos/isi_mcp_demo/isi_mcp_demo/isi_mcp/tools/connectivity.py
+    OK
+[PATCH] /tank/vm/ownCloud/EMC/Isilon/Repos/isi_mcp_demo/isi_mcp_demo/isi_mcp/tools/__init__.py — adding connectivity import
+    OK
+[PATCH] /tank/vm/ownCloud/EMC/Isilon/Repos/isi_mcp_demo/isi_mcp_demo/isi_mcp/config/tools.json — adding 6 connectivity entries
+    OK — inserted before powerscale_debug_stats_get
+[PATCH] /tank/vm/ownCloud/EMC/Isilon/Repos/isi_mcp_demo/keycloak/realm-export.json — adding mcp-group-connectivity role
+    OK — inserted before mcp-group-datamover
+[PATCH] /tank/vm/ownCloud/EMC/Isilon/Repos/isi_mcp_demo/AGENT-CONTEXT.md — adding Connectivity documentation section
+    OK
+
+=== Done. Summary of changes ===
+  modules/onefs/v9_12_0/connectivity.py  — module
+  tools/connectivity.py                  — MCP tools (6 tools)
+  tools/__init__.py                      — import added
+  config/tools.json                      — 6 entries added
+  keycloak/realm-export.json             — mcp-group-connectivity role added
+  AGENT-CONTEXT.md                       — Connectivity section added
+
+Next: rebuild the container to pick up the changes.

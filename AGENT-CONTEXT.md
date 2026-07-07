@@ -761,6 +761,21 @@ Response: `{"cluster.cpu.idle.avg": 919, "cluster.cpu.user.avg": 23, "cluster.cp
 
 ---
 
+### Connectivity
+
+**When to use**: Verifying that the cluster can reach Dell's support infrastructure, checking telemetry status, or reviewing connectivity diagnostic configuration.
+
+| Tool | Purpose | Key Arguments |
+|---|---|---|
+| `powerscale_connectivity_settings_get` | Get connectivity diagnostic configuration | — |
+| `powerscale_connectivity_status_get` | Get connectivity diagnostic status | — |
+| `powerscale_connectivity_license_get` | Get connectivity service license | — |
+| `powerscale_connectivity_terms_get` | Get telemetry notice text | — |
+| `powerscale_connectivity_tasks_get` | List connectivity diagnostic tasks | — |
+| `powerscale_connectivity_task_get` | Get a specific connectivity task | `task_id` (str) |
+
+---
+
 ### Utility Tools
 
 **When to use**: Always use these for unit conversions instead of calculating manually. Use the debug stats tool when troubleshooting API call patterns.

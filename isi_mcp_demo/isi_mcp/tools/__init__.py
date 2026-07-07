@@ -19,6 +19,7 @@ from tools import (
     jobs,
     performance,
     hardening,
+    connectivity,
     quota_reports,
     id_resolution,
     local_info,
