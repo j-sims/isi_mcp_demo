@@ -213,5 +213,10 @@ class Smb:
     def delete_openfile(self, openfile_id: str) -> dict:
         """Close (forcibly terminate) an open SMB file by ID."""
         protocols_api = isi_sdk.ProtocolsApi(self.cluster.api_client)
-        protocols_api.delete_smb_openfile(openfile_id)
+        try:
+            protocols_api.delete_smb_openfile(openfile_id)
+        except ApiException as e:
+            if getattr(e, "status", None) == 404:
+                return {"success": True, "message": f"SMB open file '{openfile_id}' already closed or not found"}
+            raise
         return {"success": True, "message": f"SMB open file '{openfile_id}' closed"}

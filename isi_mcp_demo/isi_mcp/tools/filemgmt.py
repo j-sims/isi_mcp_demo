@@ -865,6 +865,12 @@ def powerscale_directory_query(
       - value: Value to compare against
       Example: '[{"attr":"name","operator":"like","value":"*.log"},
                  {"attr":"size","operator":">","value":"1048576"}]'
+      Note: for "like" conditions, shell wildcards (* and ?) are automatically
+      translated to SQL LIKE wildcards (% and _) — either syntax is accepted.
+      CAUTION: Testing has shown that the "like" operator with wildcards may return
+      0 results on some OneFS versions even for known-matching files. Use operator="="
+      for reliable exact filename matching. If "like" returns empty, a "_warning"
+      field in the response will explain this limitation.
     - logic: How to combine conditions — "and" (default, all must match) or
       "or" (any can match)
     - result_attrs: Optional JSON string of attribute names to include in

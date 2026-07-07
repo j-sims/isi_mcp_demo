@@ -15,12 +15,16 @@ def powerscale_stats_cpu(cluster_name: str = None) -> Dict[str, Any]:
     Always check that _sample_time has changed between calls to confirm
     you received a new sample (not a cached repeat).
 
-    Response fields (all values are percentages, 0–100):
+    Response fields (all values are percentages, 0.0–100.0):
     - cluster.cpu.sys.avg:  CPU time spent in kernel/system mode
     - cluster.cpu.user.avg: CPU time spent in user-space processes
     - cluster.cpu.idle.avg: CPU idle time (higher is better)
     - cluster.cpu.intr.avg: CPU time handling hardware interrupts
     - _sample_time:         Unix timestamp of when this sample was taken
+
+    Note: The PAPI returns these values as per-mille integers (0–1000); this tool
+    divides by 10 to produce percentages. powerscale_stats_get returns raw per-mille
+    values for the same keys.
 
     Tip: A healthy cluster typically has idle > 50%. Values of sys+user > 80%
     combined may indicate CPU pressure. High intr can suggest network or disk

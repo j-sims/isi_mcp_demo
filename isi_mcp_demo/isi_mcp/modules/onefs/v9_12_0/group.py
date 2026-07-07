@@ -15,19 +15,34 @@ class Group:
         """List groups or retrieve a specific group via the Auth API."""
         auth_api = isi_sdk.AuthApi(self.cluster.api_client)
         if group_name or group_id is not None:
-            # Fetch a single group by name or GID
+            # Use list+filter instead of get_auth_group("group:<name>") — the single-group
+            # endpoint returns 500 on some OneFS versions when queried by prefixed name.
             if group_name:
-                auth_group_id = f"group:{group_name}"
+                # filter= does a prefix match; confirm exact name match in results.
+                kwargs = {"filter": group_name, "limit": 100}
+                if provider_type:
+                    kwargs["provider"] = provider_type
+                if access_zone:
+                    kwargs["zone"] = access_zone
+                result = auth_api.list_auth_groups(**kwargs)
+                candidates = result.groups if result.groups else []
+                matched = [g for g in candidates if g.name == group_name]
+                if not matched:
+                    return {"items": [], "resume": None,
+                            "error": f"Group '{group_name}' not found"}
+                return {"items": [g.to_dict() for g in matched], "resume": None}
             else:
+                # GID lookup — use get_auth_group("GID:<n>") which is a numeric lookup
+                # and does not appear to have the same 500-on-name-prefix issue.
                 auth_group_id = f"GID:{group_id}"
-            kwargs = {}
-            if provider_type:
-                kwargs["provider"] = provider_type
-            if access_zone:
-                kwargs["zone"] = access_zone
-            result = auth_api.get_auth_group(auth_group_id, **kwargs)
-            groups = result.groups if result.groups else []
-            return {"items": [g.to_dict() for g in groups], "resume": None}
+                kwargs = {}
+                if provider_type:
+                    kwargs["provider"] = provider_type
+                if access_zone:
+                    kwargs["zone"] = access_zone
+                result = auth_api.get_auth_group(auth_group_id, **kwargs)
+                groups = result.groups if result.groups else []
+                return {"items": [g.to_dict() for g in groups], "resume": None}
         else:
             # List all groups with optional filters
             if resume:

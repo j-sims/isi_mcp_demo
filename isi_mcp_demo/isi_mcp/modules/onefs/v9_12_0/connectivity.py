@@ -1,4 +1,6 @@
 import isilon_sdk.v9_12_0 as isi_sdk
+from isilon_sdk.v9_12_0.rest import ApiException
+from modules.utils.errors import safe_api_error
 
 
 class Connectivity:
@@ -26,7 +28,12 @@ class Connectivity:
     def get_license(self):
         """Get connectivity license activation status."""
         api = isi_sdk.ConnectivityApi(self.cluster.api_client)
-        result = api.get_connectivity_license()
+        try:
+            result = api.get_connectivity_license()
+        except ApiException as e:
+            if getattr(e, "status", None) == 400:
+                return {"error": "Connectivity license information unavailable (SRS/ESRS service is not provisioned on this cluster)"}
+            return {"error": safe_api_error(e)}
         return result.license.to_dict() if hasattr(result, "license") and result.license else {}
 
     def get_terms(self):

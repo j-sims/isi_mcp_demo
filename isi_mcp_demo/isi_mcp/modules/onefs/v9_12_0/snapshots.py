@@ -59,6 +59,15 @@ class Snapshots:
         Returns:
             dict with success status and Ansible execution details.
         """
+        if desired_retention is None and expiration_timestamp is None:
+            return {
+                "success": False,
+                "error": (
+                    "Either desired_retention or expiration_timestamp must be provided. "
+                    "The PowerScale snapshot Ansible module requires one of them to set "
+                    "the snapshot lifetime."
+                ),
+            }
         runner = AnsibleRunner(self.cluster)
         variables = {
             "path": path,

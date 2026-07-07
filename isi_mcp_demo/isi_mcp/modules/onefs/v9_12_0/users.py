@@ -14,16 +14,21 @@ class Users:
         """List users or retrieve a specific user via the Auth API."""
         auth_api = isi_sdk.AuthApi(self.cluster.api_client)
         if user_name:
-            # Fetch a single user by name
-            auth_user_id = f"user:{user_name}"
-            kwargs = {}
+            # Use list+filter instead of get_auth_user("user:<name>") — the single-user
+            # endpoint returns 500 on some OneFS versions when queried by prefixed name.
+            # filter= does a prefix match so we must confirm an exact name match.
+            kwargs = {"filter": user_name, "limit": 100}
             if provider_type:
                 kwargs["provider"] = provider_type
             if access_zone:
                 kwargs["zone"] = access_zone
-            result = auth_api.get_auth_user(auth_user_id, **kwargs)
-            users = result.users if result.users else []
-            return {"items": [u.to_dict() for u in users], "resume": None}
+            result = auth_api.list_auth_users(**kwargs)
+            candidates = result.users if result.users else []
+            matched = [u for u in candidates if u.name == user_name]
+            if not matched:
+                return {"items": [], "resume": None,
+                        "error": f"User '{user_name}' not found"}
+            return {"items": [u.to_dict() for u in matched], "resume": None}
         else:
             # List all users with optional filters
             if resume:

@@ -44,10 +44,20 @@ class Jobs:
         - limit: Maximum number of recent jobs to return (default 50)
         """
         api = isi_sdk.JobApi(self.cluster.api_client)
-        result = api.get_job_recent()
+        # SDK default is 8 results; max is 100. Pass limit explicitly so the
+        # caller gets as many recent jobs as requested rather than just 8.
+        result = api.get_job_recent(limit=min(limit, 100))
         jobs = result.jobs if hasattr(result, "jobs") and result.jobs else []
-        items = [j.to_dict() for j in jobs]
-        return {"items": items[:limit], "total": len(items)}
+        out = {"items": [j.to_dict() for j in jobs], "total": len(jobs)}
+        if not jobs:
+            out["_note"] = (
+                "The job engine's recent-completion cache is empty — this is expected "
+                "after a cluster/service restart or if no jobs have completed in the "
+                "current engine session. For persistent job history use: "
+                "powerscale_job_events_get (all state transitions) or "
+                "powerscale_job_reports_get (per-job execution stats)."
+            )
+        return out
 
     def get_summary(self):
         """Get job engine status summary."""

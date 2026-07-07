@@ -1,7 +1,8 @@
 from modules.tool_decorator import safe_tool, get_cluster
 from modules.onefs.v9_12_0.snapshots import Snapshots
 from modules.onefs.v9_12_0.snapshotschedules import SnapshotSchedules
-from modules.onefs.v9_12_0.snapshot_changelists import SnapshotChangelists
+from modules.onefs.v9_12_0.snapshot_changelists import SnapshotChangelists, _ID_HINT
+from modules.utils.errors import safe_api_error
 from modules.utils.paging import normalize_resume, paginated_result
 from typing import Dict, Any, Optional
 
@@ -232,12 +233,17 @@ def powerscale_snapshot_create(path: str, snapshot_name: str = None, alias: str 
       auto-generated based on the path.
     - alias: Optional human-friendly alias to create for this snapshot. Aliases make
       it easier to reference snapshots without using generated names.
-    - desired_retention: Optional retention period as an integer (e.g. 7 for 7 hours/days/weeks).
-      Snapshots older than this will be automatically deleted.
+    - desired_retention: Retention period as an integer (e.g. 7 for 7 hours/days/weeks).
+      REQUIRED unless expiration_timestamp is provided. Snapshots older than this will
+      be automatically deleted.
     - retention_unit: Unit for retention period. Options: "hours", "days", "weeks".
       Default is "hours".
-    - expiration_timestamp: Optional UTC expiration timestamp (mutually exclusive with
-      desired_retention). Format: "2024-12-31 23:59:59"
+    - expiration_timestamp: UTC expiration timestamp (mutually exclusive with
+      desired_retention). REQUIRED unless desired_retention is provided.
+      Format: "2024-12-31 23:59:59"
+
+    NOTE: At least one of desired_retention or expiration_timestamp MUST be provided.
+    The PowerScale snapshot Ansible module requires a lifetime to be set on creation.
 
     Use this tool when the user wants to:
     - Create a one-time snapshot before risky operations (upgrades, migrations, etc.)
@@ -465,7 +471,14 @@ def powerscale_snapshot_changelist_lins_get(
     resume = normalize_resume(resume)
     cluster = get_cluster(cluster_name)
     sc = SnapshotChangelists(cluster)
-    return sc.get_lins(changelist_id, resume=resume, limit=limit)
+    try:
+        return sc.get_lins(changelist_id, resume=resume, limit=limit)
+    except Exception as e:
+        # Belt-and-suspenders: module-level try/except should catch this, but if
+        # the exception escapes (e.g. non-ApiException type from this endpoint),
+        # attach the ID format hint here before @safe_tool swallows the detail.
+        return {"error": f"{safe_api_error(e)} — {_ID_HINT}",
+                "status": getattr(e, "status", None)}
 
 
 @safe_tool(group="snapshot_changelists", mode="read")

@@ -65,8 +65,14 @@ class SnapshotChangelists:
         - resume: Pagination token from a previous call
         - limit: Maximum number of results (default 100)
         """
-        api = isi_sdk.SnapshotChangelistsApi(self.cluster.api_client)
-        result = api.get_changelist_lins(changelist_id, **page_kwargs(limit, resume))
+        try:
+            api = isi_sdk.SnapshotChangelistsApi(self.cluster.api_client)
+            result = api.get_changelist_lins(changelist_id, **page_kwargs(limit, resume))
+        except ApiException as e:
+            # Attach the ID format hint for any error — the lins endpoint may return
+            # a different status code than entries (e.g. 404 vs 400) for the same
+            # invalid changelist_id, so we can't gate on status == 400 alone.
+            return {"error": f"{safe_api_error(e)} — {_ID_HINT}", "status": getattr(e, "status", None)}
         lins = result.lins if hasattr(result, "lins") and result.lins else []
         return {
             "items": [ln.to_dict() for ln in lins],

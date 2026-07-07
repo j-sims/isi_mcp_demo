@@ -37,6 +37,8 @@ class ApiSessions:
             result = api.get_sessions_invalidation(invalidation_id)
         except ApiException as e:
             # OneFS returns 500 (not 404) when the invalidation does not exist
+            if getattr(e, "status", None) == 500:
+                return {"error": f"Session invalidation '{invalidation_id}' not found"}
             return {"error": safe_api_error(e)}
         invalidations = result.invalidations if hasattr(result, "invalidations") and result.invalidations else []
         if invalidations:

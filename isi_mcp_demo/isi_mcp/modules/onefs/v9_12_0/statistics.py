@@ -132,9 +132,13 @@ class Statistics:
     def get_cpu(self):
         """Retrieve a single instantaneous cluster CPU utilization sample.
 
+        The PAPI returns CPU stats as per-mille integers (0–1000). This method
+        divides by 10 to convert to percentages (0.0–100.0) before returning.
+        Note: powerscale_stats_get returns raw per-mille values for these same keys.
+
         Returns:
             Dict with keys: cluster.cpu.sys.avg, cluster.cpu.user.avg,
-            cluster.cpu.idle.avg, cluster.cpu.intr.avg (all in percent),
+            cluster.cpu.idle.avg, cluster.cpu.intr.avg (all in percent 0–100),
             and _sample_time (Unix timestamp of the sample).
         """
         keys = [
@@ -143,7 +147,18 @@ class Statistics:
             "cluster.cpu.idle.avg",
             "cluster.cpu.intr.avg",
         ]
-        return self._fetch_current(keys)
+        raw = self._fetch_current(keys)
+        if "error" in raw:
+            return raw
+        result = {}
+        for k, v in raw.items():
+            if k.startswith("_"):
+                result[k] = v
+            elif isinstance(v, (int, float)):
+                result[k] = round(v / 10, 1)
+            else:
+                result[k] = v
+        return result
 
     def get_network(self):
         """Retrieve a single instantaneous cluster external network traffic sample.

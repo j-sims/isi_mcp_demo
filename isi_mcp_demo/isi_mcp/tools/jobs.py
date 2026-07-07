@@ -43,11 +43,22 @@ def powerscale_job_recent_get(limit: int = 50, cluster_name: str = None) -> dict
     Shows jobs that have finished, failed, or been cancelled. Useful for
     post-execution auditing and troubleshooting.
 
+    IMPORTANT: This endpoint reads from a live in-memory cache maintained by the
+    job engine process. It is NOT a persistent log — the cache may be empty if:
+    - The cluster (or job engine service) was restarted since the last jobs ran
+    - No jobs have completed in the current engine session
+    - The cache TTL has elapsed
+    Empty results do NOT indicate a bug or that no jobs have ever run.
+
+    For a reliable, persistent history of completed jobs use:
+    - powerscale_job_events_get — event log for all job state transitions
+    - powerscale_job_reports_get — detailed per-job execution reports
+
     Arguments:
-    - limit: Maximum number of recent jobs to return (default 50)
+    - limit: Maximum number of recent jobs to return (default 50, max 100)
 
     Returns:
-    - items: List of recently completed job objects
+    - items: List of recently completed job objects (may be empty if cache is clear)
     - total: Total count
     """
     cluster = get_cluster(cluster_name)

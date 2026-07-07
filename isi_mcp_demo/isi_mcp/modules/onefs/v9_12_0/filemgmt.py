@@ -515,10 +515,15 @@ class FileMgmt:
 
         cond_objects = []
         for c in conditions:
+            value = c.get('value', '')
+            if c.get('operator') == 'like' and isinstance(value, str):
+                # PAPI uses SQL LIKE wildcards (% = any chars, _ = one char), not shell globs.
+                # Translate shell-style * and ? so callers can use either syntax.
+                value = value.replace('*', '%').replace('?', '_')
             cond_objects.append(DirectoryQueryScopeConditions(
                 attr=c.get('attr'),
                 operator=c.get('operator'),
-                value=c.get('value')
+                value=value
             ))
 
         scope = DirectoryQueryScope(conditions=cond_objects, logic=logic)
@@ -543,8 +548,17 @@ class FileMgmt:
         result = api.query_directory(path, True, query_model, **kwargs)
 
         children = [c.to_dict() for c in result.children] if result.children else []
-        return {
+        has_like = any(c.get('operator') == 'like' for c in conditions)
+        out = {
             "children": children,
             "resume": result.resume,
             "has_more": bool(result.resume)
         }
+        if not children and not result.resume and has_like:
+            out["_warning"] = (
+                "No results returned for 'like' operator. The PowerScale namespace query "
+                "API may not support wildcard pattern matching on the 'name' attribute on "
+                "this OneFS version. Confirmed working alternative: use operator='=' for "
+                "exact filename matches."
+            )
+        return out
