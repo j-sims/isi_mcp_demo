@@ -189,19 +189,32 @@ HELP
 # Shared helpers used by subcommands
 # ---------------------------------------------------------------------------
 
+# Verify Docker and a Compose implementation are present and the daemon is up.
+# Prefers the Compose v2 plugin ("docker compose"); falls back to the legacy
+# standalone "docker-compose" (v1, end-of-life July 2023) with a deprecation
+# nudge. Sets COMPOSE_CMD in the caller's scope. Exits with install guidance
+# if anything required is missing.
 _check_docker_prereqs() {
     if ! command -v docker &>/dev/null; then
-        fail "Docker is not installed."
-        fail "Install Docker: https://docs.docker.com/get-docker/"
+        fail "Docker is not installed or not on PATH."
+        fail "Install Docker Engine: https://docs.docker.com/engine/install/"
+        exit 1
+    fi
+    if ! docker info &>/dev/null; then
+        fail "Docker is installed but its daemon is not reachable."
+        fail "Start Docker (e.g. 'sudo systemctl start docker') and ensure your user is"
+        fail "in the 'docker' group, then re-run this script."
         exit 1
     fi
     if docker compose version &>/dev/null 2>&1; then
         COMPOSE_CMD="docker compose"
     elif command -v docker-compose &>/dev/null; then
         COMPOSE_CMD="docker-compose"
+        warn "Using legacy 'docker-compose' (Compose v1), which is end-of-life (July 2023)."
+        warn "Upgrade to the Compose v2 plugin: https://docs.docker.com/compose/install/linux/"
     else
-        fail "docker-compose is not available."
-        fail "Install Docker Compose: https://docs.docker.com/compose/install/"
+        fail "Docker Compose is not available (neither 'docker compose' nor 'docker-compose')."
+        fail "Install the Compose v2 plugin: https://docs.docker.com/compose/install/linux/"
         exit 1
     fi
 }
@@ -719,23 +732,9 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Check prerequisites (docker and docker-compose required for setup)
+# Check prerequisites (docker + a Compose implementation required for setup)
 # ---------------------------------------------------------------------------
-if ! command -v docker &>/dev/null; then
-    fail "Docker is not installed."
-    fail "Install Docker: https://docs.docker.com/get-docker/"
-    exit 1
-fi
-
-if docker compose version &>/dev/null 2>&1; then
-    COMPOSE_CMD="docker compose"
-elif command -v docker-compose &>/dev/null; then
-    COMPOSE_CMD="docker-compose"
-else
-    fail "docker-compose is not available."
-    fail "Install Docker Compose: https://docs.docker.com/compose/install/"
-    exit 1
-fi
+_check_docker_prereqs
 
 # ---------------------------------------------------------------------------
 # Check for existing setup (vault.yml and/or keycloak-db-data volume)

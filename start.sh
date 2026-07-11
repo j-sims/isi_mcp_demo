@@ -14,14 +14,32 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
 REBOOT=false
 
-# Detect docker compose command (v2 plugin preferred over standalone v1)
+# ---------------------------------------------------------------------------
+# Verify Docker and a Compose implementation are present and the daemon is up.
+# Prefers the Compose v2 plugin ("docker compose") over the legacy standalone
+# "docker-compose" (v1, end-of-life July 2023). Exits with install guidance if
+# anything required is missing.
+# ---------------------------------------------------------------------------
+if ! command -v docker &>/dev/null; then
+    echo "ERROR: Docker is not installed or not on PATH."
+    echo "Install Docker Engine: https://docs.docker.com/engine/install/"
+    exit 1
+fi
+if ! docker info &>/dev/null; then
+    echo "ERROR: Docker is installed but its daemon is not reachable."
+    echo "Start Docker (e.g. 'sudo systemctl start docker') and ensure your user is"
+    echo "in the 'docker' group, then re-run this script."
+    exit 1
+fi
 if docker compose version &>/dev/null 2>&1; then
     COMPOSE_CMD="docker compose"
 elif command -v docker-compose &>/dev/null; then
     COMPOSE_CMD="docker-compose"
+    echo "WARNING: Using legacy 'docker-compose' (Compose v1), which is end-of-life (July 2023)."
+    echo "         Upgrade to the Compose v2 plugin: https://docs.docker.com/compose/install/linux/"
 else
-    echo "ERROR: docker-compose is not available."
-    echo "Install Docker Compose: https://docs.docker.com/compose/install/"
+    echo "ERROR: Docker Compose is not available (neither 'docker compose' nor 'docker-compose')."
+    echo "Install the Compose v2 plugin: https://docs.docker.com/compose/install/linux/"
     exit 1
 fi
 
